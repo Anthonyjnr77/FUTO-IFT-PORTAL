@@ -1,0 +1,836 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Login | FUTO IFT Learning Platform</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link rel="stylesheet" href="styles.css">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+    body { font-family: 'Inter', system-ui, sans-serif; min-height: 100vh; background: #070f1f; overflow-x: hidden; position: relative; }
+
+    /* CANVAS */
+    #particleCanvas { position: fixed; inset: 0; z-index: 0; pointer-events: none; }
+
+    /* BLOBS */
+    .blob { position: fixed; border-radius: 50%; filter: blur(80px); opacity: 0.18; pointer-events: none; z-index: 0; animation: blobDrift 14s ease-in-out infinite alternate; }
+    .blob-1 { width: 500px; height: 500px; background: #0d9488; top: -120px; right: -100px; animation-delay: 0s; }
+    .blob-2 { width: 400px; height: 400px; background: #4f46e5; bottom: -80px; left: -100px; animation-delay: 4s; }
+    .blob-3 { width: 300px; height: 300px; background: #0891b2; top: 40%; left: 30%; animation-delay: 8s; }
+    @keyframes blobDrift { 0%{transform:translate(0,0) scale(1)} 50%{transform:translate(30px,-40px) scale(1.08)} 100%{transform:translate(-20px,25px) scale(0.94)} }
+
+    /* LOADER */
+    #futo-loader { position: fixed; inset: 0; background: #070f1f; z-index: 9999; display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 16px; transition: opacity 0.6s, visibility 0.6s; }
+    .loader-logo { width: 56px; height: 56px; background: linear-gradient(135deg,#0d9488,#14b8a6); border-radius: 16px; display: flex; align-items: center; justify-content: center; font-size: 24px; animation: lPulse 1.2s ease-in-out infinite; }
+    @keyframes lPulse { 0%,100%{transform:scale(1);box-shadow:0 0 0 0 rgba(20,184,166,.4)} 50%{transform:scale(1.05);box-shadow:0 0 0 16px rgba(20,184,166,0)} }
+    .loader-bar { width: 160px; height: 3px; background: rgba(255,255,255,.08); border-radius: 4px; overflow: hidden; }
+    .loader-bar-fill { height: 100%; width: 0; background: linear-gradient(90deg,#0d9488,#14b8a6); border-radius: 4px; animation: lFill 1s ease forwards .2s; }
+    @keyframes lFill { to { width: 100%; } }
+    .loader-text { font-size: 12px; color: rgba(255,255,255,.3); letter-spacing: 2px; text-transform: uppercase; }
+
+    /* PAGE */
+    .page-wrapper { position: relative; z-index: 1; min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 24px 16px; }
+    .container { width: 100%; max-width: 440px; animation: riseIn .9s cubic-bezier(.22,1,.36,1) .2s both; }
+    @keyframes riseIn { from{opacity:0;transform:translateY(36px)} to{opacity:1;transform:translateY(0)} }
+
+    /* LOGO */
+    .logo-area { text-align: center; margin-bottom: 28px; }
+    .logo-icon { width: 68px; height: 68px; background: linear-gradient(135deg,#0d9488,#14b8a6); border-radius: 20px; display: flex; align-items: center; justify-content: center; margin: 0 auto 14px; font-size: 28px; box-shadow: 0 0 0 1px rgba(255,255,255,.08), 0 20px 50px rgba(13,148,136,.4); transition: transform .3s; cursor: default; }
+    .logo-icon:hover { transform: rotate(8deg) scale(1.06); }
+    .logo-title { font-size: 22px; font-weight: 800; color: #fff; letter-spacing: 2px; text-transform: uppercase; }
+    .logo-sub { font-size: 12px; color: rgba(255,255,255,.35); margin-top: 4px; }
+    .dept-badge { display: inline-block; margin-top: 8px; background: rgba(13,148,136,.15); border: 1px solid rgba(20,184,166,.3); color: #14b8a6; font-size: 11px; font-weight: 600; padding: 4px 14px; border-radius: 20px; letter-spacing: 1px; }
+
+    /* CARD */
+    .glass-card { background: rgba(255,255,255,.055); backdrop-filter: blur(28px); -webkit-backdrop-filter: blur(28px); border: 1px solid rgba(255,255,255,.1); border-radius: 24px; overflow: hidden; box-shadow: 0 2px 0 rgba(255,255,255,.06) inset, 0 40px 80px rgba(0,0,0,.5); }
+
+    /* TABS */
+    .tab-bar { display: flex; border-bottom: 1px solid rgba(255,255,255,.07); }
+    .tab-btn { flex: 1; padding: 15px 10px; font-size: 13px; font-weight: 600; letter-spacing: .5px; color: rgba(255,255,255,.35); background: none; border: none; cursor: pointer; transition: all .3s; position: relative; }
+    .tab-btn::after { content:''; position:absolute; bottom:0; left:10%; width:80%; height:2px; background:#14b8a6; border-radius:2px 2px 0 0; transform:scaleX(0); transition:transform .3s; }
+    .tab-btn.active { color: #14b8a6; }
+    .tab-btn.active::after { transform: scaleX(1); }
+    .tab-btn:hover:not(.active) { color: rgba(255,255,255,.65); background: rgba(255,255,255,.03); }
+
+    /* FORM */
+    .form-body { padding: 28px 28px 24px; }
+    .form-section { display: none; }
+    .form-section.active { display: block; animation: fadeSlide .35s ease; }
+    @keyframes fadeSlide { from{opacity:0;transform:translateX(10px)} to{opacity:1;transform:translateX(0)} }
+
+    .field { margin-bottom: 18px; }
+    .field label { display: flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 600; letter-spacing: 1px; text-transform: uppercase; color: rgba(255,255,255,.4); margin-bottom: 7px; }
+    .input-wrap { position: relative; }
+    .input-wrap .icon { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: rgba(255,255,255,.2); font-size: 13px; pointer-events: none; transition: color .3s; }
+    .input-wrap input { width: 100%; padding: 12px 14px 12px 40px; background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.09); border-radius: 12px; color: #fff; font-size: 14px; outline: none; transition: all .3s; }
+    .input-wrap input::placeholder { color: rgba(255,255,255,.2); }
+    .input-wrap input:focus { border-color: rgba(20,184,166,.55); background: rgba(20,184,166,.07); box-shadow: 0 0 0 4px rgba(20,184,166,.1); }
+    .input-wrap .toggle-pw { position: absolute; right: 14px; top: 50%; transform: translateY(-50%); color: rgba(255,255,255,.25); cursor: pointer; font-size: 13px; transition: color .2s; }
+    .input-wrap .toggle-pw:hover { color: #14b8a6; }
+
+    /* MATRIC HINT */
+    .matric-hint { font-size: 10px; color: rgba(255,255,255,.25); margin-top: 5px; }
+    .matric-hint span { color: rgba(20,184,166,.7); font-weight: 600; }
+
+    /* PASSWORD STRENGTH */
+    .pw-strength { margin-top: 8px; }
+    .pw-bars { display: flex; gap: 5px; height: 3px; margin-bottom: 5px; }
+    .pw-bar { flex: 1; background: rgba(255,255,255,.08); border-radius: 2px; transition: background .4s; }
+    .pw-bar.fill-1 { background: #e24b4a; }
+    .pw-bar.fill-2 { background: #ef9f27; }
+    .pw-bar.fill-3 { background: #639922; }
+    .pw-bar.fill-4 { background: #14b8a6; }
+    .pw-label { font-size: 10px; color: rgba(255,255,255,.3); }
+
+    /* ROW */
+    .row-extras { display: flex; align-items: center; justify-content: space-between; margin-bottom: 22px; }
+    .checkbox-label { display: flex; align-items: center; gap: 8px; font-size: 12px; color: rgba(255,255,255,.4); cursor: pointer; }
+    .checkbox-label input[type=checkbox] { accent-color: #14b8a6; width: 14px; height: 14px; }
+    .link { font-size: 12px; color: #14b8a6; text-decoration: none; font-weight: 500; }
+    .link:hover { text-decoration: underline; }
+
+    /* SUBMIT */
+    .btn-submit { width: 100%; padding: 14px; background: linear-gradient(135deg,#0d9488,#14b8a6); border: none; border-radius: 12px; color: #fff; font-size: 14px; font-weight: 700; letter-spacing: .5px; cursor: pointer; position: relative; overflow: hidden; transition: transform .25s, box-shadow .25s; }
+    .btn-submit::before { content:''; position:absolute; inset:0; background:linear-gradient(90deg,transparent,rgba(255,255,255,.18),transparent); transform:translateX(-100%); transition:transform .6s; }
+    .btn-submit:hover { transform: translateY(-2px); box-shadow: 0 14px 32px rgba(13,148,136,.45); }
+    .btn-submit:hover::before { transform: translateX(100%); }
+    .btn-submit:active { transform: translateY(0); }
+    .btn-inner { display: flex; align-items: center; justify-content: center; gap: 8px; }
+    .btn-spinner { display: none; width: 16px; height: 16px; border: 2px solid rgba(255,255,255,.3); border-top-color: #fff; border-radius: 50%; animation: spin .7s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* DIVIDER */
+    .divider { display: flex; align-items: center; gap: 12px; margin: 20px 0; }
+    .divider::before, .divider::after { content:''; flex:1; height:1px; background:rgba(255,255,255,.07); }
+    .divider span { font-size: 11px; color: rgba(255,255,255,.25); white-space: nowrap; }
+
+    /* SSO */
+    .sso-row { display: flex; gap: 10px; }
+    .sso-btn { flex: 1; padding: 10px 8px; background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.09); border-radius: 10px; color: rgba(255,255,255,.55); font-size: 12px; font-weight: 500; cursor: pointer; transition: all .25s; display: flex; align-items: center; justify-content: center; gap: 6px; }
+    .sso-btn:hover { background: rgba(255,255,255,.09); border-color: rgba(255,255,255,.18); color: #fff; }
+
+    /* ALERT */
+    .alert { display: none; margin-top: 16px; padding: 11px 14px; border-radius: 10px; font-size: 12px; font-weight: 500; text-align: center; animation: fadeSlide .3s ease; }
+    .alert.success { background: rgba(13,148,136,.12); border: 1px solid rgba(20,184,166,.25); color: #5dcaa5; }
+    .alert.error   { background: rgba(226,75,74,.1);  border: 1px solid rgba(226,75,74,.25);  color: #f09595; }
+
+    /* FOOTER */
+    .page-footer { text-align: center; margin-top: 20px; font-size: 11px; color: rgba(255,255,255,.2); }
+    .page-footer a { color: rgba(255,255,255,.35); text-decoration: none; }
+    .page-footer a:hover { color: #14b8a6; }
+
+    /* AI FAB */
+    .ai-fab { position: fixed; bottom: 28px; right: 28px; z-index: 100; width: 52px; height: 52px; border-radius: 50%; background: linear-gradient(135deg,#0d9488,#14b8a6); border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 22px; box-shadow: 0 8px 28px rgba(13,148,136,.5); transition: transform .25s, box-shadow .25s; animation: fabPop .5s cubic-bezier(.22,1,.36,1) 1.2s both; }
+    @keyframes fabPop { from{opacity:0;transform:scale(.4)} to{opacity:1;transform:scale(1)} }
+    .ai-fab:hover { transform: scale(1.1); box-shadow: 0 12px 36px rgba(13,148,136,.6); }
+    .fab-badge { position: absolute; top: 2px; right: 2px; width: 14px; height: 14px; background: #14b8a6; border: 2px solid #070f1f; border-radius: 50%; animation: nPulse 2s infinite; }
+    @keyframes nPulse { 0%,100%{box-shadow:0 0 0 0 rgba(20,184,166,.6)} 50%{box-shadow:0 0 0 6px rgba(20,184,166,0)} }
+
+    /* AI PANEL */
+    .ai-panel { position: fixed; bottom: 92px; right: 28px; z-index: 100; width: 300px; background: rgba(10,16,32,.96); backdrop-filter: blur(24px); border: 1px solid rgba(255,255,255,.1); border-radius: 20px; overflow: hidden; box-shadow: 0 24px 64px rgba(0,0,0,.6); display: none; flex-direction: column; }
+    .ai-panel.open { display: flex; animation: panelSlide .35s cubic-bezier(.22,1,.36,1); }
+    @keyframes panelSlide { from{opacity:0;transform:translateY(20px) scale(.95)} to{opacity:1;transform:translateY(0) scale(1)} }
+    .ai-panel-header { padding: 14px 16px; background: rgba(13,148,136,.12); border-bottom: 1px solid rgba(255,255,255,.06); display: flex; align-items: center; gap: 10px; }
+    .ai-status-dot { width: 9px; height: 9px; background: #14b8a6; border-radius: 50%; animation: nPulse 1.5s infinite; flex-shrink: 0; }
+    .ai-panel-title { font-size: 13px; font-weight: 700; color: #fff; }
+    .ai-panel-sub { font-size: 10px; color: rgba(255,255,255,.35); margin-left: auto; }
+    .ai-close { background: none; border: none; color: rgba(255,255,255,.3); cursor: pointer; font-size: 14px; padding: 2px 4px; transition: color .2s; }
+    .ai-close:hover { color: #fff; }
+    .ai-messages { flex: 1; padding: 14px 14px 8px; overflow-y: auto; max-height: 220px; display: flex; flex-direction: column; gap: 10px; scrollbar-width: thin; scrollbar-color: rgba(255,255,255,.1) transparent; }
+    .ai-bubble { padding: 9px 12px; border-radius: 12px; font-size: 12px; line-height: 1.65; color: rgba(255,255,255,.75); background: rgba(255,255,255,.06); max-width: 88%; align-self: flex-start; }
+    .ai-bubble.user { background: rgba(20,184,166,.13); color: #9fe1cb; align-self: flex-end; }
+    .ai-bubble.typing { display: flex; align-items: center; gap: 4px; padding: 12px; }
+    .ai-bubble.typing span { width: 6px; height: 6px; background: rgba(255,255,255,.4); border-radius: 50%; animation: tBounce 1.2s ease-in-out infinite; }
+    .ai-bubble.typing span:nth-child(2){animation-delay:.15s} .ai-bubble.typing span:nth-child(3){animation-delay:.3s}
+    @keyframes tBounce { 0%,60%,100%{transform:translateY(0);opacity:.4} 30%{transform:translateY(-5px);opacity:1} }
+    .ai-chips-row { padding: 0 14px 10px; display: flex; flex-wrap: wrap; gap: 6px; }
+    .ai-chip { padding: 5px 11px; background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.1); border-radius: 20px; font-size: 11px; color: rgba(255,255,255,.5); cursor: pointer; transition: all .2s; }
+    .ai-chip:hover { background: rgba(20,184,166,.12); border-color: rgba(20,184,166,.4); color: #5dcaa5; }
+    .ai-input-row { padding: 10px 12px 14px; border-top: 1px solid rgba(255,255,255,.06); display: flex; gap: 8px; align-items: center; }
+    .ai-input-row input { flex: 1; padding: 8px 12px; background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.09); border-radius: 20px; color: #fff; font-size: 12px; outline: none; transition: border-color .2s; }
+    .ai-input-row input::placeholder { color: rgba(255,255,255,.2); }
+    .ai-input-row input:focus { border-color: rgba(20,184,166,.4); }
+    .ai-send { width: 34px; height: 34px; flex-shrink: 0; background: linear-gradient(135deg,#0d9488,#14b8a6); border: none; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 12px; color: #fff; transition: transform .2s; }
+    .ai-send:hover { transform: scale(1.1); }
+
+    @media(max-width:480px){ .form-body{padding:22px 18px 18px} .ai-panel{width:calc(100vw - 32px);right:16px} .ai-fab{bottom:20px;right:20px} }
+  </style>
+</head>
+<body>
+
+  <div id="futo-loader">
+    <div class="loader-logo">🎓</div>
+    <div class="loader-bar"><div class="loader-bar-fill"></div></div>
+    <div class="loader-text">Securing Connection</div>
+  </div>
+
+  <div class="blob blob-1"></div>
+  <div class="blob blob-2"></div>
+  <div class="blob blob-3"></div>
+  <canvas id="particleCanvas"></canvas>
+
+  <div class="page-wrapper">
+    <div class="container">
+
+      <div class="logo-area">
+        <div class="logo-icon">🎓</div>
+        <div class="logo-title">FUTO IFT PORTAL</div>
+        <div class="logo-sub">Federal University of Technology, Owerri</div>
+        <div class="dept-badge">Dept. of Information Technology</div>
+      </div>
+
+      <div class="glass-card">
+        <div class="tab-bar">
+          <button class="tab-btn active" id="tabStudentLogin" onclick="switchTab('student-login')">
+            <i class="fas fa-sign-in-alt" style="margin-right:6px;font-size:11px"></i>Student Login
+          </button>
+          <button class="tab-btn" id="tabStudentRegister" onclick="switchTab('student-register')">
+            <i class="fas fa-user-plus" style="margin-right:6px;font-size:11px"></i>Student Register
+          </button>
+          <button class="tab-btn" id="tabLecturerLogin" onclick="switchTab('lecturer-login')">
+            <i class="fas fa-chalkboard-user" style="margin-right:6px;font-size:11px"></i>Lecturer Login
+          </button>
+          <button class="tab-btn" id="tabLecturerRegister" onclick="switchTab('lecturer-register')">
+            <i class="fas fa-user-tie" style="margin-right:6px;font-size:11px"></i>Lecturer Register
+          </button>
+        </div>
+
+        <div class="form-body">
+
+          <!-- STUDENT LOGIN -->
+          <div class="form-section active" id="studentLoginSection">
+            <div class="field">
+              <label><i class="fas fa-id-card"></i> Matriculation Number</label>
+              <div class="input-wrap">
+                <i class="fas fa-id-badge icon"></i>
+                <input type="text" id="loginMatric" placeholder="e.g. 20234567890" maxlength="11" />
+              </div>
+              <div class="matric-hint">Format: <span>202XXXXXXXX</span> (11 digits)</div>
+            </div>
+            <div class="field">
+              <label><i class="fas fa-lock"></i> Password</label>
+              <div class="input-wrap">
+                <i class="fas fa-lock icon"></i>
+                <input type="password" id="loginPassword" placeholder="Enter your password" />
+                <span class="toggle-pw" id="loginPwToggle"><i class="fas fa-eye"></i></span>
+              </div>
+            </div>
+            <div class="row-extras">
+              <label class="checkbox-label">
+                <input type="checkbox" id="rememberMe" /> Remember me
+              </label>
+              <button type="button" class="link" id="studentForgotPassword" style="background:none;border:0;padding:0;cursor:pointer">Forgot password?</button>
+            </div>
+            <button class="btn-submit" id="loginBtn">
+              <div class="btn-inner">
+                <span id="loginBtnText">Sign In to Dashboard</span>
+                <i class="fas fa-arrow-right" id="loginArrow"></i>
+                <div class="btn-spinner" id="loginSpinner"></div>
+              </div>
+            </button>
+            <div class="divider"><span>or continue with</span></div>
+            <div class="sso-row">
+              <button class="sso-btn" onclick="handleSSO()">
+                <i class="fas fa-university" style="font-size:12px"></i> Student Portal SSO
+              </button>
+            </div>
+            <div class="alert" id="loginAlert"></div>
+          </div>
+
+          <!-- STUDENT REGISTER -->
+          <div class="form-section" id="studentRegisterSection">
+            <div class="field">
+              <label><i class="fas fa-user"></i> Full Name</label>
+              <div class="input-wrap">
+                <i class="fas fa-user icon"></i>
+                <input type="text" id="regName" placeholder="e.g. Chukwuemeka Obi" />
+              </div>
+            </div>
+            <div class="field">
+              <label><i class="fas fa-envelope"></i> Email Address</label>
+              <div class="input-wrap">
+                <i class="fas fa-envelope icon"></i>
+                <input type="email" id="regEmail" placeholder="you@example.com" autocomplete="email" />
+              </div>
+            </div>
+            <div class="field">
+              <label><i class="fas fa-id-card"></i> Matriculation Number</label>
+              <div class="input-wrap">
+                <i class="fas fa-id-badge icon"></i>
+                <input type="text" id="regMatric" placeholder="e.g. 20234567890" maxlength="11" />
+              </div>
+              <div class="matric-hint">Format: <span>202XXXXXXXX</span> (11 digits, IFT students only)</div>
+            </div>
+            <div class="field">
+              <label><i class="fas fa-layer-group"></i> Level</label>
+              <div class="input-wrap">
+                <i class="fas fa-layer-group icon"></i>
+                <select id="regLevel" style="width:100%;padding:12px 14px 12px 40px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.09);border-radius:12px;color:rgba(255,255,255,.7);font-size:14px;outline:none;-webkit-appearance:none">
+                  <option value="" style="background:#0f1e38">Select your level...</option>
+                  <option value="100" style="background:#0f1e38">100 Level</option>
+                  <option value="200" style="background:#0f1e38">200 Level</option>
+                  <option value="300" style="background:#0f1e38">300 Level</option>
+                  <option value="400" style="background:#0f1e38">400 Level</option>
+                  <option value="500" style="background:#0f1e38">500 Level</option>
+                </select>
+              </div>
+            </div>
+            <div class="field">
+              <label><i class="fas fa-lock"></i> Password</label>
+              <div class="input-wrap">
+                <i class="fas fa-lock icon"></i>
+                <input type="password" id="regPassword" placeholder="Create a strong password" />
+                <span class="toggle-pw" id="regPwToggle"><i class="fas fa-eye"></i></span>
+              </div>
+              <div class="pw-strength">
+                <div class="pw-bars">
+                  <div class="pw-bar" id="pb1"></div>
+                  <div class="pw-bar" id="pb2"></div>
+                  <div class="pw-bar" id="pb3"></div>
+                  <div class="pw-bar" id="pb4"></div>
+                </div>
+                <div class="pw-label" id="pwLabel">Enter a password</div>
+              </div>
+            </div>
+            <button class="btn-submit" id="regBtn">
+              <div class="btn-inner">
+                <span id="regBtnText">Create Student Account</span>
+                <i class="fas fa-arrow-right" id="regArrow"></i>
+                <div class="btn-spinner" id="regSpinner"></div>
+              </div>
+            </button>
+            <div class="alert" id="regAlert"></div>
+          </div>
+
+          <!-- LECTURER LOGIN -->
+          <div class="form-section" id="lecturerLoginSection">
+            <div class="field">
+              <label><i class="fas fa-envelope"></i> Lecturer Email</label>
+              <div class="input-wrap">
+                <i class="fas fa-envelope icon"></i>
+                <input type="email" id="lecturerLoginEmail" placeholder="lecturer@example.com" autocomplete="email" />
+              </div>
+            </div>
+            <div class="field">
+              <label><i class="fas fa-user-tie"></i> Lecturer Username</label>
+              <div class="input-wrap">
+                <i class="fas fa-user icon"></i>
+                <input type="text" id="lecturerLoginUser" placeholder="e.g. lecturer" />
+              </div>
+            </div>
+            <div class="field">
+              <label><i class="fas fa-lock"></i> Password</label>
+              <div class="input-wrap">
+                <i class="fas fa-lock icon"></i>
+                <input type="password" id="lecturerLoginPassword" placeholder="Enter lecturer password" />
+                <span class="toggle-pw" id="lecturerLoginPwToggle"><i class="fas fa-eye"></i></span>
+              </div>
+            </div>
+            <button class="btn-submit" id="lecturerLoginBtn">
+              <div class="btn-inner">
+                <span id="lecturerLoginBtnText">Login as Lecturer</span>
+                <i class="fas fa-arrow-right" id="lecturerLoginArrow"></i>
+                <div class="btn-spinner" id="lecturerLoginSpinner"></div>
+              </div>
+            </button>
+            <button type="button" class="link" id="lecturerForgotPassword" style="background:none;border:0;cursor:pointer;width:100%;margin-top:14px">Forgot lecturer password?</button>
+            <div class="alert" id="lecturerLoginAlert"></div>
+          </div>
+
+          <!-- LECTURER REGISTER -->
+          <div class="form-section" id="lecturerRegisterSection">
+            <div class="field">
+              <label><i class="fas fa-user-tie"></i> Lecturer Name</label>
+              <div class="input-wrap">
+                <i class="fas fa-user icon"></i>
+                <input type="text" id="lecturerRegName" placeholder="e.g. Dr. Ada Okafor" />
+              </div>
+            </div>
+            <div class="field">
+              <label><i class="fas fa-envelope"></i> Lecturer Email</label>
+              <div class="input-wrap">
+                <i class="fas fa-envelope icon"></i>
+                <input type="email" id="lecturerRegEmail" placeholder="lecturer@example.com" autocomplete="email" />
+              </div>
+            </div>
+            <div class="field">
+              <label><i class="fas fa-address-card"></i> Lecturer Username</label>
+              <div class="input-wrap">
+                <i class="fas fa-id-badge icon"></i>
+                <input type="text" id="lecturerRegUser" placeholder="Choose a lecturer username" />
+              </div>
+            </div>
+            <div class="field">
+              <label><i class="fas fa-lock"></i> Password</label>
+              <div class="input-wrap">
+                <i class="fas fa-lock icon"></i>
+                <input type="password" id="lecturerRegPassword" placeholder="Create a secure password" />
+                <span class="toggle-pw" id="lecturerRegPwToggle"><i class="fas fa-eye"></i></span>
+              </div>
+            </div>
+            <button class="btn-submit" id="lecturerRegBtn">
+              <div class="btn-inner">
+                <span id="lecturerRegBtnText">Create Lecturer Account</span>
+                <i class="fas fa-arrow-right" id="lecturerRegArrow"></i>
+                <div class="btn-spinner" id="lecturerRegSpinner"></div>
+              </div>
+            </button>
+            <div class="alert" id="lecturerRegAlert"></div>
+          </div>
+
+        </div>
+      </div>
+
+      <div class="page-footer">
+        &copy; <span id="yr"></span> FUTO &mdash; Dept. of Information Technology &nbsp;&bull;&nbsp;
+        <a href="#">Privacy Policy</a> &nbsp;&bull;&nbsp; <a href="#">Help Centre</a>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- AI FAB -->
+  <button class="ai-fab" id="aiFab" onclick="toggleAI()" title="FUTO AI Assistant">
+    🤖
+    <div class="fab-badge"></div>
+  </button>
+
+  <!-- AI PANEL -->
+  <div class="ai-panel" id="aiPanel">
+    <div class="ai-panel-header">
+      <div class="ai-status-dot"></div>
+      <div class="ai-panel-title">FUTO IFT Assistant</div>
+      <span class="ai-panel-sub">Always online</span>
+      <button class="ai-close" onclick="toggleAI()"><i class="fas fa-times"></i></button>
+    </div>
+    <div class="ai-messages" id="aiMessages">
+      <div class="ai-bubble">
+        Hi! I am your FUTO IFT portal assistant. I can help with login issues, matric number format, course info and more. What do you need?
+      </div>
+    </div>
+    <div class="ai-chips-row" id="aiChips">
+      <div class="ai-chip" onclick="aiAsk('How do I reset my password?')">Reset password</div>
+      <div class="ai-chip" onclick="aiAsk('What is the matric number format?')">Matric format</div>
+      <div class="ai-chip" onclick="aiAsk('What courses are available?')">Courses</div>
+      <div class="ai-chip" onclick="aiAsk('How do I register?')">How to register</div>
+    </div>
+    <div class="ai-input-row">
+      <input type="text" id="aiInput" placeholder="Ask anything..." />
+      <button class="ai-send" id="aiSendBtn"><i class="fas fa-paper-plane"></i></button>
+    </div>
+  </div>
+
+  <script src="api-config.js"></script>
+  <script src="auth-utils.js"></script>
+  <script>
+    document.getElementById('yr').textContent = new Date().getFullYear();
+
+    if (window.Auth) {
+      var session = window.Auth.get();
+      var lecturer = window.Auth.getLecturer && window.Auth.getLecturer();
+      if ((session && session.isLoggedIn) || (lecturer && lecturer.isLoggedIn)) {
+        window.location.href = lecturer && lecturer.isLoggedIn ? 'lecturer-dashboard.html' : 'dashboard.html';
+      }
+    }
+
+    /* LOADER */
+    window.addEventListener('load', function() {
+      var loader = document.getElementById('futo-loader');
+      setTimeout(function() {
+        loader.style.opacity = '0';
+        loader.style.visibility = 'hidden';
+        setTimeout(function() { if (loader.parentNode) loader.parentNode.removeChild(loader); }, 600);
+      }, 900);
+    });
+
+    /* PARTICLES */
+    (function() {
+      var canvas = document.getElementById('particleCanvas');
+      var ctx = canvas.getContext('2d');
+      var W, H, particles = [];
+
+      function resize() {
+        W = canvas.width  = window.innerWidth;
+        H = canvas.height = window.innerHeight;
+      }
+      resize();
+      window.addEventListener('resize', function() { resize(); init(); });
+
+      function init() {
+        particles = [];
+        var count = Math.min(Math.floor((W * H) / 12000), 90);
+        for (var i = 0; i < count; i++) {
+          particles.push({
+            x: Math.random() * W, y: Math.random() * H,
+            vx: (Math.random() - .5) * .35, vy: (Math.random() - .5) * .35,
+            r: Math.random() * 1.5 + .4,
+            o: Math.random() * .45 + .1
+          });
+        }
+      }
+      init();
+
+      function draw() {
+        ctx.clearRect(0, 0, W, H);
+        for (var i = 0; i < particles.length; i++) {
+          var p = particles[i];
+          p.x += p.vx; p.y += p.vy;
+          if (p.x < 0 || p.x > W) p.vx *= -1;
+          if (p.y < 0 || p.y > H) p.vy *= -1;
+          for (var j = i + 1; j < particles.length; j++) {
+            var q = particles[j];
+            var dx = p.x - q.x, dy = p.y - q.y;
+            var d = Math.sqrt(dx*dx + dy*dy);
+            if (d < 90) {
+              ctx.beginPath();
+              ctx.strokeStyle = 'rgba(20,184,166,' + ((1 - d/90) * .18) + ')';
+              ctx.lineWidth = .6;
+              ctx.moveTo(p.x, p.y);
+              ctx.lineTo(q.x, q.y);
+              ctx.stroke();
+            }
+          }
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+          ctx.fillStyle = 'rgba(20,184,166,' + p.o + ')';
+          ctx.fill();
+        }
+        requestAnimationFrame(draw);
+      }
+      draw();
+    })();
+
+    /* TABS */
+    function switchTab(tab) {
+      var tabs = ['student-login', 'student-register', 'lecturer-login', 'lecturer-register'];
+      tabs.forEach(function(name) {
+        var show = tab === name;
+        var section = document.getElementById(name === 'student-login' ? 'studentLoginSection' : name === 'student-register' ? 'studentRegisterSection' : name === 'lecturer-login' ? 'lecturerLoginSection' : 'lecturerRegisterSection');
+        section.classList.toggle('active', show);
+      });
+
+      var tabMap = {
+        'student-login': 'tabStudentLogin',
+        'student-register': 'tabStudentRegister',
+        'lecturer-login': 'tabLecturerLogin',
+        'lecturer-register': 'tabLecturerRegister'
+      };
+
+      Object.keys(tabMap).forEach(function(key) {
+        document.getElementById(tabMap[key]).classList.toggle('active', key === tab);
+      });
+    }
+    document.getElementById('tabStudentLogin').addEventListener('click', function() { switchTab('student-login'); });
+    document.getElementById('tabStudentRegister').addEventListener('click', function() { switchTab('student-register'); });
+    document.getElementById('tabLecturerLogin').addEventListener('click', function() { switchTab('lecturer-login'); });
+    document.getElementById('tabLecturerRegister').addEventListener('click', function() { switchTab('lecturer-register'); });
+
+    /* TOGGLE PASSWORD */
+    function bindToggle(inputId, toggleId) {
+      document.getElementById(toggleId).addEventListener('click', function() {
+        var inp = document.getElementById(inputId);
+        var icon = this.querySelector('i');
+        if (inp.type === 'password') {
+          inp.type = 'text';
+          icon.classList.remove('fa-eye');
+          icon.classList.add('fa-eye-slash');
+        } else {
+          inp.type = 'password';
+          icon.classList.remove('fa-eye-slash');
+          icon.classList.add('fa-eye');
+        }
+      });
+    }
+    bindToggle('loginPassword', 'loginPwToggle');
+    bindToggle('regPassword', 'regPwToggle');
+    bindToggle('lecturerLoginPassword', 'lecturerLoginPwToggle');
+    bindToggle('lecturerRegPassword', 'lecturerRegPwToggle');
+
+    /* MATRIC VALIDATION - format 202XXXXXXXX (11 digits starting with 202) */
+    function validateMatric(val) {
+      return /^202\d{8}$/.test(val.trim());
+    }
+
+    /* ALERT */
+    function showAlert(id, msg, type) {
+      var el = document.getElementById(id);
+      el.textContent = msg;
+      el.className = 'alert ' + type;
+      el.style.display = 'block';
+    }
+    function hideAlert(id) {
+      document.getElementById(id).style.display = 'none';
+    }
+
+    /* LOADING STATE */
+    function setLoading(prefix, on) {
+      document.getElementById(prefix + 'BtnText').style.display = on ? 'none' : '';
+      document.getElementById(prefix + 'Arrow').style.display   = on ? 'none' : '';
+      document.getElementById(prefix + 'Spinner').style.display = on ? 'block' : 'none';
+      document.getElementById(prefix + 'Btn').disabled = on;
+    }
+
+    /* PASSWORD STRENGTH */
+    document.getElementById('regPassword').addEventListener('input', function() {
+      var v = this.value;
+      var bars  = ['pb1','pb2','pb3','pb4'];
+      var labels = ['Too weak', 'Weak', 'Fair', 'Good', 'Strong'];
+      var colors = ['rgba(255,255,255,.3)', '#e24b4a', '#ef9f27', '#639922', '#14b8a6'];
+      bars.forEach(function(b) { document.getElementById(b).className = 'pw-bar'; });
+      var lbl = document.getElementById('pwLabel');
+      if (!v) { lbl.textContent = 'Enter a password'; lbl.style.color = colors[0]; return; }
+      var score = 0;
+      if (v.length >= 6)  score++;
+      if (v.length >= 10) score++;
+      if (/[A-Z]/.test(v) && /[0-9]/.test(v)) score++;
+      if (/[^A-Za-z0-9]/.test(v)) score++;
+      for (var i = 0; i < score; i++) {
+        document.getElementById(bars[i]).classList.add('fill-' + score);
+      }
+      lbl.textContent = labels[score] || 'Too weak';
+      lbl.style.color = colors[score] || colors[0];
+    });
+
+    /* LOGIN */
+    document.getElementById('loginBtn').addEventListener('click', function() {
+      var matric = document.getElementById('loginMatric').value.trim();
+      var pass   = document.getElementById('loginPassword').value;
+      hideAlert('loginAlert');
+
+      if (!matric || !pass) { showAlert('loginAlert', 'Please fill in all fields.', 'error'); return; }
+      if (!validateMatric(matric)) {
+        showAlert('loginAlert', 'Invalid matric number. Use format: 202XXXXXXXX (11 digits).', 'error');
+        return;
+      }
+      if (pass.length < 4) { showAlert('loginAlert', 'Password is too short.', 'error'); return; }
+
+      setLoading('login', true);
+      window.Auth.request('/auth/login', {
+        method: 'POST',
+        body: JSON.stringify({ role: 'student', matric: matric, password: pass })
+      }).then(function(result) {
+        window.Auth.set({ matric: result.user.identifier, name: result.user.name, role: result.user.role, dept: result.user.dept, level: result.user.level, token: result.token });
+        showAlert('loginAlert', 'Login successful! Redirecting to dashboard...', 'success');
+        setTimeout(function() { window.location.href = 'dashboard.html'; }, 900);
+      }).catch(function(error) {
+        showAlert('loginAlert', error.message, 'error');
+      }).finally(function() {
+        setLoading('login', false);
+      });
+    });
+
+    document.getElementById('studentForgotPassword').addEventListener('click', function() {
+      var email = document.getElementById('regEmail').value.trim();
+      if (!email) {
+        email = window.prompt('Enter the email address used for your student account:') || '';
+        email = email.trim();
+      }
+      if (!email) return;
+      window.Auth.request('/auth/forgot-password', {
+        method: 'POST',
+        body: JSON.stringify({ email: email })
+      }).then(function(result) {
+        showAlert('loginAlert', result.message, 'success');
+      }).catch(function(error) {
+        showAlert('loginAlert', error.message, 'error');
+      });
+    });
+
+    /* REGISTER */
+    document.getElementById('regBtn').addEventListener('click', function() {
+      var name   = document.getElementById('regName').value.trim();
+      var email  = document.getElementById('regEmail').value.trim();
+      var matric = document.getElementById('regMatric').value.trim();
+      var level  = document.getElementById('regLevel').value;
+      var pass   = document.getElementById('regPassword').value;
+      hideAlert('regAlert');
+
+      if (!name || !email || !matric || !level || !pass) { showAlert('regAlert', 'Please fill in all fields.', 'error'); return; }
+      if (name.length < 3) { showAlert('regAlert', 'Please enter your full name.', 'error'); return; }
+      if (!validateMatric(matric)) {
+        showAlert('regAlert', 'Invalid matric number. Use format: 202XXXXXXXX (11 digits).', 'error');
+        return;
+      }
+      if (pass.length < 6) { showAlert('regAlert', 'Password must be at least 6 characters.', 'error'); return; }
+
+      setLoading('reg', true);
+      window.Auth.request('/auth/register', {
+        method: 'POST',
+        body: JSON.stringify({ role: 'student', name: name, email: email, matric: matric, level: level, password: pass })
+      }).then(function(result) {
+        window.Auth.set({ matric: result.user.identifier, name: result.user.name, role: result.user.role, dept: result.user.dept, level: result.user.level, token: result.token });
+        showAlert('regAlert', 'Account created! Redirecting to dashboard...', 'success');
+        setTimeout(function() { window.location.href = 'dashboard.html'; }, 1000);
+      }).catch(function(error) {
+        showAlert('regAlert', error.message, 'error');
+      }).finally(function() {
+        setLoading('reg', false);
+      });
+    });
+
+    /* SSO */
+    function handleSSO() {
+      showAlert('loginAlert', 'Student Portal SSO is coming soon.', 'success');
+    }
+
+    /* ENTER KEY */
+    document.addEventListener('keydown', function(e) {
+      if (e.key !== 'Enter') return;
+      var active = document.querySelector('.form-section.active');
+      if (!active) return;
+      if (active.id === 'studentLoginSection') document.getElementById('loginBtn').click();
+      else if (active.id === 'studentRegisterSection') document.getElementById('regBtn').click();
+      else if (active.id === 'lecturerLoginSection') document.getElementById('lecturerLoginBtn').click();
+      else if (active.id === 'lecturerRegisterSection') document.getElementById('lecturerRegBtn').click();
+    });
+
+    /* LECTURER LOGIN */
+    document.getElementById('lecturerLoginBtn').addEventListener('click', function() {
+      var user = document.getElementById('lecturerLoginUser').value.trim();
+      var email = document.getElementById('lecturerLoginEmail').value.trim();
+      var pass = document.getElementById('lecturerLoginPassword').value;
+      hideAlert('lecturerLoginAlert');
+
+      if (!email || !pass) {
+        showAlert('lecturerLoginAlert', 'Please enter your lecturer email and password.', 'error');
+        return;
+      }
+
+      setLoading('lecturerLogin', true);
+      window.Auth.request('/auth/login', {
+        method: 'POST',
+        body: JSON.stringify({ role: 'lecturer', username: user, email: email, password: pass })
+      }).then(function(result) {
+        window.Auth.setLecturer({ user: result.user.identifier, name: result.user.name, token: result.token });
+        showAlert('lecturerLoginAlert', 'Lecturer login successful! Redirecting...', 'success');
+        setTimeout(function() { window.location.href = 'lecturer-dashboard.html'; }, 900);
+      }).catch(function(error) {
+        showAlert('lecturerLoginAlert', error.message, 'error');
+      }).finally(function() {
+        setLoading('lecturerLogin', false);
+      });
+    });
+
+    document.getElementById('lecturerForgotPassword').addEventListener('click', function() {
+      var email = document.getElementById('lecturerLoginEmail').value.trim();
+      if (!email) {
+        showAlert('lecturerLoginAlert', 'Enter your lecturer email first.', 'error');
+        return;
+      }
+      window.Auth.request('/auth/forgot-password', {
+        method: 'POST',
+        body: JSON.stringify({ email: email })
+      }).then(function(result) {
+        showAlert('lecturerLoginAlert', result.message, 'success');
+      }).catch(function(error) {
+        showAlert('lecturerLoginAlert', error.message, 'error');
+      });
+    });
+
+    /* LECTURER REGISTER */
+    document.getElementById('lecturerRegBtn').addEventListener('click', function() {
+      var name = document.getElementById('lecturerRegName').value.trim();
+      var user = document.getElementById('lecturerRegUser').value.trim();
+      var email = document.getElementById('lecturerRegEmail').value.trim();
+      var pass = document.getElementById('lecturerRegPassword').value;
+      hideAlert('lecturerRegAlert');
+
+      if (!name || !user || !email || !pass) {
+        showAlert('lecturerRegAlert', 'Please fill in your name, username, email and password.', 'error');
+        return;
+      }
+      if (pass.length < 6) {
+        showAlert('lecturerRegAlert', 'Lecturer password must be at least 6 characters.', 'error');
+        return;
+      }
+
+      setLoading('lecturerReg', true);
+      window.Auth.request('/auth/register', {
+        method: 'POST',
+        body: JSON.stringify({ role: 'lecturer', name: name, username: user, email: email, password: pass })
+      }).then(function(result) {
+        window.Auth.setLecturer({ user: result.user.identifier, name: result.user.name, token: result.token });
+        showAlert('lecturerRegAlert', 'Lecturer account created successfully! Redirecting...', 'success');
+        setTimeout(function() { window.location.href = 'lecturer-dashboard.html'; }, 900);
+      }).catch(function(error) {
+        showAlert('lecturerRegAlert', error.message, 'error');
+      }).finally(function() {
+        setLoading('lecturerReg', false);
+      });
+    });
+
+    /* AI PANEL */
+    var aiOpen = false;
+    var chipsHidden = false;
+
+    function toggleAI() {
+      aiOpen = !aiOpen;
+      var panel = document.getElementById('aiPanel');
+      if (aiOpen) { panel.classList.add('open'); }
+      else { panel.classList.remove('open'); }
+    }
+
+    var AI_KB = {
+      password:  'To reset your password, click "Forgot password?" on the login form. A reset link will be sent to your FUTO registered email address.',
+      matric:    'Your matric number must be exactly 11 digits and start with 202. Example: 20234567890. Only IFT department students can access this portal.',
+      courses:   'IFT courses include: IFT 101 (Intro to IT), IFT 201 (Computer Architecture), IFT 204 (Data Structures), IFT 302 (Database Management), IFT 401 (Computer Networks), IFT 501 (Artificial Intelligence). Log in to browse all materials.',
+      register:  'Click the Register tab above. Fill in your full name, 11-digit matric number starting with 202, select your level, and create a password of at least 6 characters.',
+      dept:      'This portal is exclusively for students in the Department of Information Technology (IFT) at FUTO. Other departments have separate portals.',
+      def:       'I can help with login issues, matric number format, course information, and registration. Try asking something more specific!'
+    };
+
+    function aiAsk(q) {
+      document.getElementById('aiInput').value = q;
+      aiSend();
+    }
+
+    function aiSend() {
+      var inp  = document.getElementById('aiInput');
+      var q    = inp.value.trim();
+      if (!q) return;
+      inp.value = '';
+
+      var msgs = document.getElementById('aiMessages');
+
+      if (!chipsHidden) {
+        var chips = document.getElementById('aiChips');
+        if (chips) chips.style.display = 'none';
+        chipsHidden = true;
+      }
+
+      var userBubble = document.createElement('div');
+      userBubble.className = 'ai-bubble user';
+      userBubble.textContent = q;
+      msgs.appendChild(userBubble);
+
+      var typing = document.createElement('div');
+      typing.className = 'ai-bubble typing';
+      typing.innerHTML = '<span></span><span></span><span></span>';
+      msgs.appendChild(typing);
+      msgs.scrollTop = msgs.scrollHeight;
+
+      setTimeout(function() {
+        var ql = q.toLowerCase();
+        var ans = AI_KB.def;
+        if (ql.indexOf('password') !== -1 || ql.indexOf('reset') !== -1 || ql.indexOf('forgot') !== -1) ans = AI_KB.password;
+        else if (ql.indexOf('matric') !== -1 || ql.indexOf('number') !== -1 || ql.indexOf('format') !== -1) ans = AI_KB.matric;
+        else if (ql.indexOf('course') !== -1 || ql.indexOf('subject') !== -1 || ql.indexOf('ift') !== -1) ans = AI_KB.courses;
+        else if (ql.indexOf('register') !== -1 || ql.indexOf('sign up') !== -1 || ql.indexOf('create') !== -1) ans = AI_KB.register;
+        else if (ql.indexOf('department') !== -1 || ql.indexOf('dept') !== -1) ans = AI_KB.dept;
+
+        typing.className = 'ai-bubble';
+        typing.textContent = ans;
+        msgs.scrollTop = msgs.scrollHeight;
+      }, 900);
+    }
+
+    document.getElementById('aiSendBtn').addEventListener('click', aiSend);
+    document.getElementById('aiInput').addEventListener('keydown', function(e) {
+      if (e.key === 'Enter') aiSend();
+    });
+  </script>
+</body>
+</html>

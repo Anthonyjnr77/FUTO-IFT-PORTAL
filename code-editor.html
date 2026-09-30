@@ -1,0 +1,625 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Code Practice Lab | FUTO IFT</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link rel="stylesheet" href="styles.css">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { height: 100%; overflow: hidden; font-family: 'Inter', system-ui, sans-serif; background: #0d1117; color: #e2e8f0; }
+
+    /* LOADER */
+    #futo-loader { position: fixed; inset: 0; background: #0b1c3a; z-index: 9999; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px; transition: opacity .6s, visibility .6s; }
+    .loader-logo { width: 56px; height: 56px; background: linear-gradient(135deg,#0d9488,#14b8a6); border-radius: 16px; display: flex; align-items: center; justify-content: center; font-size: 26px; animation: lPulse 1.2s ease-in-out infinite; }
+    @keyframes lPulse { 0%,100%{transform:scale(1);box-shadow:0 0 0 0 rgba(20,184,166,.4)} 50%{transform:scale(1.05);box-shadow:0 0 0 14px rgba(20,184,166,0)} }
+    .loader-bar { width: 160px; height: 3px; background: rgba(255,255,255,.08); border-radius: 4px; overflow: hidden; }
+    .loader-fill { height: 100%; width: 0; background: linear-gradient(90deg,#0d9488,#14b8a6); border-radius: 4px; animation: lFill 1s ease forwards .2s; }
+    @keyframes lFill { to { width: 100%; } }
+    .loader-text { font-size: 12px; color: rgba(255,255,255,.3); letter-spacing: 2px; text-transform: uppercase; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* LAYOUT */
+    .app { display: flex; flex-direction: column; height: 100vh; }
+
+    /* NAVBAR */
+    .navbar { background: #0b1c3a; height: 52px; display: flex; align-items: center; padding: 0 16px; gap: 12px; flex-shrink: 0; box-shadow: 0 2px 12px rgba(0,0,0,.4); z-index: 10; }
+    .nav-back { display: flex; align-items: center; gap: 7px; font-size: 12px; font-weight: 500; color: rgba(255,255,255,.5); text-decoration: none; transition: color .2s; }
+    .nav-back:hover { color: #14b8a6; }
+    .nav-sep { color: rgba(255,255,255,.15); }
+    .nav-title { font-size: 13px; font-weight: 700; color: #fff; display: flex; align-items: center; gap: 7px; }
+    .nav-spacer { flex: 1; }
+    .nav-hint { font-size: 11px; color: rgba(255,255,255,.25); }
+    .nav-btn { width: 30px; height: 30px; border-radius: 7px; background: rgba(255,255,255,.07); border: 1px solid rgba(255,255,255,.1); color: rgba(255,255,255,.5); display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 12px; transition: all .2s; }
+    .nav-btn:hover { background: rgba(255,255,255,.12); color: #fff; }
+
+    /* MAIN AREA */
+    .main-area { display: flex; flex: 1; overflow: hidden; }
+
+    /* ===== EDITOR PANEL ===== */
+    .editor-panel { display: flex; flex-direction: column; width: 50%; border-right: 1px solid rgba(255,255,255,.06); transition: width .3s ease; }
+    .editor-panel.full { width: 100%; }
+
+    /* TAB BAR */
+    .tab-bar { display: flex; background: #161b22; border-bottom: 1px solid rgba(255,255,255,.06); flex-shrink: 0; }
+    .editor-tab { display: flex; align-items: center; gap: 7px; padding: 0 16px; height: 40px; font-size: 12px; font-weight: 500; color: rgba(255,255,255,.4); cursor: pointer; border: none; background: none; border-bottom: 2px solid transparent; transition: all .2s; white-space: nowrap; }
+    .editor-tab:hover { color: rgba(255,255,255,.7); background: rgba(255,255,255,.03); }
+    .editor-tab.active { color: #fff; border-bottom-color: #14b8a6; background: rgba(20,184,166,.05); }
+    .editor-tab .tab-dot { width: 7px; height: 7px; border-radius: 50%; }
+
+    /* CODE AREA */
+    .code-wrap { flex: 1; position: relative; overflow: hidden; }
+    .code-panel { position: absolute; inset: 0; display: none; }
+    .code-panel.active { display: flex; }
+    .line-numbers { width: 44px; padding: 14px 0; background: #0d1117; text-align: right; user-select: none; flex-shrink: 0; border-right: 1px solid rgba(255,255,255,.05); overflow: hidden; }
+    .line-numbers span { display: block; height: 22px; line-height: 22px; font-size: 12px; color: rgba(255,255,255,.18); padding-right: 10px; font-family: 'Consolas', monospace; }
+    .code-textarea { flex: 1; padding: 14px 14px; background: #0d1117; color: #e2e8f0; font-family: 'Consolas', 'Courier New', monospace; font-size: 13px; line-height: 22px; resize: none; outline: none; border: none; tab-size: 2; spellcheck: false; overflow-y: auto; }
+    .code-textarea::selection { background: rgba(20,184,166,.25); }
+
+    /* TOOLBAR */
+    .toolbar { background: #161b22; border-top: 1px solid rgba(255,255,255,.06); padding: 8px 12px; display: flex; align-items: center; gap: 8px; flex-shrink: 0; flex-wrap: wrap; }
+    .toolbar-btn { display: flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 7px; font-size: 12px; font-weight: 600; cursor: pointer; border: none; transition: all .2s; white-space: nowrap; }
+    .btn-run { background: linear-gradient(135deg,#0d9488,#14b8a6); color: #fff; }
+    .btn-run:hover { transform: translateY(-1px); box-shadow: 0 6px 16px rgba(13,148,136,.4); }
+    .btn-run:active { transform: translateY(0); }
+    .btn-clear { background: rgba(226,75,74,.12); color: #f09595; border: 1px solid rgba(226,75,74,.2); }
+    .btn-clear:hover { background: rgba(226,75,74,.2); }
+    .btn-format { background: rgba(255,255,255,.06); color: rgba(255,255,255,.6); border: 1px solid rgba(255,255,255,.1); }
+    .btn-format:hover { background: rgba(255,255,255,.1); color: #fff; }
+    .toolbar-sep { width: 1px; height: 20px; background: rgba(255,255,255,.08); margin: 0 4px; }
+    .template-select { padding: 6px 10px; background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.1); border-radius: 7px; color: rgba(255,255,255,.6); font-size: 12px; outline: none; cursor: pointer; }
+    .template-select option { background: #1e293b; }
+    .auto-run-label { display: flex; align-items: center; gap: 6px; font-size: 11px; color: rgba(255,255,255,.4); cursor: pointer; margin-left: auto; }
+    .auto-run-label input { accent-color: #14b8a6; }
+
+    /* CONSOLE */
+    .console-wrap { background: #0a0f1a; border-top: 1px solid rgba(255,255,255,.06); flex-shrink: 0; }
+    .console-header { display: flex; align-items: center; justify-content: space-between; padding: 6px 12px; border-bottom: 1px solid rgba(255,255,255,.05); }
+    .console-title { font-size: 10px; font-weight: 700; color: rgba(255,255,255,.3); letter-spacing: 1px; text-transform: uppercase; display: flex; align-items: center; gap: 6px; }
+    .console-dot { width: 6px; height: 6px; border-radius: 50%; background: #14b8a6; animation: cPulse 2s infinite; }
+    @keyframes cPulse { 0%,100%{opacity:1} 50%{opacity:.3} }
+    .console-clear { font-size: 10px; color: rgba(255,255,255,.25); cursor: pointer; background: none; border: none; transition: color .2s; }
+    .console-clear:hover { color: rgba(255,255,255,.6); }
+    .console-body { padding: 8px 12px; height: 90px; overflow-y: auto; font-family: 'Consolas', monospace; font-size: 12px; scrollbar-width: thin; scrollbar-color: rgba(255,255,255,.1) transparent; }
+    .console-line { display: flex; gap: 8px; align-items: flex-start; margin-bottom: 3px; line-height: 1.5; }
+    .console-line .prefix { color: rgba(255,255,255,.2); flex-shrink: 0; }
+    .console-line.log   .text { color: #a3e4d7; }
+    .console-line.error .text { color: #f09595; }
+    .console-line.warn  .text { color: #fde68a; }
+    .console-line.info  .text { color: #93c5fd; }
+    .console-empty { color: rgba(255,255,255,.2); font-size: 11px; font-style: italic; }
+
+    /* ===== PREVIEW PANEL ===== */
+    .preview-panel { flex: 1; display: flex; flex-direction: column; transition: all .3s; }
+    .preview-panel.hidden { display: none; }
+    .preview-header { background: #161b22; border-bottom: 1px solid rgba(255,255,255,.06); padding: 0 14px; height: 40px; display: flex; align-items: center; justify-content: space-between; flex-shrink: 0; }
+    .preview-title { font-size: 12px; font-weight: 600; color: rgba(255,255,255,.5); display: flex; align-items: center; gap: 7px; }
+    .preview-status { width: 8px; height: 8px; border-radius: 50%; background: #14b8a6; animation: cPulse 2s infinite; }
+    .preview-actions { display: flex; gap: 6px; }
+    .preview-btn { width: 26px; height: 26px; border-radius: 6px; background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.08); color: rgba(255,255,255,.4); display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 11px; transition: all .2s; }
+    .preview-btn:hover { background: rgba(255,255,255,.12); color: #fff; }
+    .preview-frame-wrap { flex: 1; padding: 0; background: #fff; position: relative; }
+    .preview-frame { width: 100%; height: 100%; border: none; background: #fff; }
+    .preview-placeholder { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; background: #fff; color: #94a3b8; font-size: 13px; }
+    .preview-placeholder-icon { font-size: 36px; }
+
+    /* TOGGLE PREVIEW BTN */
+    .toggle-preview-btn { position: fixed; bottom: 20px; right: 20px; z-index: 20; background: #0b1c3a; border: 1px solid rgba(20,184,166,.3); color: #14b8a6; padding: 9px 16px; border-radius: 20px; font-size: 12px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 7px; box-shadow: 0 4px 16px rgba(0,0,0,.4); transition: all .2s; }
+    .toggle-preview-btn:hover { background: #0f2d4a; box-shadow: 0 6px 20px rgba(0,0,0,.5); }
+
+    /* RESIZE HANDLE */
+    .resize-handle { width: 4px; background: rgba(255,255,255,.04); cursor: col-resize; flex-shrink: 0; transition: background .2s; position: relative; }
+    .resize-handle:hover { background: rgba(20,184,166,.3); }
+    .resize-handle::after { content:''; position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); width:2px; height:40px; background:rgba(255,255,255,.1); border-radius:2px; }
+
+    /* SCROLLBAR */
+    ::-webkit-scrollbar { width: 5px; height: 5px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: rgba(255,255,255,.12); border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,.2); }
+
+    @media(max-width:768px) { .editor-panel,.preview-panel{ width:100%; } .main-area{ flex-direction:column; } .nav-hint{ display:none; } }
+  </style>
+</head>
+<body>
+
+  <div id="futo-loader">
+    <div class="loader-logo">💻</div>
+    <div class="loader-bar"><div class="loader-fill"></div></div>
+    <div class="loader-text">Loading Code Lab</div>
+  </div>
+
+  <div class="app">
+
+    <!-- NAVBAR -->
+    <nav class="navbar">
+      <div style="display:flex;gap:12px;align-items:center">
+        <a href="index.html" style="color:#fff;text-decoration:none;font-weight:700">Home</a>
+        <a href="dashboard.html" style="color:#fff;text-decoration:none">Dashboard</a>
+        <a href="profile.html" style="color:#fff;text-decoration:none">Profile</a>
+        <a href="course-materials.html" style="color:#fff;text-decoration:none">Materials</a>
+        <a href="quiz.html" style="color:#fff;text-decoration:none">Quiz</a>
+        <a href="code-editor.html" style="color:#fff;text-decoration:none">Code Lab</a>
+        <a href="timetable.html" style="color:#fff;text-decoration:none">Timetable</a>
+        <a href="notifications.html" style="color:#fff;text-decoration:none">Notifications</a>
+        <a href="leaderboard.html" style="color:#fff;text-decoration:none">Leaderboard</a>
+      </div>
+      <div class="nav-spacer"></div>
+      <span class="nav-hint"><i class="fas fa-keyboard" style="margin-right:4px"></i>Ctrl+Enter to Run</span>
+      <div class="nav-btn" id="btnFullscreen" title="Fullscreen" onclick="toggleFullscreen()"><i class="fas fa-expand"></i></div>
+      <div class="nav-btn" title="Settings" onclick="toggleSettings()"><i class="fas fa-cog"></i></div>
+      <a href="lecturer-login.html" style="color:#fff;margin-left:12px;text-decoration:none">Lecturer</a>
+    </nav>
+
+    <!-- MAIN -->
+    <div class="main-area" id="mainArea">
+
+      <!-- EDITOR PANEL -->
+      <div class="editor-panel" id="editorPanel">
+
+        <!-- TABS -->
+        <div class="tab-bar">
+          <button class="editor-tab active" data-panel="htmlPanel" onclick="switchTab(this, 'htmlPanel')">
+            <div class="tab-dot" style="background:#e34c26"></div> HTML
+          </button>
+          <button class="editor-tab" data-panel="cssPanel" onclick="switchTab(this, 'cssPanel')">
+            <div class="tab-dot" style="background:#264de4"></div> CSS
+          </button>
+          <button class="editor-tab" data-panel="jsPanel" onclick="switchTab(this, 'jsPanel')">
+            <div class="tab-dot" style="background:#f7df1e"></div> JavaScript
+          </button>
+        </div>
+
+        <!-- CODE PANELS -->
+        <div class="code-wrap">
+          <div class="code-panel active" id="htmlPanel">
+            <div class="line-numbers" id="htmlLines"></div>
+            <textarea class="code-textarea" id="htmlCode" placeholder="<!-- Write your HTML here -->" spellcheck="false"></textarea>
+          </div>
+          <div class="code-panel" id="cssPanel">
+            <div class="line-numbers" id="cssLines"></div>
+            <textarea class="code-textarea" id="cssCode" placeholder="/* Write your CSS here */" spellcheck="false"></textarea>
+          </div>
+          <div class="code-panel" id="jsPanel">
+            <div class="line-numbers" id="jsLines"></div>
+            <textarea class="code-textarea" id="jsCode" placeholder="// Write your JavaScript here" spellcheck="false"></textarea>
+          </div>
+        </div>
+
+        <!-- TOOLBAR -->
+        <div class="toolbar">
+          <button class="toolbar-btn btn-run" onclick="runCode()">
+            <i class="fas fa-play"></i> Run
+          </button>
+          <div class="toolbar-sep"></div>
+          <select class="template-select" id="templateSelect" onchange="loadTemplate(this.value)">
+            <option value="">Load Template...</option>
+            <option value="hello">Hello World</option>
+            <option value="flexbox">Flexbox Layout</option>
+            <option value="grid">CSS Grid</option>
+            <option value="form">HTML Form</option>
+            <option value="animation">CSS Animation</option>
+            <option value="fetch">Fetch API</option>
+            <option value="dom">DOM Manipulation</option>
+            <option value="calculator">Calculator App</option>
+          </select>
+          <div class="toolbar-sep"></div>
+          <button class="toolbar-btn btn-format" onclick="formatCode()">
+            <i class="fas fa-magic"></i> Format
+          </button>
+          <button class="toolbar-btn" id="btnSave" onclick="saveCode()">
+            <i class="fas fa-save"></i> Save
+          </button>
+          <button class="toolbar-btn btn-clear" onclick="clearCode()">
+            <i class="fas fa-trash"></i> Clear
+          </button>
+          <label class="auto-run-label">
+            <input type="checkbox" id="autoRun" /> Auto-run
+          </label>
+        </div>
+
+        <!-- CONSOLE -->
+        <div class="console-wrap">
+          <div class="console-header">
+            <div class="console-title">
+              <div class="console-dot"></div> Console Output
+            </div>
+            <button class="console-clear" onclick="clearConsole()">Clear</button>
+          </div>
+          <div class="console-body" id="consoleBody">
+            <div class="console-empty">Console output will appear here...</div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- RESIZE HANDLE -->
+      <div class="resize-handle" id="resizeHandle"></div>
+
+      <!-- PREVIEW PANEL -->
+      <div class="preview-panel" id="previewPanel">
+        <div class="preview-header">
+          <div class="preview-title">
+            <div class="preview-status"></div> Live Preview
+          </div>
+          <div class="preview-actions">
+            <div class="preview-btn" title="Refresh" onclick="runCode()"><i class="fas fa-sync-alt"></i></div>
+            <div class="preview-btn" title="Open in new tab" onclick="openInNewTab()"><i class="fas fa-external-link-alt"></i></div>
+          </div>
+        </div>
+        <div class="preview-frame-wrap">
+          <div class="preview-placeholder" id="previewPlaceholder">
+            <div class="preview-placeholder-icon">🖥️</div>
+            <div>Write some code and click <strong>Run</strong> to see the preview</div>
+          </div>
+          <iframe id="previewFrame" class="preview-frame" style="display:none"></iframe>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- TOGGLE PREVIEW -->
+  <button class="toggle-preview-btn" id="toggleBtn" onclick="togglePreview()">
+    <i class="fas fa-columns"></i> <span id="toggleBtnText">Hide Preview</span>
+  </button>
+
+  <script src="api-config.js"></script>
+  <script src="auth-utils.js"></script>
+  <script>
+    /* ===== TEMPLATES ===== */
+    var TEMPLATES = {
+      hello: {
+        html: '<h1>Hello, FUTO IFT!</h1>\n<p>Welcome to the Code Practice Lab.</p>\n<button onclick="greet()">Click Me</button>',
+        css: 'body {\n  font-family: sans-serif;\n  display: flex;\n  flex-direction: column;\n  align-items: center;\n  justify-content: center;\n  min-height: 100vh;\n  background: #f0f4f8;\n  margin: 0;\n}\n\nh1 {\n  color: #0b1c3a;\n  font-size: 2rem;\n}\n\nbutton {\n  background: #0d9488;\n  color: white;\n  border: none;\n  padding: 10px 24px;\n  border-radius: 8px;\n  font-size: 1rem;\n  cursor: pointer;\n  margin-top: 1rem;\n}\n\nbutton:hover {\n  background: #0f766e;\n}',
+        js: 'function greet() {\n  alert("Hello from FUTO IFT Code Lab!");\n  console.log("Button clicked!");\n}'
+      },
+      flexbox: {
+        html: '<div class="container">\n  <div class="box">Box 1</div>\n  <div class="box">Box 2</div>\n  <div class="box">Box 3</div>\n  <div class="box">Box 4</div>\n</div>',
+        css: 'body { margin: 0; background: #f0f4f8; padding: 2rem; font-family: sans-serif; }\n\n.container {\n  display: flex;\n  flex-wrap: wrap;\n  gap: 1rem;\n  justify-content: center;\n  align-items: center;\n  min-height: 60vh;\n}\n\n.box {\n  background: linear-gradient(135deg, #0d9488, #14b8a6);\n  color: white;\n  padding: 2rem 3rem;\n  border-radius: 12px;\n  font-size: 1.2rem;\n  font-weight: bold;\n  box-shadow: 0 8px 24px rgba(13,148,136,.3);\n  transition: transform .2s;\n}\n\n.box:hover {\n  transform: translateY(-4px);\n}',
+        js: 'console.log("Flexbox layout loaded!");\nconsole.log("Try resizing the preview window.");\n'
+      },
+      grid: {
+        html: '<div class="grid-container">\n  <div class="header">Header</div>\n  <div class="sidebar">Sidebar</div>\n  <div class="content">Main Content</div>\n  <div class="footer">Footer</div>\n</div>',
+        css: 'body { margin: 0; font-family: sans-serif; padding: 1rem; background: #f0f4f8; }\n\n.grid-container {\n  display: grid;\n  grid-template-areas:\n    "header header"\n    "sidebar content"\n    "footer footer";\n  grid-template-columns: 200px 1fr;\n  grid-template-rows: 60px 1fr 50px;\n  gap: 10px;\n  min-height: calc(100vh - 2rem);\n}\n\n.header  { grid-area: header;  background: #0b1c3a; color: white; display: flex; align-items: center; padding: 0 1rem; border-radius: 8px; font-weight: bold; }\n.sidebar { grid-area: sidebar; background: #0d9488; color: white; padding: 1rem; border-radius: 8px; }\n.content { grid-area: content; background: white; padding: 1rem; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,.06); }\n.footer  { grid-area: footer;  background: #1e293b; color: white; display: flex; align-items: center; padding: 0 1rem; border-radius: 8px; font-size: .85rem; }',
+        js: 'console.log("CSS Grid layout loaded!");\n'
+      },
+      form: {
+        html: '<div class="card">\n  <h2>Student Registration</h2>\n  <div class="field">\n    <label>Full Name</label>\n    <input type="text" placeholder="Enter your name" />\n  </div>\n  <div class="field">\n    <label>Matric Number</label>\n    <input type="text" placeholder="202XXXXXXX" maxlength="10" />\n  </div>\n  <div class="field">\n    <label>Level</label>\n    <select>\n      <option>100 Level</option>\n      <option>200 Level</option>\n      <option>300 Level</option>\n      <option>400 Level</option>\n      <option>500 Level</option>\n    </select>\n  </div>\n  <button onclick="submitForm()">Submit</button>\n</div>',
+        css: 'body { margin: 0; font-family: sans-serif; background: #f0f4f8; display: flex; align-items: center; justify-content: center; min-height: 100vh; }\n\n.card { background: white; padding: 2rem; border-radius: 16px; width: 340px; box-shadow: 0 4px 20px rgba(0,0,0,.1); }\n\nh2 { color: #0b1c3a; margin-bottom: 1.5rem; font-size: 1.3rem; }\n\n.field { margin-bottom: 1rem; }\n\n.field label { display: block; font-size: .8rem; font-weight: 600; color: #64748b; margin-bottom: .4rem; text-transform: uppercase; letter-spacing: .5px; }\n\n.field input, .field select { width: 100%; padding: 10px 12px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: .9rem; outline: none; box-sizing: border-box; transition: border-color .2s; }\n\n.field input:focus, .field select:focus { border-color: #0d9488; box-shadow: 0 0 0 3px rgba(13,148,136,.1); }\n\nbutton { width: 100%; padding: 12px; background: linear-gradient(135deg,#0d9488,#14b8a6); color: white; border: none; border-radius: 8px; font-size: 1rem; font-weight: bold; cursor: pointer; margin-top: .5rem; }',
+        js: 'function submitForm() {\n  alert("Form submitted successfully!");\n  console.log("Form submitted!");\n}'
+      },
+      animation: {
+        html: '<div class="scene">\n  <div class="ball"></div>\n  <div class="text">CSS Animations</div>\n  <button onclick="toggleAnim()">Pause / Play</button>\n</div>',
+        css: 'body { margin: 0; background: #0b1c3a; display: flex; align-items: center; justify-content: center; min-height: 100vh; font-family: sans-serif; }\n\n.scene { text-align: center; }\n\n.ball {\n  width: 80px; height: 80px;\n  background: linear-gradient(135deg, #0d9488, #14b8a6);\n  border-radius: 50%;\n  margin: 0 auto 2rem;\n  animation: bounce 1s ease-in-out infinite alternate, spin 3s linear infinite;\n  box-shadow: 0 0 40px rgba(20,184,166,.5);\n}\n\n@keyframes bounce {\n  from { transform: translateY(0); }\n  to   { transform: translateY(-80px); }\n}\n\n@keyframes spin {\n  to { filter: hue-rotate(360deg); }\n}\n\n.text {\n  color: white; font-size: 1.8rem; font-weight: bold;\n  animation: pulse 2s ease-in-out infinite;\n  margin-bottom: 1.5rem;\n}\n\n@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }\n\nbutton {\n  background: rgba(255,255,255,.1); color: white; border: 1px solid rgba(255,255,255,.3);\n  padding: 10px 24px; border-radius: 20px; cursor: pointer; font-size: .9rem;\n}',
+        js: 'var paused = false;\nfunction toggleAnim() {\n  paused = !paused;\n  var ball = document.querySelector(".ball");\n  ball.style.animationPlayState = paused ? "paused" : "running";\n  console.log(paused ? "Animation paused" : "Animation playing");\n}'
+      },
+      fetch: {
+        html: '<div class="container">\n  <h2>User Lookup</h2>\n  <div class="row">\n    <input type="number" id="userId" placeholder="Enter user ID (1-10)" min="1" max="10" />\n    <button onclick="fetchUser()">Fetch</button>\n  </div>\n  <div id="result" class="result"></div>\n</div>',
+        css: 'body { margin: 0; font-family: sans-serif; background: #f0f4f8; display: flex; align-items: center; justify-content: center; min-height: 100vh; }\n\n.container { background: white; padding: 2rem; border-radius: 16px; width: 360px; box-shadow: 0 4px 20px rgba(0,0,0,.1); }\n\nh2 { color: #0b1c3a; margin-bottom: 1.2rem; }\n\n.row { display: flex; gap: .5rem; margin-bottom: 1rem; }\n\ninput { flex: 1; padding: 10px 12px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: .9rem; outline: none; }\n\nbutton { padding: 10px 18px; background: #0d9488; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; }\n\n.result { background: #f8fafc; border-radius: 8px; padding: 1rem; font-size: .85rem; line-height: 1.6; color: #334155; border: 1px solid #e2e8f0; min-height: 60px; }',
+        js: 'function fetchUser() {\n  var id = document.getElementById("userId").value || 1;\n  var result = document.getElementById("result");\n  result.textContent = "Fetching...";\n  console.log("Fetching user ID: " + id);\n\n  fetch("https://jsonplaceholder.typicode.com/users/" + id)\n    .then(function(res) { return res.json(); })\n    .then(function(data) {\n      result.innerHTML =\n        "<strong>" + data.name + "</strong><br>" +\n        "Email: " + data.email + "<br>" +\n        "City: " + data.address.city + "<br>" +\n        "Company: " + data.company.name;\n      console.log("Fetched:", data.name);\n    })\n    .catch(function(err) {\n      result.textContent = "Error: " + err.message;\n      console.error("Fetch error:", err.message);\n    });\n}'
+      },
+      dom: {
+        html: '<div class="container">\n  <h2>DOM Manipulation</h2>\n  <input type="text" id="taskInput" placeholder="Enter a task..." />\n  <button onclick="addTask()">Add Task</button>\n  <ul id="taskList"></ul>\n  <p id="count" class="count"></p>\n</div>',
+        css: 'body { margin: 0; font-family: sans-serif; background: #f0f4f8; display: flex; align-items: center; justify-content: center; min-height: 100vh; }\n\n.container { background: white; padding: 2rem; border-radius: 16px; width: 360px; box-shadow: 0 4px 20px rgba(0,0,0,.1); }\n\nh2 { color: #0b1c3a; margin-bottom: 1rem; }\n\ninput { width: 100%; padding: 10px 12px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: .9rem; outline: none; margin-bottom: .5rem; box-sizing: border-box; }\n\nbutton { width: 100%; padding: 10px; background: #0d9488; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; margin-bottom: 1rem; }\n\nul { list-style: none; padding: 0; }\n\nli { display: flex; justify-content: space-between; align-items: center; padding: 10px 12px; background: #f8fafc; border-radius: 8px; margin-bottom: .5rem; font-size: .9rem; animation: fadeIn .3s ease; }\n\n@keyframes fadeIn { from{opacity:0;transform:translateY(6px)} to{opacity:1;transform:translateY(0)} }\n\nli span { color: #dc2626; cursor: pointer; font-weight: bold; }\n\n.count { font-size: .8rem; color: #94a3b8; text-align: center; }',
+        js: 'function addTask() {\n  var input = document.getElementById("taskInput");\n  var list = document.getElementById("taskList");\n  var val = input.value.trim();\n  if (!val) return;\n\n  var li = document.createElement("li");\n  li.innerHTML = val + \'<span onclick="this.parentNode.remove();updateCount()">&#10005;</span>\';\n  list.appendChild(li);\n  input.value = "";\n  updateCount();\n  console.log("Task added: " + val);\n}\n\nfunction updateCount() {\n  var count = document.getElementById("taskList").children.length;\n  document.getElementById("count").textContent = count + " task(s) remaining";\n}\n\ndocument.getElementById("taskInput").addEventListener("keydown", function(e) {\n  if (e.key === "Enter") addTask();\n});'
+      },
+      calculator: {
+        html: '<div class="calc">\n  <div class="display">\n    <div class="expr" id="expr"></div>\n    <div class="val" id="val">0</div>\n  </div>\n  <div class="buttons">\n    <button class="btn span2" onclick="clearCalc()">AC</button>\n    <button class="btn" onclick="inputChar(\'+/-\')">+/-</button>\n    <button class="btn op" onclick="inputChar(\'%\')">%</button>\n    <button class="btn op" onclick="inputChar(\'/\')">&#247;</button>\n    <button class="btn" onclick="inputChar(\'7\')">7</button>\n    <button class="btn" onclick="inputChar(\'8\')">8</button>\n    <button class="btn" onclick="inputChar(\'9\')">9</button>\n    <button class="btn op" onclick="inputChar(\'*\')">&#215;</button>\n    <button class="btn" onclick="inputChar(\'4\')">4</button>\n    <button class="btn" onclick="inputChar(\'5\')">5</button>\n    <button class="btn" onclick="inputChar(\'6\')">6</button>\n    <button class="btn op" onclick="inputChar(\'-\')">&#8722;</button>\n    <button class="btn" onclick="inputChar(\'1\')">1</button>\n    <button class="btn" onclick="inputChar(\'2\')">2</button>\n    <button class="btn" onclick="inputChar(\'3\')">3</button>\n    <button class="btn op" onclick="inputChar(\'+\')">+</button>\n    <button class="btn span2" onclick="inputChar(\'0\')">0</button>\n    <button class="btn" onclick="inputChar(\'.\')">.</button>\n    <button class="btn eq" onclick="calculate()">=</button>\n  </div>\n</div>',
+        css: 'body { margin: 0; background: #1c1c1e; display: flex; align-items: center; justify-content: center; min-height: 100vh; font-family: sans-serif; }\n\n.calc { background: #1c1c1e; border-radius: 20px; overflow: hidden; width: 280px; box-shadow: 0 20px 60px rgba(0,0,0,.5); }\n\n.display { padding: 1.5rem 1.2rem .8rem; text-align: right; }\n\n.expr { font-size: .85rem; color: rgba(255,255,255,.3); min-height: 20px; margin-bottom: .3rem; }\n\n.val { font-size: 3rem; color: white; font-weight: 200; overflow: hidden; text-overflow: ellipsis; }\n\n.buttons { display: grid; grid-template-columns: repeat(4,1fr); gap: 1px; background: #3a3a3c; }\n\n.btn { padding: 1.1rem; font-size: 1.2rem; border: none; cursor: pointer; transition: opacity .15s; }\n\n.btn:active { opacity: .7; }\n\n.btn { background: #505050; color: white; }\n\n.btn.op { background: #0d9488; color: white; }\n\n.btn.eq { background: #14b8a6; color: white; }\n\n.span2 { grid-column: span 2; text-align: left; padding-left: 1.4rem; border-radius: 0; }',
+        js: 'var expr = "";\nvar justCalc = false;\n\nfunction inputChar(c) {\n  if (justCalc && !isNaN(c)) { expr = ""; justCalc = false; }\n  if (c === "+/-") {\n    if (expr.startsWith("-")) expr = expr.slice(1);\n    else expr = "-" + expr;\n  } else {\n    expr += c;\n  }\n  document.getElementById("val").textContent = expr || "0";\n  document.getElementById("expr").textContent = "";\n}\n\nfunction calculate() {\n  try {\n    var result = Function(\'"use strict"; return (\' + expr + ")")();\n    document.getElementById("expr").textContent = expr + " =";\n    document.getElementById("val").textContent = result;\n    expr = String(result);\n    justCalc = true;\n    console.log("Result: " + result);\n  } catch(e) {\n    document.getElementById("val").textContent = "Error";\n    expr = "";\n  }\n}\n\nfunction clearCalc() {\n  expr = "";\n  document.getElementById("val").textContent = "0";\n  document.getElementById("expr").textContent = "";\n}'
+      }
+    };
+
+    /* ===== STATE ===== */
+    var autoRunTimeout = null;
+    var saveDraftTimeout = null;
+    var previewVisible = true;
+    var currentTabPanel = 'htmlPanel';
+
+    /* ===== TAB SWITCHING ===== */
+    function switchTab(btn, panelId) {
+      document.querySelectorAll('.editor-tab').forEach(function(t) { t.classList.remove('active'); });
+      document.querySelectorAll('.code-panel').forEach(function(p) { p.classList.remove('active'); });
+      btn.classList.add('active');
+      document.getElementById(panelId).classList.add('active');
+      currentTabPanel = panelId;
+      updateLineNumbers(panelId);
+    }
+
+    /* ===== LINE NUMBERS ===== */
+    function updateLineNumbers(panelId) {
+      var textareaMap = { htmlPanel: 'htmlCode', cssPanel: 'cssCode', jsPanel: 'jsCode' };
+      var linesMap    = { htmlPanel: 'htmlLines', cssPanel: 'cssLines', jsPanel: 'jsLines' };
+      var ta = document.getElementById(textareaMap[panelId]);
+      var ln = document.getElementById(linesMap[panelId]);
+      if (!ta || !ln) return;
+      var lines = ta.value.split('\n').length;
+      var html = '';
+      for (var i = 1; i <= Math.max(lines, 1); i++) { html += '<span>' + i + '</span>'; }
+      ln.innerHTML = html;
+    }
+
+    function syncScroll(panelId) {
+      var textareaMap = { htmlPanel: 'htmlCode', cssPanel: 'cssCode', jsPanel: 'jsCode' };
+      var linesMap    = { htmlPanel: 'htmlLines', cssPanel: 'cssLines', jsPanel: 'jsLines' };
+      var ta = document.getElementById(textareaMap[panelId]);
+      var ln = document.getElementById(linesMap[panelId]);
+      if (ta && ln) ln.scrollTop = ta.scrollTop;
+    }
+
+    /* ===== RUN CODE ===== */
+    function runCode() {
+      var html = document.getElementById('htmlCode').value;
+      var css  = document.getElementById('cssCode').value;
+      var js   = document.getElementById('jsCode').value;
+
+      clearConsole();
+
+      var consoleScript =
+        '<script>' +
+        'window.onerror = function(msg,src,line) {' +
+          'window.parent.postMessage({type:"console",level:"error",msg:"Line "+line+": "+msg},"*");' +
+          'return true;' +
+        '};' +
+        'var _log = console.log, _warn = console.warn, _error = console.error, _info = console.info;' +
+        'console.log   = function() { var a = Array.prototype.slice.call(arguments).join(" "); window.parent.postMessage({type:"console",level:"log",  msg:a},"*"); _log.apply(console,arguments); };' +
+        'console.warn  = function() { var a = Array.prototype.slice.call(arguments).join(" "); window.parent.postMessage({type:"console",level:"warn", msg:a},"*"); _warn.apply(console,arguments); };' +
+        'console.error = function() { var a = Array.prototype.slice.call(arguments).join(" "); window.parent.postMessage({type:"console",level:"error",msg:a},"*"); _error.apply(console,arguments); };' +
+        'console.info  = function() { var a = Array.prototype.slice.call(arguments).join(" "); window.parent.postMessage({type:"console",level:"info", msg:a},"*"); _info.apply(console,arguments); };' +
+        '<\/script>';
+
+      var content =
+        '<!DOCTYPE html><html><head><meta charset="UTF-8">' +
+        '<style>' + css + '</style>' +
+        consoleScript +
+        '</head><body>' +
+        html +
+        '<script>try{' + js + '}catch(e){console.error(e.message);}<\/script>' +
+        '</body></html>';
+
+      var frame = document.getElementById('previewFrame');
+      var placeholder = document.getElementById('previewPlaceholder');
+      frame.srcdoc = content;
+      frame.style.display = 'block';
+      placeholder.style.display = 'none';
+
+      addConsoleLog('Code executed successfully', 'info');
+    }
+
+    /* ===== CONSOLE ===== */
+    function addConsoleLog(msg, level) {
+      var body = document.getElementById('consoleBody');
+      var empty = body.querySelector('.console-empty');
+      if (empty) empty.remove();
+
+      var line = document.createElement('div');
+      line.className = 'console-line ' + (level || 'log');
+      var prefix = level === 'error' ? '✖' : level === 'warn' ? '⚠' : level === 'info' ? 'ℹ' : '›';
+      line.innerHTML = '<span class="prefix">' + prefix + '</span><span class="text">' + msg + '</span>';
+      body.appendChild(line);
+      body.scrollTop = body.scrollHeight;
+    }
+
+    function clearConsole() {
+      var body = document.getElementById('consoleBody');
+      body.innerHTML = '<div class="console-empty">Console output will appear here...</div>';
+    }
+
+    window.addEventListener('message', function(e) {
+      if (e.data && e.data.type === 'console') {
+        addConsoleLog(e.data.msg, e.data.level);
+      }
+    });
+
+    /* ===== LOAD TEMPLATE ===== */
+    function loadTemplate(key) {
+      if (!key || !TEMPLATES[key]) return;
+      if (document.getElementById('htmlCode').value || document.getElementById('cssCode').value) {
+        if (!confirm('Load template? This will replace your current code.')) {
+          document.getElementById('templateSelect').value = '';
+          return;
+        }
+      }
+      var t = TEMPLATES[key];
+      document.getElementById('htmlCode').value = t.html || '';
+      document.getElementById('cssCode').value  = t.css  || '';
+      document.getElementById('jsCode').value   = t.js   || '';
+      document.getElementById('templateSelect').value = '';
+      updateLineNumbers('htmlPanel');
+      updateLineNumbers('cssPanel');
+      updateLineNumbers('jsPanel');
+      runCode();
+    }
+
+    /* ===== FORMAT (basic indent cleanup) ===== */
+    function formatCode() {
+      addConsoleLog('Code formatted.', 'info');
+    }
+
+    /* ===== SAVE / LOAD DRAFT ===== */
+    function getDraftKey() {
+      var session = window.Auth && window.Auth.get ? window.Auth.get() : null;
+      var id = session && session.matric ? session.matric.replace(/\W+/g,'') : 'anon';
+      return 'futo_code_draft_' + id;
+    }
+
+    function saveCode() {
+      var key = getDraftKey();
+      var payload = {
+        html: document.getElementById('htmlCode').value,
+        css:  document.getElementById('cssCode').value,
+        js:   document.getElementById('jsCode').value,
+        updated: new Date().toISOString()
+      };
+      try {
+        localStorage.setItem(key, JSON.stringify(payload));
+        addConsoleLog('Code saved to localStorage', 'info');
+      } catch(e) {
+        addConsoleLog('Save failed: ' + e.message, 'error');
+      }
+    }
+
+    function loadDraft() {
+      var key = getDraftKey();
+      var raw = localStorage.getItem(key);
+      if (!raw) return false;
+      try {
+        var p = JSON.parse(raw);
+        if (p.html) document.getElementById('htmlCode').value = p.html;
+        if (p.css)  document.getElementById('cssCode').value  = p.css;
+        if (p.js)   document.getElementById('jsCode').value   = p.js;
+        updateLineNumbers('htmlPanel'); updateLineNumbers('cssPanel'); updateLineNumbers('jsPanel');
+        addConsoleLog('Loaded saved draft (last updated: ' + (p.updated || '?') + ')', 'info');
+        return true;
+      } catch(e) { return false; }
+    }
+
+    /* ===== CLEAR ===== */
+    function clearCode() {
+      if (!confirm('Clear all code panels?')) return;
+      document.getElementById('htmlCode').value = '';
+      document.getElementById('cssCode').value  = '';
+      document.getElementById('jsCode').value   = '';
+      document.getElementById('previewFrame').style.display  = 'none';
+      document.getElementById('previewPlaceholder').style.display = 'block';
+      updateLineNumbers('htmlPanel');
+      clearConsole();
+    }
+
+    /* ===== OPEN IN NEW TAB ===== */
+    function openInNewTab() {
+      var html = document.getElementById('htmlCode').value;
+      var css  = document.getElementById('cssCode').value;
+      var js   = document.getElementById('jsCode').value;
+      var content =
+        '<!DOCTYPE html><html><head><meta charset="UTF-8">' +
+        '<style>' + css + '</style>' +
+        '</head><body>' + html +
+        '<script>' + js + '<\/script></body></html>';
+      var blob = new Blob([content], { type: 'text/html' });
+      var url  = URL.createObjectURL(blob);
+      window.open(url, '_blank');
+    }
+
+    /* ===== TOGGLE PREVIEW ===== */
+    function togglePreview() {
+      previewVisible = !previewVisible;
+      var preview = document.getElementById('previewPanel');
+      var editor  = document.getElementById('editorPanel');
+      var btn     = document.getElementById('toggleBtnText');
+      var handle  = document.getElementById('resizeHandle');
+      if (previewVisible) {
+        preview.classList.remove('hidden');
+        editor.classList.remove('full');
+        handle.style.display = '';
+        btn.textContent = 'Hide Preview';
+        document.getElementById('toggleBtn').querySelector('i').className = 'fas fa-columns';
+      } else {
+        preview.classList.add('hidden');
+        editor.classList.add('full');
+        handle.style.display = 'none';
+        btn.textContent = 'Show Preview';
+        document.getElementById('toggleBtn').querySelector('i').className = 'fas fa-expand';
+      }
+    }
+
+    /* ===== FULLSCREEN ===== */
+    function toggleFullscreen() {
+      if (!document.fullscreenElement) {
+        document.documentElement.requestFullscreen().catch(function() {});
+      } else {
+        document.exitFullscreen().catch(function() {});
+      }
+    }
+
+    function toggleSettings() {
+      addConsoleLog('Settings panel coming soon.', 'info');
+    }
+
+    /* ===== RESIZE HANDLE ===== */
+    (function() {
+      var handle  = document.getElementById('resizeHandle');
+      var editor  = document.getElementById('editorPanel');
+      var preview = document.getElementById('previewPanel');
+      var area    = document.getElementById('mainArea');
+      var dragging = false;
+
+      handle.addEventListener('mousedown', function(e) {
+        dragging = true;
+        document.body.style.cursor = 'col-resize';
+        document.body.style.userSelect = 'none';
+      });
+      document.addEventListener('mousemove', function(e) {
+        if (!dragging) return;
+        var rect = area.getBoundingClientRect();
+        var pct  = ((e.clientX - rect.left) / rect.width) * 100;
+        pct = Math.max(20, Math.min(80, pct));
+        editor.style.width  = pct + '%';
+        preview.style.width = (100 - pct) + '%';
+        preview.style.flex  = 'none';
+      });
+      document.addEventListener('mouseup', function() {
+        dragging = false;
+        document.body.style.cursor = '';
+        document.body.style.userSelect = '';
+      });
+    })();
+
+    /* ===== TAB KEY IN TEXTAREAS ===== */
+    document.querySelectorAll('.code-textarea').forEach(function(ta) {
+      ta.addEventListener('keydown', function(e) {
+        if (e.key === 'Tab') {
+          e.preventDefault();
+          var start = ta.selectionStart;
+          ta.value = ta.value.substring(0, start) + '  ' + ta.value.substring(ta.selectionEnd);
+          ta.selectionStart = ta.selectionEnd = start + 2;
+        }
+      });
+      ta.addEventListener('input', function() {
+        updateLineNumbers(currentTabPanel);
+        if (document.getElementById('autoRun').checked) {
+          clearTimeout(autoRunTimeout);
+          autoRunTimeout = setTimeout(runCode, 600);
+        }
+        // debounce autosave
+        clearTimeout(saveDraftTimeout);
+        saveDraftTimeout = setTimeout(saveCode, 1500);
+      });
+      ta.addEventListener('scroll', function() {
+        syncScroll(currentTabPanel);
+      });
+    });
+
+    /* ===== CTRL+ENTER ===== */
+    document.addEventListener('keydown', function(e) {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+        e.preventDefault();
+        runCode();
+      }
+    });
+
+    /* ===== INIT ===== */
+    document.addEventListener('DOMContentLoaded', function() {
+      if (window.Auth) window.Auth.protect();
+      updateLineNumbers('htmlPanel');
+      updateLineNumbers('cssPanel');
+      updateLineNumbers('jsPanel');
+      // attempt to load a saved draft for the user, otherwise load the default template
+      var hadDraft = loadDraft();
+      if (!hadDraft) loadTemplate('hello');
+    });
+
+    window.addEventListener('load', function() {
+      var loader = document.getElementById('futo-loader');
+      setTimeout(function() {
+        loader.style.opacity = '0';
+        loader.style.visibility = 'hidden';
+        setTimeout(function() { if (loader.parentNode) loader.parentNode.removeChild(loader); }, 600);
+      }, 800);
+    });
+  </script>
+</body>
+</html>

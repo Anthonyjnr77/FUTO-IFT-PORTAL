@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Lecturer Login | FUTO IFT</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+  <link rel="stylesheet" href="styles.css" />
+  <style>
+    :root { --primary:#0b1c3a; --teal:#0d9488; --teal-light:#14b8a6; --bg:#f4f7fb; --panel:rgba(255,255,255,0.96); --line:#e2e8f0; --muted:#64748b; --text:#0f172a; }
+    * { box-sizing:border-box; }
+    body { margin:0; font-family:'Inter',system-ui,sans-serif; background: linear-gradient(135deg,#0b1c3a 0%, #102d4d 35%, #f4f7fb 35%, #f4f7fb 100%); color:var(--text); }
+    .shell { min-height:100vh; display:flex; align-items:center; justify-content:center; padding:24px; }
+    .card { width:min(100%, 440px); background: rgba(255,255,255,0.96); backdrop-filter: blur(8px); border:1px solid rgba(148,163,184,.2); box-shadow:0 20px 40px rgba(15,23,42,.14); border-radius:20px; overflow:hidden; }
+    .card-header { background: linear-gradient(135deg,#0b1c3a,#102d4d); color:#fff; padding:22px 24px; }
+    .brand { display:flex; align-items:center; gap:10px; font-size:14px; font-weight:800; letter-spacing:.08em; text-transform:uppercase; }
+    .brand-mark { width:32px; height:32px; border-radius:10px; background: linear-gradient(135deg, var(--teal), var(--teal-light)); display:flex; align-items:center; justify-content:center; box-shadow:0 0 18px rgba(20,184,166,.5); }
+    .header-title { margin-top:18px; font-size: clamp(1.6rem, 2vw, 2.1rem); font-weight:800; }
+    .header-sub { margin-top:8px; font-size:13px; color: rgba(255,255,255,0.75); }
+    .card-body { padding:24px; }
+    .field-group { margin-bottom:14px; }
+    .field-label { display:block; font-size:12px; font-weight:700; letter-spacing:.04em; color:var(--primary); margin-bottom:8px; }
+    .field { width:100%; border:1px solid var(--line); background:#f8fafc; color:var(--text); padding:12px 14px; border-radius:12px; outline:none; transition: border-color .2s ease, box-shadow .2s ease; }
+    .field:focus { border-color: rgba(13,148,136,.5); box-shadow: 0 0 0 4px rgba(13,148,136,.08); }
+    .btn { width:100%; border:none; cursor:pointer; background: linear-gradient(135deg, var(--teal), var(--teal-light)); color:#fff; border-radius:12px; padding:13px 16px; font-weight:800; box-shadow: 0 12px 24px rgba(13,148,136,.28); }
+    .hint { margin-top:16px; padding:10px 12px; border-radius:10px; background:#f0fdf9; border:1px solid rgba(13,148,136,.2); color:#14532d; font-size:12px; }
+    .link { display:block; text-align:center; margin-top:14px; font-size:12px; color:var(--muted); }
+    .link a { color: var(--teal); font-weight:700; }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <main class="card">
+      <div class="card-header">
+        <div class="brand">
+          <span class="brand-mark"><i class="fa-solid fa-chalkboard-user"></i></span>
+          FUTO IFT
+        </div>
+        <div class="header-title">Lecturer Access</div>
+        <div class="header-sub">Use lecturer credentials to post announcements and view student scores.</div>
+      </div>
+      <div class="card-body">
+        <div class="field-group">
+          <label class="field-label" for="email">Email</label>
+          <input id="email" class="field" type="email" placeholder="Enter lecturer email" autocomplete="email" />
+        </div>
+        <div class="field-group">
+          <label class="field-label" for="user">Username</label>
+          <input id="user" class="field" type="text" placeholder="Enter username" />
+        </div>
+
+        <div class="field-group">
+          <label class="field-label" for="pw">Password</label>
+          <input id="pw" class="field" type="password" placeholder="Enter password" />
+        </div>
+
+        <button class="btn" onclick="login()">Login to Dashboard</button>
+
+        <button class="link" type="button" onclick="forgotPassword()" style="background:none;border:0;cursor:pointer;width:100%">Forgot password?</button>
+
+        <div class="hint">Use the lecturer username and password created from the portal registration form.</div>
+        <div class="link"><a href="index.html">Return to student portal</a></div>
+      </div>
+    </main>
+  </div>
+
+  <script src="api-config.js"></script>
+  <script src="auth-utils.js"></script>
+  <script>
+    async function login(){
+      var email = document.getElementById('email').value.trim();
+      var u = document.getElementById('user').value.trim();
+      var p = document.getElementById('pw').value;
+      if (!email || !p) {
+        alert('Please enter your email and password.');
+        return;
+      }
+      try {
+        var result = await window.Auth.request('/auth/login', {
+          method: 'POST',
+          body: JSON.stringify({ role: 'lecturer', username: u, email: email, password: p })
+        });
+        window.Auth.setLecturer({ user: result.user.identifier, name: result.user.name, token: result.token });
+        window.location.href = 'lecturer-dashboard.html';
+      } catch (error) {
+        alert(error.message);
+      }
+    }
+
+    async function forgotPassword(){
+      var email = document.getElementById('email').value.trim();
+      if (!email) {
+        alert('Enter your lecturer email first.');
+        return;
+      }
+      try {
+        var result = await window.Auth.request('/auth/forgot-password', {
+          method: 'POST',
+          body: JSON.stringify({ email: email })
+        });
+        alert(result.message);
+      } catch (error) {
+        alert(error.message);
+      }
+    }
+  </script>
+</body>
+</html>

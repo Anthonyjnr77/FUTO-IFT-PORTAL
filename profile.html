@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Student Profile | FUTO IFT</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+  <link rel="stylesheet" href="styles.css" />
+  <style>
+    :root { --primary:#0b1c3a; --teal:#0d9488; --teal-light:#14b8a6; --bg:#f4f7fb; --panel:rgba(255,255,255,0.96); --line:#e2e8f0; --muted:#64748b; --text:#0f172a; }
+    * { box-sizing: border-box; }
+    body { margin:0; font-family:'Inter',system-ui,sans-serif; background: linear-gradient(180deg,#eef6ff 0%, var(--bg) 100%); color:var(--text); }
+    a { text-decoration:none; }
+
+    .topbar { position: sticky; top: 0; z-index: 30; background: rgba(11,28,58,0.9); backdrop-filter: blur(12px); border-bottom:1px solid rgba(255,255,255,.08); box-shadow:0 8px 24px rgba(11,28,58,.18); }
+    .nav-wrap { max-width:1220px; margin:0 auto; display:flex; align-items:center; gap:12px; padding:12px 18px; min-height:68px; flex-wrap:wrap; }
+    .brand { display:inline-flex; align-items:center; gap:10px; padding:8px 10px; background: rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.08); border-radius:10px; color:#fff; font-weight:700; margin-right:4px; }
+    .brand-mark { width:28px; height:28px; border-radius:8px; background: linear-gradient(135deg, var(--teal), var(--teal-light)); display:flex; align-items:center; justify-content:center; font-size:12px; box-shadow:0 0 16px rgba(20,184,166,.45); }
+    .nav-links { display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-right:auto; }
+    .nav-links a { color: rgba(255,255,255,.8); padding:8px 10px; border-radius:9px; transition: all .2s ease; font-size:13px; font-weight:600; }
+    .nav-links a:hover, .nav-links a.active { background: rgba(20,184,166,.12); color:#fff; box-shadow: inset 0 0 0 1px rgba(20,184,166,.18); }
+    .nav-cta { color:#fff; border:1px solid rgba(255,255,255,.12); background: rgba(255,255,255,.04); padding:8px 12px; border-radius:10px; font-size:12px; font-weight:700; }
+
+    .page { max-width: 1100px; margin: 28px auto; padding: 0 18px 32px; }
+    .panel { background: var(--panel); border: 1px solid rgba(148,163,184,.15); box-shadow: 0 12px 30px rgba(15,23,42,.06); border-radius:18px; overflow:hidden; }
+    .panel-header { padding:22px 24px 12px; border-bottom:1px solid var(--line); background: linear-gradient(180deg, rgba(13,148,136,.04), rgba(255,255,255,0)); }
+    .eyebrow { display:inline-flex; align-items:center; gap:8px; font-size:11px; letter-spacing:.12em; text-transform:uppercase; color: var(--teal); font-weight:800; }
+    .panel-header h1 { margin: 10px 0 4px; font-size: clamp(1.6rem, 2vw, 2.1rem); color: var(--primary); }
+    .panel-header p { margin:0; color:var(--muted); font-size:14px; }
+    .panel-body { padding:22px 24px 24px; }
+    .profile-grid { display:grid; grid-template-columns: 1.1fr 1.2fr; gap:18px; }
+    .field-group { margin-bottom:14px; }
+    .field-label { display:block; font-size:12px; font-weight:700; color: var(--primary); margin-bottom:8px; }
+    .info-box, .text-input, .history-list { border-radius:12px; border:1px solid var(--line); background:#f8fafc; }
+    .info-box { padding:12px 14px; color:var(--primary); font-weight:600; }
+    .text-input { width:100%; padding:12px 14px; font-size:14px; color: var(--text); outline:none; transition: border-color .2s ease, box-shadow .2s ease; }
+    .text-input:focus { border-color: rgba(13,148,136,.5); box-shadow: 0 0 0 4px rgba(13,148,136,.08); }
+    .save-btn { background: linear-gradient(135deg, var(--teal), var(--teal-light)); color:#fff; border:none; padding:11px 18px; border-radius:10px; font-weight:700; cursor:pointer; box-shadow: 0 10px 24px rgba(13,148,136,.25); }
+    .history-panel { background: #f8fafc; border:1px solid var(--line); border-radius:14px; padding:14px; }
+    .history-panel h3 { margin:0 0 12px; color:var(--primary); }
+    .history-list { max-height: 320px; overflow:auto; background:#fff; border:1px solid #edf2f7; padding:0 10px; }
+    .history-item { padding:10px 6px; border-bottom:1px solid #edf2f7; }
+    .history-item:last-child { border-bottom:none; }
+    .history-line { display:flex; align-items:center; justify-content:space-between; gap:10px; color:var(--text); font-size:13px; }
+    .history-line strong { color:var(--primary); }
+    .history-meta { font-size:11px; color:#94a3b8; margin-top:4px; }
+    .empty { padding:16px; color:#64748b; }
+
+    @media (max-width: 760px) {
+      .profile-grid { grid-template-columns: 1fr; }
+      .nav-wrap { padding:10px 14px; }
+      .nav-links { width:100%; }
+      .panel-header, .panel-body { padding-left:16px; padding-right:16px; }
+    }
+  </style>
+</head>
+<body>
+  <nav class="navbar">
+    <div class="nav-links">
+      <a href="dashboard.html">Home</a>
+      <a href="profile.html" class="active">Profile</a>
+      <a href="course-materials.html">Materials</a>
+      <a href="quiz.html">Quiz</a>
+      <a href="code-editor.html">Code Lab</a>
+      <a href="timetable.html">Timetable</a>
+      <a href="notifications.html">Notifications</a>
+      <a href="leaderboard.html">Leaderboard</a>
+    </div>
+    <div class="nav-spacer"></div>
+    <span class="nav-welcome">Welcome, <strong id="navName">Loading...</strong></span>
+    <span class="nav-badge" id="navMatric">MAT/XXXX</span>
+    <button class="nav-logout" onclick="window.Auth && window.Auth.logout()">
+      <i class="fas fa-sign-out-alt"></i> Logout
+    </button>
+  </nav>
+
+  <main class="page">
+    <section class="panel">
+      <div class="panel-header">
+        <span class="eyebrow"><i class="fa-solid fa-user"></i> Account</span>
+        <h1>Student Profile</h1>
+        <p>View and edit your profile, and see your quiz history.</p>
+      </div>
+      <div class="panel-body">
+        <div class="profile-grid">
+          <div>
+            <div class="field-group">
+              <label class="field-label">Matriculation Number</label>
+              <div id="matric" class="info-box"></div>
+            </div>
+
+            <div class="field-group">
+              <label class="field-label">Level</label>
+              <div id="level" class="info-box"></div>
+            </div>
+
+            <div class="field-group">
+              <label class="field-label">Name</label>
+              <input id="nameInput" class="text-input" type="text" placeholder="Enter your full name" />
+            </div>
+
+            <button class="save-btn" onclick="saveProfile()">Save Profile</button>
+          </div>
+
+          <div class="history-panel">
+            <h3>Quiz History</h3>
+            <div id="historyList" class="history-list"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script src="api-config.js"></script>
+  <script src="auth-utils.js"></script>
+  <script>
+    function fmtDate(d){ return new Date(d).toLocaleString(); }
+
+    document.addEventListener('DOMContentLoaded', function(){
+      var u = window.Auth && window.Auth.protect ? window.Auth.protect() : null;
+      if (!u) return;
+      document.getElementById('matric').textContent = u.matric || '---';
+      document.getElementById('level').textContent = u.level || '---';
+      document.getElementById('nameInput').value = u.name || '';
+
+      function renderHistory(){
+        var rows = window.Auth.getQuizResults() || [];
+        var list = document.getElementById('historyList');
+        list.innerHTML = '';
+
+        rows.forEach(function(r){
+          var el = document.createElement('div');
+          el.className = 'history-item';
+          el.innerHTML = '<div class="history-line"><strong>' + (r.courseCode || '') + '</strong><span>' + (r.score || 0) + '%</span></div><div class="history-meta">' + fmtDate(r.date) + (r.name ? ' • ' + r.name : '') + '</div>';
+          list.appendChild(el);
+        });
+
+        if (!rows.length) list.innerHTML = '<div class="empty">No quiz history yet.</div>';
+      }
+
+      renderHistory();
+      window.addEventListener('storage', function(e){ if (e.key === 'futo_quiz_results') renderHistory(); });
+    });
+
+    function saveProfile(){
+      var name = document.getElementById('nameInput').value.trim();
+      var s = window.Auth.get();
+      if (!s) return;
+      s.name = name || s.name;
+      window.Auth.set(s);
+      alert('Profile updated');
+    }
+  </script>
+</body>
+</html>
