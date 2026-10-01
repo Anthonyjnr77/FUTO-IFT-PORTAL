@@ -220,7 +220,7 @@ async function handleRequest(request, response) {
         text: `Hello ${user.name},\n\nReset your password using this link:\n${CLIENT_URL}/reset-password.html?token=${reset.token}\n\nThis link expires in 30 minutes. If you did not request this, ignore this email.`
       });
     }
-    return sendJson(response, 200, { message: 'If that email belongs to a lecturer account, a reset link has been sent.' });
+    return sendJson(response, 200, { message: 'If that email belongs to a student or lecturer account, a reset link has been sent.' });
   }
 
   if (request.method === 'POST' && request.url === '/api/auth/reset-password') {
