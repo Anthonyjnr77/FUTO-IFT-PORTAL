@@ -9,6 +9,7 @@ try { nodemailer = require('nodemailer'); } catch { nodemailer = null; }
 const PORT = Number(process.env.PORT || 3000);
 const DATA_DIR = path.join(__dirname, 'data');
 const DATA_FILE = path.join(DATA_DIR, 'db.json');
+const RESET_MARKER_FILE = path.join(DATA_DIR, '.reset-complete');
 const CLIENT_URL = process.env.CLIENT_URL || 'http://localhost:3000';
 const sessions = new Map();
 
@@ -34,6 +35,10 @@ async function sendMail({ to, subject, text }) {
 
 function ensureDatabase() {
   fs.mkdirSync(DATA_DIR, { recursive: true });
+  if (process.env.RESET_DATABASE_ONCE === 'true' && !fs.existsSync(RESET_MARKER_FILE)) {
+    writeDatabase({ users: [], quizResults: [] });
+    fs.writeFileSync(RESET_MARKER_FILE, new Date().toISOString());
+  }
   if (!fs.existsSync(DATA_FILE)) {
     writeDatabase({ users: [], quizResults: [] });
   }
