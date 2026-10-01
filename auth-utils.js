@@ -3,7 +3,7 @@ window.Auth = {
   apiBase: window.FUTO_API_BASE || (
     ((window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') && window.location.protocol !== 'file:')
       ? 'http://localhost:3000/api'
-      : 'https://futo-ift-api.onrender.com/api'
+      : 'https://futo-ift-portal.onrender.com/api'
   ),
 
   request: async function(path, options) {
@@ -130,6 +130,16 @@ window.Auth = {
 
   clearQuizResults: function() {
     localStorage.removeItem('futo_quiz_results');
+  },
+
+  updateNav: function() {
+    var session = this.get();
+    var name = document.getElementById('navName');
+    var matric = document.getElementById('navMatric');
+    if (name) name.textContent = session && session.name ? session.name : 'Student';
+    if (matric) matric.textContent = session && session.matric ? session.matric : '---';
   }
 
 };
+
+window.Auth.updateNav();
