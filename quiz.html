@@ -26,13 +26,15 @@
     @keyframes spin { to { transform: rotate(360deg); } }
 
     /* NAVBAR */
-    .navbar { background: #0b1c3a; position: sticky; top: 0; z-index: 50; height: 56px; display: flex; align-items: center; padding: 0 24px; gap: 12px; box-shadow: 0 2px 12px rgba(0,0,0,.3); }
+    .navbar { position: sticky; top: 0; z-index: 50; background: rgba(11,28,58,.94); backdrop-filter: blur(12px); border-bottom:1px solid rgba(255,255,255,.08); min-height:68px; display:flex; align-items:center; padding:12px 18px; gap:12px; flex-wrap:wrap; box-shadow:0 8px 24px rgba(11,28,58,.18); }
     .nav-back { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 500; color: rgba(255,255,255,.55); text-decoration: none; transition: color .2s; }
     .nav-back:hover { color: #14b8a6; }
     .nav-sep { color: rgba(255,255,255,.15); font-size: 18px; }
     .nav-title { font-size: 14px; font-weight: 700; color: #fff; display: flex; align-items: center; gap: 8px; }
     .nav-spacer { flex: 1; }
-    .nav-secure { font-size: 11px; color: rgba(255,255,255,.3); display: flex; align-items: center; gap: 5px; }
+    .navbar .nav-link { padding:8px 10px; border-radius:9px; font-size:13px; font-weight:600; transition:background .2s ease, color .2s ease; white-space:nowrap; }
+    .navbar .nav-link:hover, .navbar .nav-link[href="quiz.html"] { background:rgba(20,184,166,.12); color:#fff !important; }
+    .nav-secure { font-size: 11px; color: rgba(255,255,255,.3); display: flex; align-items: center; gap: 5px; white-space:nowrap; }
 
     /* PAGES */
     .page { max-width: 860px; margin: 0 auto; padding: 24px 20px; }

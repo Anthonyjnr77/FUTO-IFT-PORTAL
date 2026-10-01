@@ -329,8 +329,6 @@
       var empty = document.getElementById('emptyState');
       grid.innerHTML = '';
 
-      document.getElementById('navCount').textContent = list.length + ' material' + (list.length === 1 ? '' : 's');
-
       if (list.length === 0) {
         empty.style.display = 'block';
         return;
