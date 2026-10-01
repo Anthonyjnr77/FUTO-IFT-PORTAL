@@ -231,12 +231,6 @@
                 <div class="btn-spinner" id="loginSpinner"></div>
               </div>
             </button>
-            <div class="divider"><span>or continue with</span></div>
-            <div class="sso-row">
-              <button class="sso-btn" onclick="handleSSO()">
-                <i class="fas fa-university" style="font-size:12px"></i> Student Portal SSO
-              </button>
-            </div>
             <div class="alert" id="loginAlert"></div>
           </div>
 
@@ -439,6 +433,7 @@
     /* LOADER */
     window.addEventListener('load', function() {
       var loader = document.getElementById('futo-loader');
+      if (!loader) return;
       setTimeout(function() {
         loader.style.opacity = '0';
         loader.style.visibility = 'hidden';
@@ -670,11 +665,6 @@
         setLoading('reg', false);
       });
     });
-
-    /* SSO */
-    function handleSSO() {
-      showAlert('loginAlert', 'Student Portal SSO is coming soon.', 'success');
-    }
 
     /* ENTER KEY */
     document.addEventListener('keydown', function(e) {
