@@ -618,20 +618,7 @@
     });
 
     document.getElementById('studentForgotPassword').addEventListener('click', function() {
-      var email = document.getElementById('regEmail').value.trim();
-      if (!email) {
-        email = window.prompt('Enter the email address used for your student account:') || '';
-        email = email.trim();
-      }
-      if (!email) return;
-      window.Auth.request('/auth/forgot-password', {
-        method: 'POST',
-        body: JSON.stringify({ email: email })
-      }).then(function(result) {
-        showAlert('loginAlert', result.message, 'success');
-      }).catch(function(error) {
-        showAlert('loginAlert', error.message, 'error');
-      });
+      window.location.href = 'forgot-password.html';
     });
 
     /* REGISTER */
@@ -705,19 +692,7 @@
     });
 
     document.getElementById('lecturerForgotPassword').addEventListener('click', function() {
-      var email = document.getElementById('lecturerLoginEmail').value.trim();
-      if (!email) {
-        showAlert('lecturerLoginAlert', 'Enter your lecturer email first.', 'error');
-        return;
-      }
-      window.Auth.request('/auth/forgot-password', {
-        method: 'POST',
-        body: JSON.stringify({ email: email })
-      }).then(function(result) {
-        showAlert('lecturerLoginAlert', result.message, 'success');
-      }).catch(function(error) {
-        showAlert('lecturerLoginAlert', error.message, 'error');
-      });
+      window.location.href = 'forgot-password.html';
     });
 
     /* LECTURER REGISTER */
