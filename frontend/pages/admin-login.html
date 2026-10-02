@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Administrator sign in | FUTO IFT</title>
+  <link rel="stylesheet" href="/assets/css/styles.css">
+  <style>
+    body{min-height:100vh;margin:0;display:grid;place-items:center;background:linear-gradient(135deg,#0b1c3a,#164e63);font-family:Inter,system-ui,sans-serif;color:#0f172a}
+    main{width:min(100% - 32px,440px);padding:28px;background:#fff;border-radius:20px;box-shadow:0 24px 64px #02061755}
+    h1{margin:0 0 8px;color:#0b1c3a}.muted{color:#64748b;font-size:14px;line-height:1.6}
+    label{display:block;margin:18px 0 6px;font-size:13px;font-weight:700}
+    input{width:100%;box-sizing:border-box;padding:12px;border:1px solid #cbd5e1;border-radius:9px;font:inherit}
+    button{width:100%;margin-top:20px;padding:12px;border:0;border-radius:9px;background:#0d9488;color:white;font:inherit;font-weight:700;cursor:pointer}
+    button:disabled{opacity:.6;cursor:wait}.status{min-height:22px;margin-top:12px;color:#b42318;font-size:13px}
+    a{color:#0d9488}
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Administrator sign in</h1>
+    <p class="muted">This private area is for managing portal accounts and learning resources.</p>
+    <form id="loginForm">
+      <label for="username">Administrator username</label>
+      <input id="username" name="username" autocomplete="username" required>
+      <label for="password">Password</label>
+      <input id="password" name="password" type="password" autocomplete="current-password" required>
+      <button id="submitButton" type="submit">Sign in</button>
+      <div id="status" class="status" role="status" aria-live="polite"></div>
+    </form>
+    <p class="muted"><a href="index.html">Return to the student portal</a></p>
+  </main>
+  <script src="/assets/js/api-config.js"></script>
+  <script src="/assets/js/auth-utils.js"></script>
+  <script>
+    document.getElementById('loginForm').addEventListener('submit', async function(event) {
+      event.preventDefault();
+      var button = document.getElementById('submitButton');
+      var status = document.getElementById('status');
+      button.disabled = true;
+      status.textContent = '';
+      try {
+        var result = await window.Auth.request('/auth/login', {
+          method: 'POST',
+          body: JSON.stringify({
+            role: 'admin',
+            username: document.getElementById('username').value.trim(),
+            password: document.getElementById('password').value
+          })
+        });
+        window.Auth.setAdmin({ identifier: result.user.identifier, name: result.user.name, token: result.token });
+        window.location.href = 'admin.html';
+      } catch (error) {
+        status.textContent = error.message;
+      } finally {
+        button.disabled = false;
+      }
+    });
+  </script>
+</body>
+</html>

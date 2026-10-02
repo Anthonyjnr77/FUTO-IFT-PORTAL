@@ -1,0 +1,9 @@
+{
+  "name": "futo-ift/portal-api",
+  "description": "PHP API dependencies for the FUTO IFT learning portal",
+  "type": "project",
+  "require": {
+    "php": ">=8.1",
+    "phpmailer/phpmailer": "^6.10"
+  }
+}

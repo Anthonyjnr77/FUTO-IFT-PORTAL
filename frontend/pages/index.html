@@ -6,7 +6,7 @@
   <title>Login | FUTO IFT Learning Platform</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="/assets/css/styles.css">
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     html { scroll-behavior: smooth; }
@@ -193,9 +193,6 @@
           <button class="tab-btn" id="tabLecturerLogin" onclick="switchTab('lecturer-login')">
             <i class="fas fa-chalkboard-user" style="margin-right:6px;font-size:11px"></i>Lecturer Login
           </button>
-          <button class="tab-btn" id="tabLecturerRegister" onclick="switchTab('lecturer-register')">
-            <i class="fas fa-user-tie" style="margin-right:6px;font-size:11px"></i>Lecturer Register
-          </button>
         </div>
 
         <div class="form-body">
@@ -300,30 +297,26 @@
           </div>
 
           <!-- LECTURER LOGIN -->
-          <div class="form-section" id="lecturerLoginSection">
+          <form class="form-section" id="lecturerLoginSection" autocomplete="on">
             <div class="field">
               <label><i class="fas fa-envelope"></i> Lecturer Email</label>
               <div class="input-wrap">
                 <i class="fas fa-envelope icon"></i>
-                <input type="email" id="lecturerLoginEmail" placeholder="lecturer@example.com" autocomplete="email" />
-              </div>
-            </div>
-            <div class="field">
-              <label><i class="fas fa-user-tie"></i> Lecturer Username</label>
-              <div class="input-wrap">
-                <i class="fas fa-user icon"></i>
-                <input type="text" id="lecturerLoginUser" placeholder="e.g. lecturer" />
+                <input type="email" id="lecturerLoginEmail" name="username" placeholder="lecturer@example.com" autocomplete="username" autocapitalize="none" spellcheck="false" />
               </div>
             </div>
             <div class="field">
               <label><i class="fas fa-lock"></i> Password</label>
               <div class="input-wrap">
                 <i class="fas fa-lock icon"></i>
-                <input type="password" id="lecturerLoginPassword" placeholder="Enter lecturer password" />
+                <input type="password" id="lecturerLoginPassword" name="password" placeholder="Enter lecturer password" autocomplete="current-password" />
                 <span class="toggle-pw" id="lecturerLoginPwToggle"><i class="fas fa-eye"></i></span>
               </div>
             </div>
-            <button class="btn-submit" id="lecturerLoginBtn">
+            <div class="row-extras">
+              <label class="checkbox-label"><input type="checkbox" id="lecturerRememberMe" /> Remember me on this device</label>
+            </div>
+            <button class="btn-submit" id="lecturerLoginBtn" type="submit">
               <div class="btn-inner">
                 <span id="lecturerLoginBtnText">Login as Lecturer</span>
                 <i class="fas fa-arrow-right" id="lecturerLoginArrow"></i>
@@ -332,55 +325,14 @@
             </button>
             <button type="button" class="link" id="lecturerForgotPassword" style="background:none;border:0;cursor:pointer;width:100%;margin-top:14px">Forgot lecturer password?</button>
             <div class="alert" id="lecturerLoginAlert"></div>
-          </div>
-
-          <!-- LECTURER REGISTER -->
-          <div class="form-section" id="lecturerRegisterSection">
-            <div class="field">
-              <label><i class="fas fa-user-tie"></i> Lecturer Name</label>
-              <div class="input-wrap">
-                <i class="fas fa-user icon"></i>
-                <input type="text" id="lecturerRegName" placeholder="e.g. Dr. Ada Okafor" />
-              </div>
-            </div>
-            <div class="field">
-              <label><i class="fas fa-envelope"></i> Lecturer Email</label>
-              <div class="input-wrap">
-                <i class="fas fa-envelope icon"></i>
-                <input type="email" id="lecturerRegEmail" placeholder="lecturer@example.com" autocomplete="email" />
-              </div>
-            </div>
-            <div class="field">
-              <label><i class="fas fa-address-card"></i> Lecturer Username</label>
-              <div class="input-wrap">
-                <i class="fas fa-id-badge icon"></i>
-                <input type="text" id="lecturerRegUser" placeholder="Choose a lecturer username" />
-              </div>
-            </div>
-            <div class="field">
-              <label><i class="fas fa-lock"></i> Password</label>
-              <div class="input-wrap">
-                <i class="fas fa-lock icon"></i>
-                <input type="password" id="lecturerRegPassword" placeholder="Create a secure password" />
-                <span class="toggle-pw" id="lecturerRegPwToggle"><i class="fas fa-eye"></i></span>
-              </div>
-            </div>
-            <button class="btn-submit" id="lecturerRegBtn">
-              <div class="btn-inner">
-                <span id="lecturerRegBtnText">Create Lecturer Account</span>
-                <i class="fas fa-arrow-right" id="lecturerRegArrow"></i>
-                <div class="btn-spinner" id="lecturerRegSpinner"></div>
-              </div>
-            </button>
-            <div class="alert" id="lecturerRegAlert"></div>
-          </div>
+          </form>
 
         </div>
       </div>
 
       <div class="page-footer">
         &copy; <span id="yr"></span> FUTO &mdash; Dept. of Information Technology &nbsp;&bull;&nbsp;
-        <a href="#">Privacy Policy</a> &nbsp;&bull;&nbsp; <a href="#">Help Centre</a>
+        <a href="#">Privacy Policy</a> &nbsp;&bull;&nbsp; <a href="#">Help Centre</a> &nbsp;&bull;&nbsp; <a href="admin-login.html">Administrator</a>
       </div>
 
     </div>
@@ -417,8 +369,8 @@
     </div>
   </div>
 
-  <script src="api-config.js"></script>
-  <script src="auth-utils.js"></script>
+  <script src="/assets/js/api-config.js"></script>
+  <script src="/assets/js/auth-utils.js"></script>
   <script>
     document.getElementById('yr').textContent = new Date().getFullYear();
 
@@ -500,18 +452,17 @@
 
     /* TABS */
     function switchTab(tab) {
-      var tabs = ['student-login', 'student-register', 'lecturer-login', 'lecturer-register'];
+      var tabs = ['student-login', 'student-register', 'lecturer-login'];
       tabs.forEach(function(name) {
         var show = tab === name;
-        var section = document.getElementById(name === 'student-login' ? 'studentLoginSection' : name === 'student-register' ? 'studentRegisterSection' : name === 'lecturer-login' ? 'lecturerLoginSection' : 'lecturerRegisterSection');
+        var section = document.getElementById(name === 'student-login' ? 'studentLoginSection' : name === 'student-register' ? 'studentRegisterSection' : 'lecturerLoginSection');
         section.classList.toggle('active', show);
       });
 
       var tabMap = {
         'student-login': 'tabStudentLogin',
         'student-register': 'tabStudentRegister',
-        'lecturer-login': 'tabLecturerLogin',
-        'lecturer-register': 'tabLecturerRegister'
+        'lecturer-login': 'tabLecturerLogin'
       };
 
       Object.keys(tabMap).forEach(function(key) {
@@ -521,7 +472,7 @@
     document.getElementById('tabStudentLogin').addEventListener('click', function() { switchTab('student-login'); });
     document.getElementById('tabStudentRegister').addEventListener('click', function() { switchTab('student-register'); });
     document.getElementById('tabLecturerLogin').addEventListener('click', function() { switchTab('lecturer-login'); });
-    document.getElementById('tabLecturerRegister').addEventListener('click', function() { switchTab('lecturer-register'); });
+    if (new URLSearchParams(window.location.search).get('tab') === 'lecturer-login') switchTab('lecturer-login');
 
     /* TOGGLE PASSWORD */
     function bindToggle(inputId, toggleId) {
@@ -542,7 +493,6 @@
     bindToggle('loginPassword', 'loginPwToggle');
     bindToggle('regPassword', 'regPwToggle');
     bindToggle('lecturerLoginPassword', 'lecturerLoginPwToggle');
-    bindToggle('lecturerRegPassword', 'lecturerRegPwToggle');
 
     /* MATRIC VALIDATION - format 202XXXXXXXX (11 digits starting with 202) */
     function validateMatric(val) {
@@ -661,14 +611,14 @@
       if (active.id === 'studentLoginSection') document.getElementById('loginBtn').click();
       else if (active.id === 'studentRegisterSection') document.getElementById('regBtn').click();
       else if (active.id === 'lecturerLoginSection') document.getElementById('lecturerLoginBtn').click();
-      else if (active.id === 'lecturerRegisterSection') document.getElementById('lecturerRegBtn').click();
     });
 
     /* LECTURER LOGIN */
-    document.getElementById('lecturerLoginBtn').addEventListener('click', function() {
-      var user = document.getElementById('lecturerLoginUser').value.trim();
+    document.getElementById('lecturerLoginSection').addEventListener('submit', function(event) {
+      event.preventDefault();
       var email = document.getElementById('lecturerLoginEmail').value.trim();
       var pass = document.getElementById('lecturerLoginPassword').value;
+      var rememberMe = document.getElementById('lecturerRememberMe').checked;
       hideAlert('lecturerLoginAlert');
 
       if (!email || !pass) {
@@ -679,9 +629,9 @@
       setLoading('lecturerLogin', true);
       window.Auth.request('/auth/login', {
         method: 'POST',
-        body: JSON.stringify({ role: 'lecturer', username: user, email: email, password: pass })
+        body: JSON.stringify({ role: 'lecturer', email: email, password: pass, rememberMe: rememberMe })
       }).then(function(result) {
-        window.Auth.setLecturer({ user: result.user.identifier, name: result.user.name, token: result.token });
+        window.Auth.setLecturer({ user: result.user.identifier, name: result.user.name, token: result.token, rememberMe: rememberMe });
         showAlert('lecturerLoginAlert', 'Lecturer login successful! Redirecting...', 'success');
         setTimeout(function() { window.location.href = 'lecturer-dashboard.html'; }, 900);
       }).catch(function(error) {
@@ -693,38 +643,6 @@
 
     document.getElementById('lecturerForgotPassword').addEventListener('click', function() {
       window.location.href = 'forgot-password.html';
-    });
-
-    /* LECTURER REGISTER */
-    document.getElementById('lecturerRegBtn').addEventListener('click', function() {
-      var name = document.getElementById('lecturerRegName').value.trim();
-      var user = document.getElementById('lecturerRegUser').value.trim();
-      var email = document.getElementById('lecturerRegEmail').value.trim();
-      var pass = document.getElementById('lecturerRegPassword').value;
-      hideAlert('lecturerRegAlert');
-
-      if (!name || !user || !email || !pass) {
-        showAlert('lecturerRegAlert', 'Please fill in your name, username, email and password.', 'error');
-        return;
-      }
-      if (pass.length < 6) {
-        showAlert('lecturerRegAlert', 'Lecturer password must be at least 6 characters.', 'error');
-        return;
-      }
-
-      setLoading('lecturerReg', true);
-      window.Auth.request('/auth/register', {
-        method: 'POST',
-        body: JSON.stringify({ role: 'lecturer', name: name, username: user, email: email, password: pass })
-      }).then(function(result) {
-        window.Auth.setLecturer({ user: result.user.identifier, name: result.user.name, token: result.token });
-        showAlert('lecturerRegAlert', 'Lecturer account created successfully! Redirecting...', 'success');
-        setTimeout(function() { window.location.href = 'lecturer-dashboard.html'; }, 900);
-      }).catch(function(error) {
-        showAlert('lecturerRegAlert', error.message, 'error');
-      }).finally(function() {
-        setLoading('lecturerReg', false);
-      });
     });
 
     /* AI PANEL */

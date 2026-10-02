@@ -9,7 +9,7 @@ window.Auth = {
   request: async function(path, options) {
     var config = options || {};
     config.headers = Object.assign({ 'Content-Type': 'application/json' }, config.headers || {});
-    var token = localStorage.getItem('futo_token');
+    var token = localStorage.getItem('futo_token') || sessionStorage.getItem('futo_token');
     if (token) config.headers.Authorization = 'Bearer ' + token;
     var response = await fetch(this.apiBase + path, config);
     var body = await response.json();
@@ -27,6 +27,11 @@ window.Auth = {
       isLoggedIn: true,
       loginTime: new Date().toISOString()
     };
+    localStorage.removeItem('futo_lecturer');
+    sessionStorage.removeItem('futo_lecturer');
+    localStorage.removeItem('futo_admin');
+    sessionStorage.removeItem('futo_admin');
+    sessionStorage.removeItem('futo_token');
     if (user.token) localStorage.setItem('futo_token', user.token);
     localStorage.setItem('futo_session', JSON.stringify(data));
   },
@@ -45,12 +50,47 @@ window.Auth = {
       isLoggedIn: true,
       loginTime: new Date().toISOString()
     };
-    if (user.token) localStorage.setItem('futo_token', user.token);
-    localStorage.setItem('futo_lecturer', JSON.stringify(data));
+    localStorage.removeItem('futo_session');
+    localStorage.removeItem('futo_lecturer');
+    localStorage.removeItem('futo_token');
+    localStorage.removeItem('futo_admin');
+    sessionStorage.removeItem('futo_lecturer');
+    sessionStorage.removeItem('futo_token');
+    sessionStorage.removeItem('futo_admin');
+    var storage = user.rememberMe ? localStorage : sessionStorage;
+    if (user.token) storage.setItem('futo_token', user.token);
+    storage.setItem('futo_lecturer', JSON.stringify(data));
   },
 
   getLecturer: function() {
-    var s = localStorage.getItem('futo_lecturer');
+    var s = sessionStorage.getItem('futo_lecturer') || localStorage.getItem('futo_lecturer');
+    if (!s) return null;
+    try { return JSON.parse(s); } catch(e) { return null; }
+  },
+
+  setAdmin: function(user) {
+    var data = {
+      id: user.id || '',
+      identifier: user.identifier || '',
+      name: user.name || 'Administrator',
+      role: 'admin',
+      isLoggedIn: true,
+      loginTime: new Date().toISOString()
+    };
+    localStorage.removeItem('futo_session');
+    localStorage.removeItem('futo_lecturer');
+    localStorage.removeItem('futo_admin');
+    localStorage.removeItem('futo_token');
+    sessionStorage.removeItem('futo_session');
+    sessionStorage.removeItem('futo_lecturer');
+    sessionStorage.removeItem('futo_admin');
+    sessionStorage.removeItem('futo_token');
+    if (user.token) sessionStorage.setItem('futo_token', user.token);
+    sessionStorage.setItem('futo_admin', JSON.stringify(data));
+  },
+
+  getAdmin: function() {
+    var s = sessionStorage.getItem('futo_admin');
     if (!s) return null;
     try { return JSON.parse(s); } catch(e) { return null; }
   },
@@ -67,19 +107,48 @@ window.Auth = {
   },
 
   protectLecturer: function() {
+    var student = this.get();
+    if (student && student.isLoggedIn) {
+      window.location.href = 'dashboard.html';
+      return null;
+    }
     var lecturer = this.getLecturer();
-    if (!lecturer || !lecturer.isLoggedIn) {
-      window.location.href = 'index.html';
+    if (!lecturer || !lecturer.isLoggedIn || lecturer.role !== 'lecturer') {
+      window.location.href = 'lecturer-login.html';
       return null;
     }
     return lecturer;
   },
 
+  protectAdmin: function() {
+    var admin = this.getAdmin();
+    if (admin && admin.isLoggedIn && admin.role === 'admin') return admin;
+    var student = this.get();
+    var lecturer = this.getLecturer();
+    window.location.href = student && student.isLoggedIn
+      ? 'dashboard.html'
+      : lecturer && lecturer.isLoggedIn ? 'lecturer-dashboard.html' : 'admin-login.html';
+    return null;
+  },
+
   logout: function() {
-    localStorage.removeItem('futo_session');
-    localStorage.removeItem('futo_lecturer');
-    localStorage.removeItem('futo_token');
-    window.location.href = 'index.html';
+    var self = this;
+    var clearSession = function() {
+      localStorage.removeItem('futo_session');
+      localStorage.removeItem('futo_lecturer');
+      localStorage.removeItem('futo_admin');
+      localStorage.removeItem('futo_token');
+      sessionStorage.removeItem('futo_session');
+      sessionStorage.removeItem('futo_lecturer');
+      sessionStorage.removeItem('futo_admin');
+      sessionStorage.removeItem('futo_token');
+      window.location.href = 'index.html';
+    };
+    if (!localStorage.getItem('futo_token') && !sessionStorage.getItem('futo_token')) {
+      clearSession();
+      return;
+    }
+    self.request('/auth/logout', { method: 'POST' }).catch(function() {}).finally(clearSession);
   },
 
   saveQuiz: function(courseCode, score) {
@@ -136,7 +205,8 @@ window.Auth = {
     var session = this.get();
     var name = document.getElementById('navName');
     var matric = document.getElementById('navMatric');
-    if (name) name.textContent = session && session.name ? session.name : 'Student';
+    var firstName = session && session.name ? session.name.trim().split(/\s+/)[0] : 'Student';
+    if (name) name.textContent = firstName;
     if (matric) matric.textContent = session && session.matric ? session.matric : '---';
   }
 

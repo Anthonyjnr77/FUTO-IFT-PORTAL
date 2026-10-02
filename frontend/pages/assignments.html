@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Assignments | FUTO IFT</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+  <link rel="stylesheet" href="/assets/css/styles.css" />
+  <style>
+    :root { --ink:#0b1c3a; --teal:#0d9488; --paper:#f0f4f8; --muted:#64748b; --line:#e2e8f0; }
+    body { margin:0; background:var(--paper); color:#1e293b; font-family:Inter,system-ui,sans-serif; }
+    .navbar { position:sticky;top:0;z-index:5;background:rgba(11,28,58,.96);display:flex;align-items:center;gap:16px;padding:12px 20px;min-height:48px; }
+    .nav-links { display:flex;gap:8px;flex-wrap:wrap;margin-right:auto; }
+    .nav-links a { color:rgba(255,255,255,.75);padding:8px 10px;border-radius:8px;text-decoration:none;font-size:13px;font-weight:600; }
+    .nav-links a:hover,.nav-links a.active { color:#fff;background:rgba(20,184,166,.16); }
+    .nav-welcome { color:rgba(255,255,255,.65);font-size:12px; }
+    .nav-welcome strong { color:#fff; }
+    .nav-logout { border:0;background:none;color:rgba(255,255,255,.65);cursor:pointer; }
+    main { max-width:980px;margin:0 auto;padding:32px 20px 56px; }
+    .page-heading { display:flex;align-items:flex-end;justify-content:space-between;gap:16px;margin-bottom:22px; }
+    h1 { color:var(--ink);font-size:26px;margin:0 0 5px; }
+    .page-heading p { margin:0;color:var(--muted);font-size:14px; }
+    .refresh { border:1px solid var(--line);background:#fff;border-radius:8px;padding:9px 12px;color:var(--ink);cursor:pointer; }
+    .notice { display:none;margin:0 0 16px;padding:12px 14px;border-radius:8px;font-size:13px; }
+    .notice.show { display:block; }
+    .notice.error { color:#991b1b;background:#fef2f2;border:1px solid #fecaca; }
+    .notice.success { color:#166534;background:#f0fdf4;border:1px solid #bbf7d0; }
+    .assignment-list { display:grid;gap:14px; }
+    .assignment { background:#fff;border:1px solid var(--line);border-radius:10px;padding:20px;box-shadow:0 2px 8px rgba(15,23,42,.04); }
+    .assignment-top { display:flex;justify-content:space-between;gap:14px;align-items:flex-start; }
+    .course-code { color:var(--teal);font-weight:800;font-size:12px;text-transform:uppercase; }
+    .assignment h2 { margin:5px 0 7px;color:var(--ink);font-size:18px; }
+    .due { color:var(--muted);font-size:12px;text-align:right; }
+    .description { white-space:pre-wrap;line-height:1.6;color:#334155;font-size:14px;margin:12px 0; }
+    .state { display:inline-flex;align-items:center;gap:6px;border-radius:20px;background:#f1f5f9;color:#475569;padding:5px 9px;font-size:11px;font-weight:700;white-space:nowrap; }
+    .state.submitted { background:#e1f5ee;color:#0f6e56; }
+    .state.late { background:#fff7ed;color:#9a3412; }
+    .state.graded { background:#e6f1fb;color:#1d4ed8; }
+    .response-form { border-top:1px solid #eef2f7;margin-top:14px;padding-top:14px; }
+    .response-form label { display:block;font-size:12px;font-weight:700;color:var(--ink);margin-bottom:7px; }
+    textarea { display:block;width:100%;min-height:110px;resize:vertical;border:1px solid var(--line);border-radius:8px;padding:11px 12px;font:inherit;font-size:13px;line-height:1.5; }
+    textarea:focus { outline:2px solid rgba(13,148,136,.22);border-color:var(--teal); }
+    .submit-row { display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:10px; }
+    .submit-button { border:0;border-radius:8px;background:var(--teal);color:#fff;padding:10px 14px;font-weight:700;cursor:pointer; }
+    .submit-button:disabled { opacity:.55;cursor:not-allowed; }
+    .grade-result { margin-top:12px;padding:12px;background:#f8fafc;border-left:3px solid #378add;border-radius:4px;font-size:13px; }
+    .empty { background:#fff;border:1px dashed #cbd5e1;border-radius:10px;padding:30px;color:var(--muted);text-align:center; }
+    @media(max-width:640px) { .navbar { padding:10px 12px; }.nav-links { width:100%; }.nav-welcome { display:none; } main { padding:22px 12px 40px; }.page-heading { align-items:flex-start; }.assignment-top { flex-direction:column; }.due { text-align:left; }.submit-row { align-items:flex-start;flex-direction:column; } }
+  </style>
+</head>
+<body>
+  <nav class="navbar">
+    <div class="nav-links">
+      <a href="dashboard.html">Home</a>
+      <a href="my-courses.html">My Courses</a>
+      <a href="profile.html">Profile</a>
+      <a href="course-materials.html">Materials</a>
+      <a href="quiz.html">Quiz</a>
+      <a href="assignments.html" class="active">Assignments</a>
+      <a href="code-editor.html">Code Lab</a>
+      <a href="timetable.html">Timetable</a>
+      <a href="notifications.html">Notifications</a>
+      <a href="leaderboard.html">Leaderboard</a>
+    </div>
+    <span class="nav-welcome">Welcome, <strong id="navName">Student</strong></span>
+    <button class="nav-logout" type="button" onclick="window.Auth.logout()"><i class="fas fa-sign-out-alt"></i> Logout</button>
+  </nav>
+  <main>
+    <header class="page-heading">
+      <div><h1>Assignments</h1><p>Review your coursework, submit responses, and check feedback.</p></div>
+      <button class="refresh" id="refreshButton" type="button" title="Refresh assignments"><i class="fas fa-rotate"></i></button>
+    </header>
+    <div id="notice" class="notice" role="status" aria-live="polite"></div>
+    <section id="assignmentList" class="assignment-list" aria-live="polite"></section>
+  </main>
+  <script src="/assets/js/api-config.js"></script>
+  <script src="/assets/js/auth-utils.js"></script>
+  <script>
+    var currentUser = window.Auth.protect();
+    var listElement = document.getElementById('assignmentList');
+    var noticeElement = document.getElementById('notice');
+
+    if (currentUser && currentUser.role === 'lecturer') window.location.href = 'lecturer-assignments.html';
+    if (currentUser && currentUser.role === 'student') {
+      document.getElementById('navName').textContent = currentUser.name || 'Student';
+      loadAssignments();
+    }
+
+    function showNotice(message, kind) {
+      noticeElement.textContent = message;
+      noticeElement.className = 'notice show ' + kind;
+    }
+
+    function makeElement(tag, className, text) {
+      var element = document.createElement(tag);
+      if (className) element.className = className;
+      if (text !== undefined) element.textContent = text;
+      return element;
+    }
+
+    function formatDate(value) {
+      return new Date(value).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' });
+    }
+
+    async function loadAssignments() {
+      listElement.replaceChildren(makeElement('div', 'empty', 'Loading assignments...'));
+      noticeElement.className = 'notice';
+      try {
+        var result = await window.Auth.request('/assignments');
+        renderAssignments(result.assignments || []);
+      } catch (error) {
+        listElement.replaceChildren(makeElement('div', 'empty', 'Assignments could not be loaded.'));
+        showNotice(error.message, 'error');
+      }
+    }
+
+    function renderAssignments(assignments) {
+      listElement.replaceChildren();
+      if (!assignments.length) {
+        listElement.appendChild(makeElement('div', 'empty', 'No assignments have been posted yet.'));
+        return;
+      }
+      assignments.forEach(function(assignment) {
+        var card = makeElement('article', 'assignment');
+        var top = makeElement('div', 'assignment-top');
+        var titleGroup = makeElement('div');
+        titleGroup.appendChild(makeElement('div', 'course-code', assignment.courseCode));
+        titleGroup.appendChild(makeElement('h2', '', assignment.title));
+        var stateText = assignment.submission ? (assignment.submission.grade !== undefined ? 'Graded' : 'Submitted') : 'Not submitted';
+        var state = makeElement('span', 'state' + (stateText === 'Graded' ? ' graded' : stateText === 'Submitted' ? ' submitted' : ''));
+        state.textContent = stateText;
+        top.append(titleGroup, state);
+        card.appendChild(top);
+        card.appendChild(makeElement('div', 'due', 'Due ' + formatDate(assignment.dueAt) + (assignment.lecturerName ? ' · ' + assignment.lecturerName : '')));
+        card.appendChild(makeElement('p', 'description', assignment.description));
+
+        var form = makeElement('form', 'response-form');
+        var label = makeElement('label', '', 'Your response');
+        var textarea = makeElement('textarea');
+        textarea.required = true;
+        textarea.maxLength = 10000;
+        textarea.value = assignment.submission ? assignment.submission.response : '';
+        textarea.placeholder = 'Write your response here (up to 10,000 characters).';
+        label.appendChild(textarea);
+        var row = makeElement('div', 'submit-row');
+        var button = makeElement('button', 'submit-button', assignment.submission ? 'Update response' : 'Submit response');
+        button.type = 'submit';
+        button.disabled = !!(assignment.submission && assignment.submission.grade !== undefined);
+        row.appendChild(button);
+        if (assignment.submission) {
+          row.appendChild(makeElement('span', 'due', 'Last submitted ' + formatDate(assignment.submission.submittedAt) + (assignment.submission.late ? ' · Late' : '')));
+        }
+        form.append(label, row);
+        form.addEventListener('submit', async function(event) {
+          event.preventDefault();
+          button.disabled = true;
+          try {
+            await window.Auth.request('/assignments/' + encodeURIComponent(assignment.id) + '/submissions', {
+              method: 'POST',
+              body: JSON.stringify({ response: textarea.value })
+            });
+            showNotice('Your response has been saved.', 'success');
+            await loadAssignments();
+          } catch (error) {
+            showNotice(error.message, 'error');
+            button.disabled = false;
+          }
+        });
+        card.appendChild(form);
+        if (assignment.submission && assignment.submission.grade !== undefined) {
+          var grade = makeElement('div', 'grade-result');
+          grade.appendChild(makeElement('strong', '', 'Grade: ' + assignment.submission.grade + '/100'));
+          if (assignment.submission.feedback) grade.appendChild(makeElement('p', '', assignment.submission.feedback));
+          card.appendChild(grade);
+        }
+        listElement.appendChild(card);
+      });
+    }
+
+    document.getElementById('refreshButton').addEventListener('click', loadAssignments);
+  </script>
+  <script src="/assets/js/student-chat-widget.js"></script>
+</body>
+</html>

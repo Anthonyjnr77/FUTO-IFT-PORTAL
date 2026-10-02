@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Manage Assignments | FUTO IFT</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+  <link rel="stylesheet" href="/assets/css/styles.css" />
+  <style>
+    :root { --ink:#0b1c3a; --teal:#0d9488; --paper:#f0f4f8; --muted:#64748b; --line:#e2e8f0; }
+    body { margin:0;background:var(--paper);color:#1e293b;font-family:Inter,system-ui,sans-serif; }
+    .navbar { position:sticky;top:0;z-index:5;background:rgba(11,28,58,.96);display:flex;align-items:center;gap:16px;padding:12px 20px;min-height:48px; }
+    .nav-links { display:flex;gap:8px;flex-wrap:wrap;margin-right:auto; }
+    .nav-links a { color:rgba(255,255,255,.75);padding:8px 10px;border-radius:8px;text-decoration:none;font-size:13px;font-weight:600; }
+    .nav-links a:hover,.nav-links a.active { color:#fff;background:rgba(20,184,166,.16); }
+    .nav-logout { border:0;background:none;color:rgba(255,255,255,.65);cursor:pointer; }
+    main { max-width:1100px;margin:0 auto;padding:30px 20px 56px; }
+    h1 { margin:0 0 5px;color:var(--ink);font-size:26px; }
+    .intro { margin:0 0 22px;color:var(--muted);font-size:14px; }
+    .layout { display:grid;grid-template-columns:minmax(280px,.8fr) minmax(0,1.2fr);gap:18px;align-items:start; }
+    .panel { background:#fff;border:1px solid var(--line);border-radius:10px;overflow:hidden; }
+    .panel-head { padding:16px 18px;border-bottom:1px solid #eef2f7; }
+    .panel-head h2 { margin:0;color:var(--ink);font-size:16px; }
+    .panel-body { padding:18px; }
+    .field { margin-bottom:14px; }
+    .field label { display:block;margin-bottom:6px;color:#334155;font-size:12px;font-weight:700; }
+    input,textarea { width:100%;border:1px solid var(--line);border-radius:8px;padding:10px 11px;font:inherit;font-size:13px; }
+    textarea { resize:vertical;min-height:100px;line-height:1.5; }
+    input:focus,textarea:focus { outline:2px solid rgba(13,148,136,.2);border-color:var(--teal); }
+    .primary { border:0;border-radius:8px;background:var(--teal);color:#fff;padding:10px 14px;font-weight:700;cursor:pointer; }
+    .primary:disabled { opacity:.6;cursor:wait; }
+    .notice { display:none;margin-bottom:16px;padding:11px 13px;border-radius:8px;font-size:13px; }
+    .notice.show { display:block; }.notice.error { color:#991b1b;background:#fef2f2;border:1px solid #fecaca; }.notice.success { color:#166534;background:#f0fdf4;border:1px solid #bbf7d0; }
+    .assignment-list,.submission-list { display:grid;gap:10px; }
+    .assignment-button { display:block;width:100%;text-align:left;padding:13px 14px;border:1px solid var(--line);border-radius:8px;background:#fff;cursor:pointer; }
+    .assignment-button:hover,.assignment-button.active { border-color:var(--teal);background:#f0fdf9; }
+    .assignment-button strong { display:block;color:var(--ink);font-size:14px; }
+    .assignment-meta { display:block;color:var(--muted);font-size:11px;margin-top:5px; }
+    .empty { color:var(--muted);padding:16px;border:1px dashed #cbd5e1;border-radius:8px;font-size:13px; }
+    .submission { border:1px solid var(--line);border-radius:8px;padding:14px; }
+    .submission-top { display:flex;justify-content:space-between;gap:12px;align-items:flex-start; }
+    .submission-top strong { color:var(--ink);font-size:13px; }
+    .submission-top span,.response-meta { color:var(--muted);font-size:11px; }
+    .response-text { white-space:pre-wrap;line-height:1.55;font-size:13px;color:#334155;margin:12px 0;overflow-wrap:anywhere; }
+    .grade-form { border-top:1px solid #eef2f7;padding-top:12px;display:grid;grid-template-columns:100px 1fr auto;gap:8px;align-items:end; }
+    .grade-form label { display:block;font-size:11px;font-weight:700;color:#475569;margin-bottom:5px; }
+    .grade-form textarea { min-height:42px; }
+    .grade-form input { height:42px; }
+    @media(max-width:800px) { .layout { grid-template-columns:1fr; } }
+    @media(max-width:520px) { .navbar { padding:10px 12px; }.nav-links { width:100%; } main { padding:22px 12px 40px; }.grade-form { grid-template-columns:1fr; } }
+  </style>
+</head>
+<body>
+  <nav class="navbar">
+    <div class="nav-links">
+      <a href="lecturer-dashboard.html">Dashboard</a>
+      <a href="lecturer-rosters.html">Course rosters</a>
+      <a href="lecturer-quizzes.html">Quizzes</a>
+      <a href="lecturer-timetable.html">Timetable</a>
+      <a href="lecturer-assignments.html" class="active">Assignments</a>
+    </div>
+    <button class="nav-logout" type="button" onclick="window.Auth.logout()"><i class="fas fa-sign-out-alt"></i> Logout</button>
+  </nav>
+  <main>
+    <h1>Assignments</h1>
+    <p class="intro">Publish coursework, review student responses, and return grades with feedback.</p>
+    <div id="notice" class="notice" role="status" aria-live="polite"></div>
+    <div class="layout">
+      <section class="panel">
+        <div class="panel-head"><h2>Create assignment</h2></div>
+        <div class="panel-body">
+          <form id="assignmentForm">
+            <div class="field"><label for="courseId">Course</label><select id="courseId" required><option value="">Loading courses...</option></select></div>
+            <div class="field"><label for="title">Title</label><input id="title" required minlength="3" maxlength="120" placeholder="Assignment title" /></div>
+            <div class="field"><label for="description">Instructions</label><textarea id="description" required maxlength="5000" placeholder="Describe the work students should complete."></textarea></div>
+            <div class="field"><label for="dueAt">Due date and time</label><input id="dueAt" type="datetime-local" required /></div>
+            <button id="createButton" class="primary" type="submit">Publish assignment</button>
+          </form>
+        </div>
+      </section>
+      <div style="display:grid;gap:18px">
+        <section class="panel">
+          <div class="panel-head"><h2>Your assignments</h2></div>
+          <div class="panel-body"><div id="assignmentList" class="assignment-list"></div></div>
+        </section>
+        <section class="panel">
+          <div class="panel-head"><h2 id="submissionHeading">Submissions</h2></div>
+          <div class="panel-body"><div id="submissionList" class="submission-list"><div class="empty">Choose an assignment to review its submissions.</div></div></div>
+        </section>
+      </div>
+    </div>
+  </main>
+  <script src="/assets/js/api-config.js"></script>
+  <script src="/assets/js/auth-utils.js"></script>
+  <script>
+    var lecturer = window.Auth.protectLecturer();
+    var noticeElement = document.getElementById('notice');
+    var assignmentList = document.getElementById('assignmentList');
+    var submissionList = document.getElementById('submissionList');
+    var courseSelect = document.getElementById('courseId');
+    var selectedAssignment = null;
+
+    if (lecturer) { loadAssignments(); loadCourses(); }
+
+    function makeElement(tag, className, text) {
+      var element = document.createElement(tag);
+      if (className) element.className = className;
+      if (text !== undefined) element.textContent = text;
+      return element;
+    }
+
+    function showNotice(message, kind) {
+      noticeElement.textContent = message;
+      noticeElement.className = 'notice show ' + kind;
+    }
+
+    function formatDate(value) {
+      return new Date(value).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' });
+    }
+
+    async function loadCourses() {
+      try {
+        var result = await window.Auth.request('/lecturer/courses');
+        courseSelect.replaceChildren(new Option(result.courses.length ? 'Select a course' : 'Add a course to your timetable first', ''));
+        result.courses.forEach(function(course) {
+          courseSelect.appendChild(new Option(course.courseCode + ' · ' + course.courseTitle, course.id));
+        });
+        document.getElementById('createButton').disabled = result.courses.length === 0;
+      } catch (error) {
+        courseSelect.replaceChildren(new Option('Could not load courses', ''));
+        document.getElementById('createButton').disabled = true;
+        showNotice(error.message, 'error');
+      }
+    }
+
+    async function loadAssignments() {
+      assignmentList.replaceChildren(makeElement('div', 'empty', 'Loading assignments...'));
+      try {
+        var result = await window.Auth.request('/assignments');
+        renderAssignments(result.assignments || []);
+      } catch (error) {
+        assignmentList.replaceChildren(makeElement('div', 'empty', 'Assignments could not be loaded.'));
+        showNotice(error.message, 'error');
+      }
+    }
+
+    function renderAssignments(assignments) {
+      assignmentList.replaceChildren();
+      if (!assignments.length) {
+        assignmentList.appendChild(makeElement('div', 'empty', 'No assignments published yet.'));
+        return;
+      }
+      assignments.forEach(function(assignment) {
+        var button = makeElement('button', 'assignment-button' + (selectedAssignment === assignment.id ? ' active' : ''));
+        button.type = 'button';
+        button.appendChild(makeElement('strong', '', assignment.courseCode + ' · ' + assignment.title));
+        button.appendChild(makeElement('span', 'assignment-meta', 'Due ' + formatDate(assignment.dueAt) + ' · ' + assignment.submissionCount + ' submission' + (assignment.submissionCount === 1 ? '' : 's')));
+        button.addEventListener('click', function() { loadSubmissions(assignment); });
+        assignmentList.appendChild(button);
+      });
+    }
+
+    async function loadSubmissions(assignment) {
+      selectedAssignment = assignment.id;
+      document.getElementById('submissionHeading').textContent = 'Submissions · ' + assignment.courseCode;
+      submissionList.replaceChildren(makeElement('div', 'empty', 'Loading submissions...'));
+      try {
+        var result = await window.Auth.request('/assignments/' + encodeURIComponent(assignment.id) + '/submissions');
+        renderAssignments((await window.Auth.request('/assignments')).assignments || []);
+        renderSubmissions(assignment, result.submissions || []);
+      } catch (error) {
+        submissionList.replaceChildren(makeElement('div', 'empty', 'Submissions could not be loaded.'));
+        showNotice(error.message, 'error');
+      }
+    }
+
+    function renderSubmissions(assignment, submissions) {
+      submissionList.replaceChildren();
+      if (!submissions.length) {
+        submissionList.appendChild(makeElement('div', 'empty', 'No students have submitted this assignment yet.'));
+        return;
+      }
+      submissions.forEach(function(submission) {
+        var card = makeElement('article', 'submission');
+        var top = makeElement('div', 'submission-top');
+        top.appendChild(makeElement('strong', '', submission.studentName + ' · ' + submission.studentIdentifier));
+        top.appendChild(makeElement('span', '', (submission.late ? 'Late · ' : '') + 'Submitted ' + formatDate(submission.submittedAt)));
+        card.appendChild(top);
+        card.appendChild(makeElement('p', 'response-text', submission.response));
+        var form = makeElement('form', 'grade-form');
+        var gradeField = makeElement('div');
+        gradeField.appendChild(makeElement('label', '', 'Grade / 100'));
+        var gradeInput = makeElement('input');
+        gradeInput.type = 'number';
+        gradeInput.min = '0';
+        gradeInput.max = '100';
+        gradeInput.step = '0.01';
+        gradeInput.required = true;
+        gradeInput.value = submission.grade === undefined ? '' : submission.grade;
+        gradeField.appendChild(gradeInput);
+        var feedbackField = makeElement('div');
+        feedbackField.appendChild(makeElement('label', '', 'Feedback'));
+        var feedbackInput = makeElement('textarea');
+        feedbackInput.maxLength = 3000;
+        feedbackInput.placeholder = 'Feedback for the student';
+        feedbackInput.value = submission.feedback || '';
+        feedbackField.appendChild(feedbackInput);
+        var save = makeElement('button', 'primary', submission.grade === undefined ? 'Save grade' : 'Update grade');
+        save.type = 'submit';
+        form.append(gradeField, feedbackField, save);
+        form.addEventListener('submit', async function(event) {
+          event.preventDefault();
+          save.disabled = true;
+          try {
+            await window.Auth.request('/assignments/' + encodeURIComponent(assignment.id) + '/submissions/' + encodeURIComponent(submission.id) + '/grade', {
+              method: 'POST',
+              body: JSON.stringify({ grade: gradeInput.value, feedback: feedbackInput.value })
+            });
+            showNotice('Grade saved and made visible to the student.', 'success');
+            await loadSubmissions(assignment);
+          } catch (error) {
+            showNotice(error.message, 'error');
+            save.disabled = false;
+          }
+        });
+        card.appendChild(form);
+        submissionList.appendChild(card);
+      });
+    }
+
+    document.getElementById('assignmentForm').addEventListener('submit', async function(event) {
+      event.preventDefault();
+      var button = document.getElementById('createButton');
+      button.disabled = true;
+      try {
+        var dueAt = new Date(document.getElementById('dueAt').value);
+        await window.Auth.request('/assignments', {
+          method: 'POST',
+          body: JSON.stringify({
+            courseId: courseSelect.value,
+            title: document.getElementById('title').value,
+            description: document.getElementById('description').value,
+            dueAt: dueAt.toISOString()
+          })
+        });
+        event.target.reset();
+        selectedAssignment = null;
+        submissionList.replaceChildren(makeElement('div', 'empty', 'Choose an assignment to review its submissions.'));
+        showNotice('Assignment published for students.', 'success');
+        await loadAssignments();
+      } catch (error) {
+        showNotice(error.message || 'Please check the due date and try again.', 'error');
+      } finally {
+        button.disabled = false;
+      }
+    });
+  </script>
+</body>
+</html>

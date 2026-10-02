@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Leaderboard | FUTO IFT</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
-  <link rel="stylesheet" href="styles.css" />
+  <link rel="stylesheet" href="/assets/css/styles.css" />
   <style>
     :root {
       --primary: #0b1c3a;
@@ -158,9 +158,11 @@
   <nav class="navbar">
     <div class="nav-links">
       <a href="dashboard.html">Home</a>
+      <a href="my-courses.html">My Courses</a>
       <a href="profile.html">Profile</a>
       <a href="course-materials.html">Materials</a>
       <a href="quiz.html">Quiz</a>
+      <a href="assignments.html">Assignments</a>
       <a href="code-editor.html">Code Lab</a>
       <a href="timetable.html">Timetable</a>
       <a href="notifications.html">Notifications</a>
@@ -187,8 +189,8 @@
     </section>
   </main>
 
-  <script src="api-config.js"></script>
-  <script src="auth-utils.js"></script>
+  <script src="/assets/js/api-config.js"></script>
+  <script src="/assets/js/auth-utils.js"></script>
   <script>
     function render(){
       var list = window.Auth ? window.Auth.getLeaderboard(20) : [];
@@ -214,5 +216,6 @@
     document.addEventListener('DOMContentLoaded', render);
     window.addEventListener('storage', function(e){ if (e.key === 'futo_quiz_results') render(); });
   </script>
+  <script src="/assets/js/student-chat-widget.js"></script>
 </body>
 </html>

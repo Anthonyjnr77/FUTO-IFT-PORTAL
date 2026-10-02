@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Teaching Timetable | FUTO IFT</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+  <link rel="stylesheet" href="/assets/css/styles.css" />
+  <style>
+    :root { --ink:#0b1c3a; --teal:#0d9488; --paper:#f0f4f8; --muted:#64748b; --line:#e2e8f0; }
+    body { margin:0;background:var(--paper);color:#1e293b;font-family:Inter,system-ui,sans-serif; }
+    .navbar { position:sticky;top:0;z-index:5;background:rgba(11,28,58,.96);display:flex;align-items:center;gap:16px;padding:12px 20px;min-height:48px; }
+    .nav-links { display:flex;gap:8px;flex-wrap:wrap;margin-right:auto; }
+    .nav-links a { color:rgba(255,255,255,.75);padding:8px 10px;border-radius:8px;text-decoration:none;font-size:13px;font-weight:600; }
+    .nav-links a:hover,.nav-links a.active { color:#fff;background:rgba(20,184,166,.16); }
+    .nav-logout { border:0;background:none;color:rgba(255,255,255,.65);cursor:pointer; }
+    main { max-width:1100px;margin:0 auto;padding:30px 20px 56px; }
+    h1 { margin:0 0 5px;color:var(--ink);font-size:26px; }
+    .intro { margin:0 0 22px;color:var(--muted);font-size:14px; }
+    .panel { background:#fff;border:1px solid var(--line);border-radius:10px;overflow:hidden; }
+    .panel-head { padding:16px 18px;border-bottom:1px solid #eef2f7; }
+    .panel-head h2 { margin:0;color:var(--ink);font-size:16px; }
+    .panel-body { padding:18px; }
+    .day-header { display:flex;align-items:center;justify-content:space-between;gap:20px;margin-bottom:20px; }
+    .day-title { margin:0;color:var(--ink);font-size:26px; }
+    .day-caption { color:var(--muted);font-size:13px;margin:5px 0 0; }
+    .date-controls { display:flex;align-items:center;gap:8px; }
+    .date-controls input { width:auto;min-width:150px; }
+    .icon-button,.today-button { height:40px;border:1px solid var(--line);border-radius:8px;background:#fff;color:var(--ink);cursor:pointer;padding:0 12px; }
+    .today-button { color:var(--teal);font-weight:700; }
+    .schedule-heading { display:flex;align-items:center;justify-content:space-between;gap:12px; }
+    .schedule-count { color:var(--muted);font-size:12px; }
+    .schedule-list { display:grid;gap:10px; }
+    .schedule-item { display:grid;grid-template-columns:150px 1fr auto;gap:16px;align-items:center;padding:16px;border:1px solid var(--line);border-radius:8px;background:#fff; }
+    .schedule-time { color:var(--teal);font-size:14px;font-weight:800;white-space:nowrap;font-variant-numeric:tabular-nums; }
+    .schedule-item strong { display:block;color:var(--ink);font-size:15px; }
+    .meta { display:block;color:var(--muted);font-size:12px;margin-top:5px; }
+    .level { color:#475569;font-size:11px;white-space:nowrap; }
+    .manage { margin-top:18px;background:#fff;border:1px solid var(--line);border-radius:10px; }
+    .manage summary { color:var(--ink);padding:15px 18px;font-weight:700;font-size:13px;cursor:pointer; }
+    .manage-content { padding:0 18px 18px; }
+    .manage-layout { display:grid;grid-template-columns:minmax(260px,.8fr) minmax(0,1.2fr);gap:18px; }
+    .manage-layout h2 { color:var(--ink);font-size:15px;margin:0 0 12px; }
+    .field { margin-bottom:14px; }
+    .field label { display:block;margin-bottom:6px;color:#334155;font-size:12px;font-weight:700; }
+    input,select { width:100%;border:1px solid var(--line);border-radius:8px;padding:10px 11px;font:inherit;font-size:13px;background:#fff; }
+    input:focus,select:focus { outline:2px solid rgba(13,148,136,.2);border-color:var(--teal); }
+    .time-row { display:grid;grid-template-columns:1fr 1fr;gap:10px; }
+    .primary { border:0;border-radius:8px;background:var(--teal);color:#fff;padding:10px 14px;font-weight:700;cursor:pointer; }
+    .primary:disabled { opacity:.6;cursor:wait; }
+    .notice { display:none;margin-bottom:16px;padding:11px 13px;border-radius:8px;font-size:13px; }
+    .notice.show { display:block; }.notice.error { color:#991b1b;background:#fef2f2;border:1px solid #fecaca; }.notice.success { color:#166534;background:#f0fdf4;border:1px solid #bbf7d0; }
+    .empty { color:var(--muted);padding:16px;border:1px dashed #cbd5e1;border-radius:8px;font-size:13px; }
+    @media(max-width:800px) { .manage-layout { grid-template-columns:1fr; } }
+    @media(max-width:600px) { .day-header { align-items:flex-start;flex-direction:column; }.date-controls { width:100%; }.date-controls input { flex:1;min-width:0; }.schedule-item { grid-template-columns:1fr;gap:6px; }.level { white-space:normal; } }
+    @media(max-width:520px) { .navbar { padding:10px 12px; }.nav-links { width:100%; } main { padding:22px 12px 40px; } }
+  </style>
+</head>
+<body>
+  <nav class="navbar">
+    <div class="nav-links">
+      <a href="lecturer-dashboard.html">Dashboard</a>
+      <a href="lecturer-rosters.html">Course rosters</a>
+      <a href="lecturer-quizzes.html">Quizzes</a>
+      <a href="lecturer-timetable.html" class="active">Timetable</a>
+      <a href="lecturer-assignments.html">Assignments</a>
+    </div>
+    <button class="nav-logout" type="button" onclick="window.Auth.logout()"><i class="fas fa-sign-out-alt"></i> Logout</button>
+  </nav>
+  <main>
+    <header class="day-header">
+      <div>
+        <h1 id="dayTitle" class="day-title">Today's timetable</h1>
+        <p id="dayCaption" class="day-caption"></p>
+      </div>
+      <div class="date-controls">
+        <button id="previousDay" class="icon-button" type="button" aria-label="Previous day" title="Previous day"><i class="fas fa-chevron-left"></i></button>
+        <input id="scheduleDate" type="date" aria-label="Choose timetable date" />
+        <button id="nextDay" class="icon-button" type="button" aria-label="Next day" title="Next day"><i class="fas fa-chevron-right"></i></button>
+        <button id="todayButton" class="today-button" type="button">Today</button>
+      </div>
+    </header>
+    <div id="notice" class="notice" role="status" aria-live="polite"></div>
+    <section class="panel">
+      <div class="panel-head schedule-heading">
+        <h2 id="scheduleHeading">Today's classes</h2>
+        <span id="scheduleCount" class="schedule-count"></span>
+      </div>
+      <div class="panel-body"><div id="todaySchedule" class="schedule-list" aria-live="polite"></div></div>
+    </section>
+    <details id="manageSchedule" class="manage">
+      <summary>Manage teaching schedule</summary>
+      <div class="manage-content">
+        <div class="manage-layout">
+          <section>
+            <h2>Add a class</h2>
+            <form id="courseForm">
+              <div class="field"><label for="courseCode">Course code</label><input id="courseCode" required maxlength="20" placeholder="IFT 302" /></div>
+              <div class="field"><label for="courseTitle">Course title</label><input id="courseTitle" required minlength="3" maxlength="120" placeholder="Database Management Systems" /></div>
+              <div class="field"><label for="level">Level</label><select id="level" required><option value="">Select level</option><option value="100">100 Level</option><option value="200">200 Level</option><option value="300">300 Level</option><option value="400">400 Level</option><option value="500">500 Level</option></select></div>
+              <div class="field"><label for="day">Day</label><select id="day" required><option value="">Select day</option><option>Monday</option><option>Tuesday</option><option>Wednesday</option><option>Thursday</option><option>Friday</option><option>Saturday</option><option>Sunday</option></select></div>
+              <div class="field"><label>Meeting time</label><div class="time-row"><input id="startTime" type="time" aria-label="Start time" required /><input id="endTime" type="time" aria-label="End time" required /></div></div>
+              <div class="field"><label for="room">Room or venue</label><input id="room" maxlength="80" placeholder="Room D" /></div>
+              <button id="saveCourse" class="primary" type="submit">Add to timetable</button>
+            </form>
+          </section>
+          <section>
+            <h2>All scheduled courses</h2>
+            <div id="courseList" class="schedule-list"></div>
+          </section>
+        </div>
+      </div>
+    </details>
+  </main>
+  <script src="/assets/js/api-config.js"></script>
+  <script src="/assets/js/auth-utils.js"></script>
+  <script>
+    var lecturer = window.Auth.protectLecturer();
+    var notice = document.getElementById('notice');
+    var todaySchedule = document.getElementById('todaySchedule');
+    var courseList = document.getElementById('courseList');
+    var scheduleDate = document.getElementById('scheduleDate');
+    var selectedDate = new Date();
+    var allCourses = [];
+    var followsToday = true;
+    var observedToday = localDateValue(new Date());
+
+    if (lecturer) {
+      setSelectedDate(new Date(), true);
+      loadCourses();
+    }
+
+    function node(tag, className, text) {
+      var element = document.createElement(tag);
+      if (className) element.className = className;
+      if (text !== undefined) element.textContent = text;
+      return element;
+    }
+    function notify(message, kind) {
+      notice.textContent = message;
+      notice.className = 'notice show ' + kind;
+    }
+    function localDateValue(date) {
+      return date.getFullYear() + '-' + String(date.getMonth() + 1).padStart(2, '0') + '-' + String(date.getDate()).padStart(2, '0');
+    }
+    function isSameDate(first, second) {
+      return localDateValue(first) === localDateValue(second);
+    }
+    function setSelectedDate(date, trackToday) {
+      selectedDate = new Date(date.getFullYear(), date.getMonth(), date.getDate(), 12, 0, 0, 0);
+      followsToday = trackToday;
+      observedToday = localDateValue(new Date());
+      scheduleDate.value = localDateValue(selectedDate);
+      renderDay();
+    }
+    function formatTime(value) {
+      var parts = value.split(':');
+      var date = new Date();
+      date.setHours(Number(parts[0]), Number(parts[1]), 0, 0);
+      return date.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+    }
+    function renderDay() {
+      var dayName = selectedDate.toLocaleDateString('en-US', { weekday: 'long' });
+      var today = isSameDate(selectedDate, new Date());
+      document.getElementById('dayTitle').textContent = today ? "Today's timetable" : dayName + ' timetable';
+      document.getElementById('dayCaption').textContent = selectedDate.toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
+      document.getElementById('scheduleHeading').textContent = (today ? 'Today' : dayName) + ' classes';
+      var dayCourses = allCourses.filter(function(course) { return course.day === dayName; });
+      dayCourses.sort(function(a, b) { return a.startTime.localeCompare(b.startTime); });
+      document.getElementById('scheduleCount').textContent = dayCourses.length + ' class' + (dayCourses.length === 1 ? '' : 'es');
+      todaySchedule.replaceChildren();
+      if (!dayCourses.length) {
+        var empty = node('div', 'empty', allCourses.length ? 'No classes scheduled for ' + dayName + '.' : 'No teaching schedule is set up yet.');
+        if (!allCourses.length) {
+          var manageButton = node('button', 'primary', 'Add teaching schedule');
+          manageButton.type = 'button';
+          manageButton.style.marginTop = '12px';
+          manageButton.addEventListener('click', function() { document.getElementById('manageSchedule').open = true; });
+          empty.appendChild(document.createElement('br'));
+          empty.appendChild(manageButton);
+        }
+        todaySchedule.appendChild(empty);
+        return;
+      }
+      dayCourses.forEach(function(course) {
+        var item = node('article', 'schedule-item');
+        var time = node('div', 'schedule-time');
+        time.appendChild(node('div', '', formatTime(course.startTime)));
+        time.appendChild(node('span', 'meta', 'to ' + formatTime(course.endTime)));
+        var detail = node('div');
+        detail.appendChild(node('strong', '', course.courseTitle));
+        detail.appendChild(node('span', 'meta', course.courseCode + (course.room ? ' · ' + course.room : '')));
+        item.append(time, detail, node('span', 'level', course.level + ' Level'));
+        todaySchedule.appendChild(item);
+      });
+    }
+    function renderAllCourses() {
+      courseList.replaceChildren();
+      if (!allCourses.length) {
+        courseList.appendChild(node('div', 'empty', 'No courses added yet.'));
+        return;
+      }
+      var weekdayOrder = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+      allCourses.slice().sort(function(a, b) {
+        return weekdayOrder.indexOf(a.day) - weekdayOrder.indexOf(b.day) || a.startTime.localeCompare(b.startTime);
+      }).forEach(function(course) {
+        var item = node('article', 'schedule-item');
+        item.appendChild(node('span', 'day', course.day + ' · ' + formatTime(course.startTime)));
+        var detail = node('div');
+        detail.appendChild(node('strong', '', course.courseCode + ' · ' + course.courseTitle));
+        detail.appendChild(node('span', 'meta', formatTime(course.endTime) + (course.room ? ' · ' + course.room : '')));
+        item.append(detail, node('span', 'level', course.level + ' Level'));
+        courseList.appendChild(item);
+      });
+    }
+    async function loadCourses() {
+      todaySchedule.replaceChildren(node('div', 'empty', 'Loading today\'s schedule...'));
+      try {
+        var result = await window.Auth.request('/lecturer/courses');
+        allCourses = result.courses || [];
+        renderAllCourses();
+        renderDay();
+      } catch (error) {
+        todaySchedule.replaceChildren(node('div', 'empty', 'Your timetable could not be loaded.'));
+        notify(error.message, 'error');
+      }
+    }
+    document.getElementById('courseForm').addEventListener('submit', async function(event) {
+      event.preventDefault();
+      var button = document.getElementById('saveCourse');
+      button.disabled = true;
+      try {
+        await window.Auth.request('/lecturer/courses', {
+          method: 'POST',
+          body: JSON.stringify({
+            courseCode: document.getElementById('courseCode').value,
+            courseTitle: document.getElementById('courseTitle').value,
+            level: document.getElementById('level').value,
+            day: document.getElementById('day').value,
+            startTime: document.getElementById('startTime').value,
+            endTime: document.getElementById('endTime').value,
+            room: document.getElementById('room').value
+          })
+        });
+        event.target.reset();
+        notify('Course added to your teaching timetable.', 'success');
+        await loadCourses();
+      } catch (error) {
+        notify(error.message, 'error');
+      } finally {
+        button.disabled = false;
+      }
+    });
+    document.getElementById('previousDay').addEventListener('click', function() {
+      var date = new Date(selectedDate);
+      date.setDate(date.getDate() - 1);
+      setSelectedDate(date, isSameDate(date, new Date()));
+    });
+    document.getElementById('nextDay').addEventListener('click', function() {
+      var date = new Date(selectedDate);
+      date.setDate(date.getDate() + 1);
+      setSelectedDate(date, isSameDate(date, new Date()));
+    });
+    document.getElementById('todayButton').addEventListener('click', function() { setSelectedDate(new Date(), true); });
+    scheduleDate.addEventListener('change', function() {
+      if (!this.value) return;
+      var parts = this.value.split('-').map(Number);
+      var date = new Date(parts[0], parts[1] - 1, parts[2], 12, 0, 0, 0);
+      setSelectedDate(date, isSameDate(date, new Date()));
+    });
+    window.setInterval(function() {
+      var currentDate = localDateValue(new Date());
+      if (followsToday && currentDate !== observedToday) setSelectedDate(new Date(), true);
+      else observedToday = currentDate;
+    }, 60000);
+  </script>
+</body>
+</html>

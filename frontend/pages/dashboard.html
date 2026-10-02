@@ -6,7 +6,7 @@
   <title>Dashboard | FUTO IFT Learning Platform</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="/assets/css/styles.css">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -41,6 +41,7 @@
     .nav-badge { background: rgba(20,184,166,.12); color: #14b8a6; font-size: 11px; font-weight: 600; padding: 4px 12px; border-radius: 20px; font-family: monospace; border: 1px solid rgba(20,184,166,.2); }
     .nav-icon-btn { width: 34px; height: 34px; border-radius: 8px; background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.08); color: rgba(255,255,255,.5); display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 13px; transition: all .2s; }
     .nav-icon-btn:hover { background: rgba(255,255,255,.12); color: #fff; }
+    .nav-notification-count { position:absolute;top:-5px;right:-5px;min-width:17px;padding:2px 4px;border-radius:10px;background:#ef4444;color:#fff;font-size:9px;font-weight:800;text-align:center; }
     .nav-logout { font-size: 12px; font-weight: 500; color: rgba(255,255,255,.4); cursor: pointer; transition: color .2s; border: none; background: none; display: flex; align-items: center; gap: 5px; }
     .nav-logout:hover { color: #f09595; }
     .notif-wrap { position: relative; }
@@ -127,7 +128,7 @@
     .ai-typing span:nth-child(2){animation-delay:.15s} .ai-typing span:nth-child(3){animation-delay:.30s}
     @keyframes tBounce { 0%,60%,100%{transform:translateY(0);opacity:.4} 30%{transform:translateY(-5px);opacity:1} }
     .ai-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; position: relative; }
-    .ai-chip { padding: 5px 11px; background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.1); border-radius: 20px; color: rgba(255,255,255,.5); font-size: 10px; cursor: pointer; transition: all .2s; }
+    .ai-chip { padding: 5px 11px; background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.1); border-radius: 20px; color: rgba(255,255,255,.5); font: inherit; font-size: 10px; cursor: pointer; transition: all .2s; }
     .ai-chip:hover { background: rgba(20,184,166,.15); border-color: rgba(20,184,166,.4); color: #5dcaa5; }
 
     /* RECS */
@@ -159,6 +160,137 @@
     .quick-name { font-size: 13px; font-weight: 700; color: #0b1c3a; }
     .quick-desc { font-size: 11px; color: #94a3b8; margin-top: 2px; }
 
+    .student-overview { display: flex; flex-direction: column; gap: 18px; }
+    .student-stats { display: grid; grid-template-columns: repeat(4,1fr); gap: 14px; }
+    .student-stat, .overview-card { background: #fff; border-radius: 14px; padding: 18px; box-shadow: 0 1px 6px rgba(0,0,0,.06); }
+    .student-stat-value { font-size: 26px; font-weight: 800; color: #0b1c3a; }
+    .student-stat-label { color: #64748b; font-size: 12px; margin-top: 3px; }
+    .overview-grid { display: grid; grid-template-columns: 1.2fr 1fr; gap: 18px; }
+    .overview-heading { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 13px; }
+    .overview-heading h2 { color: #0b1c3a; font-size: 15px; margin: 0; }
+    .section-kicker { display: block; margin-bottom: 3px; color: #0d9488; font-size: 9px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; }
+    .overview-heading a { color: #0d9488; font-size: 12px; font-weight: 700; text-decoration: none; }
+    .overview-list { display: grid; gap: 9px; }
+    .overview-item { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; padding: 12px; border: 1px solid #edf2f7; border-radius: 10px; background: #f8fafc; color: #334155; text-decoration: none; }
+    .overview-item:hover { border-color: rgba(13,148,136,.35); }
+    .overview-item strong { display: block; color: #0b1c3a; font-size: 13px; }
+    .overview-item span { display: block; color: #64748b; font-size: 11px; margin-top: 4px; line-height: 1.45; }
+    .overview-item .item-state { flex-shrink: 0; color: #0d9488; font-weight: 700; text-align: right; }
+    .overview-empty { padding: 15px; border: 1px dashed #cbd5e1; border-radius: 10px; color: #64748b; font-size: 12px; }
+    .overview-error { color: #991b1b; background: #fef2f2; border: 1px solid #fecaca; border-radius: 10px; padding: 12px 14px; font-size: 13px; }
+    .student-courses { display: grid; grid-template-columns: repeat(auto-fill,minmax(220px,1fr)); gap: 10px; }
+    .student-course { padding: 14px; border: 1px solid #e2e8f0; border-radius: 11px; color: inherit; text-decoration: none; background: #fff; transition: border-color .2s, transform .2s; }
+    .student-course { position: relative; min-height: 112px; overflow: hidden; }
+    .student-course::after { position: absolute; right: 12px; top: 13px; display: grid; width: 28px; height: 28px; place-items: center; border-radius: 10px; background: #e6f7f2; color: #0d9488; content: '↗'; font-size: 14px; font-weight: 800; transition: transform .2s ease; }
+    .student-course:nth-child(3n + 2)::after { background: #fff1dc; color: #bd7620; }
+    .student-course:nth-child(3n)::after { background: #eeedfe; color: #7165c7; }
+    .student-course:hover { border-color: #0d9488; transform: translateY(-2px); }
+    .student-course:hover::after { transform: translate(2px,-2px); }
+    .student-course strong { display: block; color: #0d9488; font-size: 12px; }
+    .student-course span { display: block; color: #0b1c3a; font-size: 13px; font-weight: 700; margin-top: 5px; }
+    .student-course small { display: block; color: #64748b; font-size: 11px; margin-top: 5px; }
+    .topic-recommendation { padding: 12px; border: 1px solid #fde68a; border-radius: 10px; background: #fffbeb; margin-bottom: 10px; }
+    .topic-recommendation strong { color: #854d0e; font-size: 13px; }
+    .topic-recommendation p { color: #64748b; font-size: 12px; margin: 5px 0 8px; }
+    .topic-recommendation a, .chat-resource a { color: #0d9488; font-size: 12px; font-weight: 700; }
+    .ai-card { min-height: 245px; }
+    .ai-input-row input { min-width: 0; }
+    .ai-send-btn:disabled { cursor: wait; opacity: .65; }
+    .ai-response .chat-resource { display: flex; flex-direction: column; gap: 4px; margin-top: 10px; padding: 10px; border: 1px solid rgba(94,234,212,.18); border-radius: 9px; background: rgba(20,184,166,.09); }
+    .ai-response .chat-resource strong { color: #d1fae5; }
+    .ai-response .chat-resource a { color: #7de3cd; font-weight: 700; }
+    .ai-response .chat-fallback { display: block; margin-top: 8px; color: rgba(255,255,255,.55); font-size: 11px; }
+    #legacyDashboard { display: none; }
+
+    /* STUDENT DASHBOARD PLAYFUL THEME */
+    body { background: radial-gradient(ellipse at 8% 5%, #d9f6ef 0, transparent 28%), radial-gradient(ellipse at 94% 32%, #fef0cf 0, transparent 23%), #f4f7ff; }
+    .navbar { background: linear-gradient(110deg, #102750, #123a56 72%, #0d665f); border-bottom-color: rgba(255,255,255,.12); }
+    .nav-logo { background: linear-gradient(145deg, #ffcc70, #ff9e67); box-shadow: 0 5px 15px rgba(255,158,103,.28); }
+    .nav-links a { border-radius: 999px; }
+    .nav-links a:hover, .nav-links a.active { background: rgba(255,255,255,.13); box-shadow: none; }
+    .page { max-width: 1240px; gap: 22px; padding-top: 28px; }
+    .hero-banner { min-height: 205px; position: relative; overflow: hidden; align-items: center; border: 0; border-radius: 24px; padding: 30px 34px; color: #fff; background: linear-gradient(112deg, #102750 0%, #174d68 58%, #148a7c 100%); box-shadow: 0 18px 42px rgba(16,39,80,.19); }
+    .hero-banner::before, .hero-banner::after { content: ''; position: absolute; border-radius: 50%; pointer-events: none; }
+    .hero-banner::before { width: 270px; height: 270px; right: 105px; top: -150px; background: rgba(255,255,255,.08); }
+    .hero-banner::after { width: 190px; height: 190px; right: -40px; bottom: -115px; background: rgba(255,205,112,.18); }
+    .hero-copy { position: relative; z-index: 1; max-width: 570px; }
+    .hero-kicker { display: inline-flex; align-items: center; gap: 7px; margin-bottom: 10px; color: #b8f5e8; font-size: 11px; font-weight: 800; letter-spacing: .13em; text-transform: uppercase; }
+    .hero-greeting { color: #fff; font-size: clamp(25px, 3vw, 34px); line-height: 1.14; letter-spacing: -.035em; }
+    .hero-sub { max-width: 450px; margin-top: 9px; color: rgba(255,255,255,.76); font-size: 14px; line-height: 1.55; }
+    .hero-meta { position: relative; z-index: 2; min-width: 160px; border: 1px solid rgba(255,255,255,.18); border-radius: 16px; background: rgba(255,255,255,.12); color: rgba(255,255,255,.7); text-align: left; backdrop-filter: blur(8px); }
+    .hero-meta strong { color: #fff; }
+    .hero-mascot { position: absolute; z-index: 1; right: 230px; bottom: 14px; display: grid; width: 112px; height: 112px; place-items: center; border: 1px solid rgba(255,255,255,.18); border-radius: 34px; background: rgba(255,255,255,.12); font-size: 60px; transform: rotate(7deg); animation: mascotBob 4s ease-in-out infinite; }
+    @keyframes mascotBob { 0%,100% { transform: translateY(0) rotate(7deg); } 50% { transform: translateY(-7px) rotate(3deg); } }
+    .student-stats { gap: 13px; }
+    .student-stat { position: relative; min-height: 119px; overflow: hidden; border: 1px solid rgba(226,232,240,.85); border-radius: 17px; box-shadow: 0 5px 18px rgba(31,56,92,.055); transition: transform .22s ease, box-shadow .22s ease; }
+    .student-stat:hover { transform: translateY(-4px) rotate(-.35deg); box-shadow: 0 12px 25px rgba(31,56,92,.11); }
+    .student-stat::after { position: absolute; right: -19px; bottom: -27px; width: 82px; height: 82px; border-radius: 50%; background: var(--stat-wash, #e7f7f2); content: ''; }
+    .student-stat:nth-child(2) { --stat-wash: #fff0dc; }
+    .student-stat:nth-child(3) { --stat-wash: #e9e9ff; }
+    .student-stat:nth-child(4) { --stat-wash: #ffe8ed; }
+    .student-stat-icon { position: relative; z-index: 1; display: grid; width: 35px; height: 35px; margin-bottom: 11px; place-items: center; border-radius: 11px; background: var(--stat-wash, #e7f7f2); font-size: 18px; }
+    .student-stat-value, .student-stat-label { position: relative; z-index: 1; }
+    .student-stat-value { font-size: 28px; }
+    .student-stat-label { color: #718096; font-size: 11px; font-weight: 600; }
+    .overview-card { border: 1px solid rgba(226,232,240,.82); border-radius: 18px; box-shadow: 0 5px 18px rgba(31,56,92,.055); transition: transform .2s ease, box-shadow .2s ease; }
+    .overview-card:hover { box-shadow: 0 11px 26px rgba(31,56,92,.085); }
+    .overview-heading h2 { font-size: 15px; letter-spacing: -.01em; }
+    .overview-heading h2::first-letter { color: #0d9488; }
+    .overview-heading a { padding: 6px 9px; border-radius: 999px; background: #ecfbf6; }
+    .overview-heading a:hover { background: #d8f5eb; text-decoration: none; }
+    .overview-item { border-radius: 12px; transition: background .18s ease, transform .18s ease, border-color .18s ease; }
+    .overview-item:hover { transform: translateX(3px); background: #f0fdfa; }
+    .overview-empty { border-color: #dbe5ef; border-radius: 12px; background: linear-gradient(110deg, #f8fbff, #f4fcfa); }
+    .student-course { border-radius: 14px; background: linear-gradient(145deg, #fff, #f8fbff); transition: transform .2s ease, box-shadow .2s ease; }
+    .student-course:hover { box-shadow: 0 9px 19px rgba(13,148,136,.1); transform: translateY(-3px) rotate(-.4deg); }
+    .topic-recommendation { border-radius: 13px; }
+    .study-chat-form input { border-radius: 11px; }
+    .student-quick-access { gap: 13px; }
+    .student-quick-access .quick-card { position: relative; overflow: hidden; min-height: 91px; border: 1px solid #e7edf5; border-radius: 17px; background: linear-gradient(130deg, #fff 50%, #f4fbff); transition: transform .22s ease, box-shadow .22s ease; }
+    .student-quick-access .quick-card:nth-child(2) { background: linear-gradient(130deg, #fff 50%, #fff8e9); }
+    .student-quick-access .quick-card:nth-child(3) { background: linear-gradient(130deg, #fff 50%, #f2efff); }
+    .student-quick-access .quick-card:hover { transform: translateY(-4px); box-shadow: 0 12px 24px rgba(31,56,92,.1); }
+    .student-quick-access .quick-icon { border-radius: 14px; }
+    .student-quick-access .quick-name { font-size: 14px; }
+    .student-quick-access .quick-desc { line-height: 1.45; }
+    .dashboard-primary { grid-template-columns: 1.05fr .95fr; align-items: stretch; }
+    .dashboard-primary > * { min-width: 0; }
+    .dashboard-primary .overview-card { background: linear-gradient(155deg, #fff 70%, #f2fbf8); }
+    .dashboard-primary .ai-card { min-height: 100%; }
+    .dashboard-courses-card { background: linear-gradient(120deg, #fff 58%, #f0fbf8); }
+    .dashboard-courses-card .overview-heading { align-items: flex-end; }
+    .dashboard-courses-card .overview-heading h2, .dashboard-shortcuts .overview-heading h2 { font-size: 19px; }
+    .dashboard-courses-card .student-courses { grid-template-columns: repeat(auto-fill, minmax(205px,1fr)); }
+    .dashboard-support, .dashboard-progress { grid-template-columns: repeat(2,minmax(0,1fr)); }
+    .dashboard-shortcuts { padding: 4px 0 8px; }
+    .dashboard-shortcuts .overview-heading { margin-bottom: 10px; }
+    @media(max-width:900px) {
+      .hero-mascot { right: 185px; opacity: .78; }
+    }
+    @media(max-width:600px) {
+      .page { padding: 15px 12px 28px; gap: 16px; }
+      .hero-banner { min-height: 205px; padding: 24px 20px; align-items: flex-start; flex-direction: column; }
+      .hero-copy { max-width: 100%; }
+      .hero-greeting { max-width: 280px; font-size: 27px; }
+      .hero-sub { max-width: 300px; padding-right: 14px; font-size: 12px; }
+      .hero-meta { min-width: 0; padding: 8px 11px; text-align: left; }
+      .hero-mascot { right: 18px; bottom: 13px; width: 66px; height: 66px; border-radius: 22px; font-size: 37px; }
+      .student-stat { min-height: 111px; padding: 13px; }
+      .student-stat-value { font-size: 24px; }
+      .student-stat-label { max-width: 105px; line-height: 1.35; }
+      .dashboard-primary, .dashboard-support, .dashboard-progress { grid-template-columns: 1fr; }
+      .dashboard-primary .ai-card { min-height: 220px; }
+      .dashboard-courses-card .overview-heading { align-items: flex-start; }
+      .dashboard-courses-card .student-courses { grid-template-columns: 1fr; }
+      .student-quick-access { grid-template-columns: 1fr; }
+      .student-quick-access .quick-card { min-height: 78px; }
+    }
+    @media(prefers-reduced-motion: reduce) {
+      .hero-mascot { animation: none; }
+      .student-stat, .overview-card, .overview-item, .student-course, .student-quick-access .quick-card, .ai-send-btn { transition: none; }
+      .student-stat:hover, .student-course:hover, .student-quick-access .quick-card:hover { transform: none; }
+    }
+
     /* STREAK */
     .streak-row { display: flex; gap: 6px; margin-top: 4px; }
     .streak-day { flex: 1; text-align: center; }
@@ -169,8 +301,10 @@
     .streak-day-label { font-size: 9px; color: #94a3b8; font-weight: 500; }
 
     /* RESPONSIVE */
+    @media(max-width:900px){ .student-stats,.overview-grid{ grid-template-columns:1fr 1fr; } }
+    @media(max-width:600px){ .student-overview .overview-grid{ grid-template-columns:1fr; } }
     @media(max-width:900px){ .stats-grid,.main-grid,.main-grid-wide,.quick-grid{ grid-template-columns:1fr; } }
-    @media(max-width:600px){ .stats-grid{ grid-template-columns:repeat(2,1fr); } .navbar{ padding:0 14px; } .nav-welcome,.nav-badge{ display:none; } .page{ padding:16px 12px; } }
+    @media(max-width:600px){ .stats-grid{ grid-template-columns:repeat(2,1fr); } .student-stats{ grid-template-columns:repeat(2,1fr); } .navbar{ padding:0 14px; } .nav-welcome,.nav-badge{ display:none; } .page{ padding:16px 12px; } }
   </style>
 </head>
 <body>
@@ -184,9 +318,11 @@
   <nav class="navbar">
     <div class="nav-links">
       <a href="dashboard.html" class="active">Home</a>
+      <a href="my-courses.html">My Courses</a>
       <a href="profile.html">Profile</a>
       <a href="course-materials.html">Materials</a>
       <a href="quiz.html">Quiz</a>
+      <a href="assignments.html">Assignments</a>
       <a href="code-editor.html">Code Lab</a>
       <a href="timetable.html">Timetable</a>
       <a href="notifications.html">Notifications</a>
@@ -196,10 +332,10 @@
     <span class="nav-welcome">Welcome, <strong id="navName">Loading...</strong></span>
     <span class="nav-badge" id="navMatric">MAT/XXXX</span>
     <div class="notif-wrap">
-      <button class="nav-icon-btn" title="Notifications">
+      <a class="nav-icon-btn" id="notificationLink" href="notifications.html" title="Notifications" aria-label="Notifications" style="text-decoration:none;position:relative">
         <i class="fas fa-bell"></i>
-      </button>
-      <div class="notif-dot"></div>
+        <span class="nav-notification-count" id="notificationCount" hidden></span>
+      </a>
     </div>
     <button class="nav-icon-btn" title="Settings"><i class="fas fa-cog"></i></button>
     <button class="nav-logout" onclick="window.Auth && window.Auth.logout()">
@@ -210,16 +346,94 @@
   <main class="page">
 
     <div class="hero-banner rise d1">
-      <div>
+      <div class="hero-copy">
+        <div class="hero-kicker"><span aria-hidden="true">✨</span> Your learning adventure</div>
         <div class="hero-greeting" id="greetingText">Good morning, Student!</div>
-        <div class="hero-sub">Track your progress, access materials, and prepare for upcoming assessments.</div>
+        <div class="hero-sub">Your next big idea starts here. Check in on your courses, tackle a quiz, and celebrate every little win.</div>
       </div>
+      <div class="hero-mascot" aria-hidden="true">🎓</div>
       <div class="hero-meta">
         <strong id="currentDate">Loading...</strong>
-        <span>Semester 2 &bull; Week 11 of 16</span>
+        <span>One step at a time 🌱</span>
       </div>
     </div>
 
+    <section class="student-overview" aria-label="Student overview">
+      <div class="student-stats">
+        <article class="student-stat"><div class="student-stat-icon" aria-hidden="true">📚</div><div class="student-stat-value" id="overviewCourseCount">—</div><div class="student-stat-label">Enrolled courses</div></article>
+        <article class="student-stat"><div class="student-stat-icon" aria-hidden="true">📝</div><div class="student-stat-value" id="overviewAssignmentCount">—</div><div class="student-stat-label">Unsubmitted assignments</div></article>
+        <article class="student-stat"><div class="student-stat-icon" aria-hidden="true">⚡</div><div class="student-stat-value" id="overviewQuizCount">—</div><div class="student-stat-label">Available quizzes</div></article>
+        <article class="student-stat"><div class="student-stat-icon" aria-hidden="true">💌</div><div class="student-stat-value" id="overviewUnreadCount">—</div><div class="student-stat-label">Unread updates</div></article>
+      </div>
+      <div id="overviewError" class="overview-error" role="alert" hidden></div>
+      <div class="overview-grid dashboard-primary">
+        <section class="overview-card">
+          <div class="overview-heading"><h2>What needs your attention</h2><a href="assignments.html">All assignments &rarr;</a></div>
+          <div class="overview-list" id="attentionList"><div class="overview-empty">Loading your coursework...</div></div>
+        </section>
+        <section class="ai-card" aria-label="AI Study Assistant">
+          <div class="ai-header-row">
+            <div class="ai-pulse" aria-hidden="true"></div>
+            <div class="ai-title">🤖 AI Study Assistant</div>
+            <span class="ai-online">✦ Ready to help</span>
+          </div>
+          <div class="ai-sub">Ask a question, explore a topic, or get a quick quiz idea.</div>
+          <div class="ai-input-row">
+            <input type="text" id="aiInput" maxlength="500" placeholder="e.g. Explain QuickSort..." aria-label="Ask the AI Study Assistant">
+            <button class="ai-send-btn" id="aiBtn" type="button">Ask AI</button>
+          </div>
+          <div class="ai-response" id="aiResponse" role="status" aria-live="polite"></div>
+          <div class="ai-chips" aria-label="Suggested questions">
+            <button class="ai-chip" type="button" onclick="setAIQ('Explain QuickSort')">QuickSort</button>
+            <button class="ai-chip" type="button" onclick="setAIQ('What is a Stack data structure?')">Stacks</button>
+            <button class="ai-chip" type="button" onclick="setAIQ('Explain SQL JOIN')">SQL JOIN</button>
+            <button class="ai-chip" type="button" onclick="setAIQ('OSI model layers')">OSI Model</button>
+            <button class="ai-chip" type="button" onclick="setAIQ('Generate a quiz on Data Structures')">Quiz idea</button>
+          </div>
+        </section>
+      </div>
+
+      <section class="overview-card dashboard-courses-card">
+        <div class="overview-heading">
+          <div><span class="section-kicker">Your learning lineup</span><h2>My courses</h2></div>
+          <a href="my-courses.html">Manage courses &rarr;</a>
+        </div>
+        <div class="student-courses" id="studentCourseList"><div class="overview-empty">Loading your courses...</div></div>
+      </section>
+
+      <div class="overview-grid dashboard-support">
+        <section class="overview-card">
+          <div class="overview-heading"><h2>Today’s classes</h2><a href="timetable.html">Timetable &rarr;</a></div>
+          <div class="overview-list" id="todayClasses"><div class="overview-empty">Loading your schedule...</div></div>
+        </section>
+        <section class="overview-card">
+          <div class="overview-heading"><h2>Recent updates</h2><a href="notifications.html">All notifications &rarr;</a></div>
+          <div class="overview-list" id="recentUpdates"><div class="overview-empty">Loading updates...</div></div>
+        </section>
+      </div>
+
+      <div class="overview-grid dashboard-progress">
+        <section class="overview-card">
+          <div class="overview-heading"><h2>Topics to review</h2><a href="quiz.html">Practice quizzes &rarr;</a></div>
+          <div id="topicRecommendations" aria-live="polite"><div class="overview-empty">Loading your learning progress...</div></div>
+        </section>
+        <section class="overview-card">
+          <div class="overview-heading"><h2>Recent quiz results</h2><a href="quiz.html">Take a quiz &rarr;</a></div>
+          <div id="studentQuizHistory" class="overview-list"><div class="overview-empty">Loading your quiz history...</div></div>
+        </section>
+      </div>
+
+      <section class="dashboard-shortcuts" aria-label="Quick access">
+        <div class="overview-heading"><div><span class="section-kicker">Jump back in</span><h2>Quick access</h2></div></div>
+        <div class="quick-grid student-quick-access">
+        <a href="course-materials.html" class="quick-card"><div class="quick-icon" style="background:#e6f1fb">📚</div><div><div class="quick-name">Course Materials</div><div class="quick-desc">Browse notes and learning resources</div></div></a>
+        <a href="quiz.html" class="quick-card"><div class="quick-icon" style="background:#faeeda">✅</div><div><div class="quick-name">Take a Quiz</div><div class="quick-desc">Practice and review your results</div></div></a>
+        <a href="code-editor.html" class="quick-card"><div class="quick-icon" style="background:#eeedfe">💻</div><div><div class="quick-name">Code Practice Lab</div><div class="quick-desc">Practice HTML, CSS and JavaScript</div></div></a>
+        </div>
+      </section>
+    </section>
+
+    <div id="legacyDashboard">
     <div class="stats-grid">
       <div class="stat-card rise d1">
         <div class="stat-icon" style="background:#e1f5ee">📈</div>
@@ -310,26 +524,6 @@
       </div>
 
       <div style="display:flex;flex-direction:column;gap:20px">
-        <div class="ai-card rise d4">
-          <div class="ai-header-row">
-            <div class="ai-pulse"></div>
-            <div class="ai-title">🤖 AI Study Assistant</div>
-            <span class="ai-online">&#9679; Online</span>
-          </div>
-          <div class="ai-sub">Ask a question or get an instant quiz generated.</div>
-          <div class="ai-input-row">
-            <input type="text" id="aiInput" placeholder="e.g. Explain QuickSort..." />
-            <button class="ai-send-btn" id="aiBtn">Ask AI</button>
-          </div>
-          <div class="ai-response" id="aiResponse"></div>
-          <div class="ai-chips">
-            <div class="ai-chip" onclick="setAIQ('Explain QuickSort')">QuickSort</div>
-            <div class="ai-chip" onclick="setAIQ('What is a Stack data structure?')">Stacks</div>
-            <div class="ai-chip" onclick="setAIQ('Explain SQL JOIN')">SQL JOIN</div>
-            <div class="ai-chip" onclick="setAIQ('OSI model layers')">OSI Model</div>
-            <div class="ai-chip" onclick="setAIQ('Generate a quiz on Data Structures')">Generate Quiz</div>
-          </div>
-        </div>
         <div class="card rise d5">
           <div class="card-header">
             <div class="card-title"><span class="card-title-dot"></span>Recent Activity</div>
@@ -358,11 +552,13 @@
         </a>
       </div>
     </div>
+    </div>
 
   </main>
 
-  <script src="api-config.js"></script>
-  <script src="auth-utils.js"></script>
+  <script src="/assets/js/api-config.js"></script>
+  <script src="/assets/js/auth-utils.js"></script>
+  <script src="/assets/js/student-dashboard.js"></script>
   <script>
     var COURSES = [
       { code: 'IFT 201', pct: 88, color: '#0d9488' },
@@ -424,6 +620,8 @@
       var q = inp.value.trim();
       if (!q) return;
       var resp = document.getElementById('aiResponse');
+      var button = document.getElementById('aiBtn');
+      button.disabled = true;
       resp.style.display = 'block';
       resp.innerHTML = '<div class="ai-typing"><span></span><span></span><span></span></div>';
       inp.value = '';
@@ -435,8 +633,41 @@
         else if (ql.indexOf('sql') !== -1 || ql.indexOf('join') !== -1)        ans = AI_ANSWERS.sql;
         else if (ql.indexOf('osi') !== -1 || ql.indexOf('network') !== -1)     ans = AI_ANSWERS.osi;
         else if (ql.indexOf('quiz') !== -1 || ql.indexOf('generat') !== -1)    ans = AI_ANSWERS.quiz;
-        resp.textContent = '🤖 ' + ans;
-      }, 900);
+        resp.replaceChildren(document.createTextNode('🤖 ' + ans));
+        if (window.searchCourseResources) {
+          window.searchCourseResources(q).then(function(result) {
+            if (result.resource) {
+              var resource = document.createElement('div');
+              resource.className = 'chat-resource';
+              var title = document.createElement('strong');
+              title.textContent = result.resource.courseCode + ' · ' + result.resource.topicTag;
+              var file = document.createElement('span');
+              file.textContent = result.resource.title + ' (' + result.confidence + '% match)';
+              var link = document.createElement('a');
+              link.href = result.resource.courseUrl;
+              link.textContent = 'Open this course resource →';
+              resource.append(title, file, link);
+              resp.appendChild(resource);
+            } else {
+              var fallback = document.createElement('span');
+              fallback.className = 'chat-fallback';
+              fallback.textContent = result.answer;
+              resp.appendChild(fallback);
+            }
+          }).catch(function(error) {
+            var failure = document.createElement('span');
+            failure.className = 'chat-fallback';
+            failure.textContent = error.message.toLowerCase().indexOf('authentication') !== -1
+              ? 'Please sign in again to search your enrolled-course materials.'
+              : 'Course resource search is unavailable: ' + error.message;
+            resp.appendChild(failure);
+          }).finally(function() {
+            button.disabled = false;
+          });
+        } else {
+          button.disabled = false;
+        }
+      }, 450);
     }
 
     document.addEventListener('DOMContentLoaded', function() {
@@ -446,7 +677,7 @@
         if (u) user = u;
       }
 
-      document.getElementById('navName').textContent   = user.name   || 'Student';
+      document.getElementById('navName').textContent   = (user.name || 'Student').trim().split(/\s+/)[0];
       document.getElementById('navMatric').textContent = user.matric || '---';
 
       var hour  = new Date().getHours();

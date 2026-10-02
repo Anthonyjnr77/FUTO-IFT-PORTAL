@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Notifications | FUTO IFT</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
-  <link rel="stylesheet" href="styles.css" />
+  <link rel="stylesheet" href="/assets/css/styles.css" />
   <style>
     :root { --primary:#0b1c3a; --teal:#0d9488; --teal-light:#14b8a6; --bg:#f4f7fb; --panel:rgba(255,255,255,0.96); --line:#e2e8f0; --muted:#64748b; --text:#0f172a; }
     * { box-sizing: border-box; }
@@ -46,6 +46,10 @@
     .notif-title { font-size:15px; font-weight:700; color: var(--primary); margin-bottom:4px; }
     .notif-body { font-size:13px; color: var(--muted); line-height:1.5; }
     .notif-meta { font-size:11px; color:#94a3b8; margin-top:8px; }
+    .notif-item.unread { border-left:3px solid var(--teal); }
+    .notif-actions { display:flex;align-items:center;gap:12px;margin-top:9px; }
+    .notif-link,.read-action { border:0;background:none;padding:0;color:var(--teal);font-size:11px;font-weight:700;text-decoration:none;cursor:pointer; }
+    .read-action { color:#64748b; }
     .empty { padding:18px; color:#64748b; border:1px dashed #cbd5e1; border-radius:12px; background:#f8fafc; }
 
     @media (max-width: 640px) {
@@ -60,9 +64,11 @@
   <nav class="navbar">
     <div class="nav-links">
       <a href="dashboard.html">Home</a>
+      <a href="my-courses.html">My Courses</a>
       <a href="profile.html">Profile</a>
       <a href="course-materials.html">Materials</a>
       <a href="quiz.html">Quiz</a>
+      <a href="assignments.html">Assignments</a>
       <a href="code-editor.html">Code Lab</a>
       <a href="timetable.html">Timetable</a>
       <a href="notifications.html" class="active">Notifications</a>
@@ -89,33 +95,95 @@
     </section>
   </main>
 
-  <script src="api-config.js"></script>
-  <script src="auth-utils.js"></script>
+  <script src="/assets/js/api-config.js"></script>
+  <script src="/assets/js/auth-utils.js"></script>
   <script>
-    var DEFAULT = [
-      { title:'Exam Timetable Released — IFT 302', body:'IFT 302 exam on Friday 19 June 2026 at 9:00 AM', type:'reminder', date:new Date().toISOString() },
-      { title:'New Material: IFT 204 PDF', body:'Data Structures notes uploaded.', type:'material', date:new Date().toISOString() }
-    ];
-
+    var currentUser = window.Auth.protect();
     function getAnnouncements(){
-      try { var a = localStorage.getItem('futo_announcements'); return a ? JSON.parse(a) : DEFAULT; } catch(e){ return DEFAULT; }
+      try { var a = localStorage.getItem('futo_announcements'); return a ? JSON.parse(a) : []; } catch(e){ return []; }
     }
 
-    function render(){
-      var list = getAnnouncements();
+    function node(tag, className, text) {
+      var element = document.createElement(tag);
+      if (className) element.className = className;
+      if (text !== undefined) element.textContent = text;
+      return element;
+    }
+
+    async function render(){
       var el = document.getElementById('notifs');
-      el.innerHTML = '';
+      el.replaceChildren();
+      if (!currentUser) return;
+      if (currentUser.role === 'lecturer') {
+        window.location.href = 'lecturer-dashboard.html';
+        return;
+      }
+      var backendNotifications = [];
+      var courseAnnouncements = [];
+      try {
+        var results = await Promise.all([
+          window.Auth.request('/notifications'),
+          window.Auth.request('/announcements')
+        ]);
+        backendNotifications = (results[0].notifications || []).filter(function(item) { return item.type !== 'announcement'; });
+        courseAnnouncements = (results[1].announcements || []).map(function(item) {
+          return Object.assign({ source: 'content', type: 'announcement', date: item.createdAt }, item);
+        });
+      } catch (error) {
+        el.appendChild(node('div', 'empty', error.message));
+        return;
+      }
+      var localAnnouncements = getAnnouncements().map(function(item) {
+        return Object.assign({ source: 'local' }, item);
+      });
+      var list = backendNotifications.map(function(item) {
+        return Object.assign({ source: 'backend' }, item);
+      }).concat(courseAnnouncements, localAnnouncements).sort(function(a, b) {
+        return new Date(b.createdAt || b.date || 0) - new Date(a.createdAt || a.date || 0);
+      });
 
       if (!list.length) {
-        el.innerHTML = '<div class="empty">No notifications</div>';
+        el.appendChild(node('div', 'empty', 'No notifications yet. New assignments and quizzes for your enrolled courses will appear here.'));
         return;
       }
 
       list.forEach(function(n){
-        var card = document.createElement('div');
-        card.className = 'notif-item';
-        card.innerHTML = '<div class="notif-icon"><i class="fa-solid ' + (n.type === 'material' ? 'fa-file-lines' : 'fa-circle-exclamation') + '"></i></div>' +
-                         '<div class="notif-content"><div class="notif-title">' + n.title + '</div><div class="notif-body">' + n.body + '</div><div class="notif-meta">' + new Date(n.date).toLocaleString() + '</div></div>';
+        var card = node('div', 'notif-item' + (n.source === 'backend' && !n.readAt ? ' unread' : ''));
+        var iconWrap = node('div', 'notif-icon');
+        var icon = document.createElement('i');
+        icon.className = 'fa-solid ' + (n.type === 'assignment' ? 'fa-file-pen' : n.type === 'quiz' ? 'fa-circle-question' : n.type === 'material' ? 'fa-file-lines' : 'fa-circle-exclamation');
+        iconWrap.appendChild(icon);
+        var content = node('div', 'notif-content');
+        content.appendChild(node('div', 'notif-title', n.title));
+        content.appendChild(node('div', 'notif-body', n.body));
+        content.appendChild(node('div', 'notif-meta', new Date(n.createdAt || n.date).toLocaleString()));
+        var actions = node('div', 'notif-actions');
+        if (n.type === 'assignment' && n.referenceId) {
+          var assignmentLink = node('a', 'notif-link', 'View assignment');
+          assignmentLink.href = 'assignments.html';
+          actions.appendChild(assignmentLink);
+        } else if (n.type === 'quiz' && n.referenceId) {
+          var quizLink = node('a', 'notif-link', 'View quizzes');
+          quizLink.href = 'quiz.html';
+          actions.appendChild(quizLink);
+        }
+        if (n.source === 'backend' && !n.readAt) {
+          var readButton = node('button', 'read-action', 'Mark as read');
+          readButton.type = 'button';
+          readButton.addEventListener('click', async function() {
+            readButton.disabled = true;
+            try {
+              await window.Auth.request('/notifications/' + encodeURIComponent(n.id) + '/read', { method: 'POST', body: JSON.stringify({}) });
+              card.classList.remove('unread');
+              readButton.remove();
+            } catch (error) {
+              readButton.disabled = false;
+            }
+          });
+          actions.appendChild(readButton);
+        }
+        if (actions.childNodes.length) content.appendChild(actions);
+        card.append(iconWrap, content);
         el.appendChild(card);
       });
     }
@@ -123,5 +191,6 @@
     render();
     window.addEventListener('storage', function(e){ if (e.key === 'futo_announcements') render(); });
   </script>
+  <script src="/assets/js/student-chat-widget.js"></script>
 </body>
 </html>

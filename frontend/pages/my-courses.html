@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>My Courses | FUTO IFT</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+  <link rel="stylesheet" href="/assets/css/styles.css" />
+  <style>
+    :root { --ink:#0b1c3a; --teal:#0d9488; --paper:#f0f4f8; --muted:#64748b; --line:#e2e8f0; }
+    body { margin:0;background:var(--paper);color:#1e293b;font-family:Inter,system-ui,sans-serif; }
+    .navbar { position:sticky;top:0;z-index:5;background:rgba(11,28,58,.96);display:flex;align-items:center;gap:16px;padding:12px 20px;min-height:48px; }
+    .nav-links { display:flex;gap:8px;flex-wrap:wrap;margin-right:auto; }
+    .nav-links a { color:rgba(255,255,255,.75);padding:8px 10px;border-radius:8px;text-decoration:none;font-size:13px;font-weight:600; }
+    .nav-links a:hover,.nav-links a.active { color:#fff;background:rgba(20,184,166,.16); }
+    .nav-logout { border:0;background:none;color:rgba(255,255,255,.65);cursor:pointer; }
+    main { max-width:1100px;margin:0 auto;padding:30px 20px 56px; }
+    h1 { margin:0 0 5px;color:var(--ink);font-size:26px; }
+    .intro { margin:0 0 22px;color:var(--muted);font-size:14px; }
+    .course-grid { display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px; }
+    .course { background:#fff;border:1px solid var(--line);border-radius:9px;padding:17px;display:flex;flex-direction:column;min-height:170px; }
+    .course-code { color:var(--teal);font-size:12px;font-weight:800; }
+    .course h2 { color:var(--ink);font-size:16px;margin:7px 0; }
+    .course-meta { color:var(--muted);font-size:12px;line-height:1.55; }
+    .course-footer { display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:auto;padding-top:15px; }
+    .course-actions { display:flex;align-items:center;gap:8px; }
+    .instructor { color:var(--muted);font-size:11px; }
+    .enroll-button { border:0;border-radius:7px;background:var(--teal);color:#fff;padding:9px 12px;font-weight:700;cursor:pointer; }
+    .enroll-button:disabled { background:#e1f5ee;color:#0f6e56;cursor:default; }
+    .open-course { border:1px solid var(--teal);border-radius:7px;background:#fff;color:var(--teal);padding:8px 11px;font-size:12px;font-weight:700;text-decoration:none; }
+    .notice { display:none;margin-bottom:16px;padding:11px 13px;border-radius:8px;font-size:13px; }
+    .notice.show { display:block; }.notice.error { color:#991b1b;background:#fef2f2;border:1px solid #fecaca; }.notice.success { color:#166534;background:#f0fdf4;border:1px solid #bbf7d0; }
+    .empty { grid-column:1/-1;color:var(--muted);padding:20px;border:1px dashed #cbd5e1;border-radius:8px;background:#fff;line-height:1.55; }
+    .course-hero { position:relative;display:flex;align-items:center;justify-content:space-between;gap:24px;overflow:hidden;margin-bottom:22px;padding:30px 32px;border-radius:22px;color:#fff;background:linear-gradient(112deg,#102750 0%,#174d68 58%,#148a7c 100%);box-shadow:0 17px 38px rgba(16,39,80,.16); }
+    .course-hero::after { position:absolute;right:115px;top:-85px;width:220px;height:220px;border-radius:50%;background:rgba(255,255,255,.07);content:''; }
+    .course-hero-copy,.course-hero-stats { position:relative;z-index:1; }
+    .course-hero-kicker { margin-bottom:8px;color:#b8f5e8;font-size:10px;font-weight:800;letter-spacing:.13em;text-transform:uppercase; }
+    .course-hero h1 { margin:0;color:#fff;font-size:clamp(25px,3vw,34px);letter-spacing:-.035em; }
+    .intro { max-width:520px;margin:8px 0 0;color:rgba(255,255,255,.76);font-size:13px;line-height:1.55; }
+    .course-hero-stats { display:grid;grid-template-columns:repeat(2,minmax(115px,1fr));gap:9px; }
+    .hero-stat { min-width:115px;padding:12px 14px;border:1px solid rgba(255,255,255,.18);border-radius:14px;background:rgba(255,255,255,.11);backdrop-filter:blur(8px); }
+    .hero-stat strong { display:block;color:#fff;font-size:22px;line-height:1.15; }
+    .hero-stat span { display:block;margin-top:4px;color:rgba(255,255,255,.7);font-size:10px;font-weight:600; }
+    .course-toolbar { margin-bottom:14px; }
+    .course-filter-row { display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:13px; }
+    .course-filters { display:flex;gap:7px;flex-wrap:wrap; }
+    .course-filter { display:inline-flex;align-items:center;gap:6px;padding:8px 12px;border:1px solid #e2e8f0;border-radius:999px;background:rgba(255,255,255,.82);color:#52627a;font:inherit;font-size:11px;font-weight:700;cursor:pointer;transition:all .18s ease; }
+    .course-filter:hover { border-color:#90daca;color:#0b766e; }
+    .course-filter.active { border-color:#0d9488;background:#0d9488;color:#fff;box-shadow:0 5px 12px rgba(13,148,136,.18); }
+    .course-filter-count { min-width:17px;padding:2px 5px;border-radius:999px;background:rgba(15,23,42,.07);font-size:9px;text-align:center; }
+    .course-filter.active .course-filter-count { background:rgba(255,255,255,.2); }
+    .course-search { display:flex;align-items:center;gap:9px;width:min(100%,300px);padding:0 13px;border:1px solid #e2e8f0;border-radius:12px;background:#fff;color:#94a3b8;box-shadow:0 3px 12px rgba(31,56,92,.04); }
+    .course-search:focus-within { border-color:#80d3c4;box-shadow:0 0 0 4px rgba(13,148,136,.09); }
+    .course-search input { width:100%;min-width:0;padding:10px 0;border:0;outline:0;background:transparent;color:#1e293b;font:inherit;font-size:12px; }
+    .course-results { margin:0 0 10px 2px;color:#8290a4;font-size:11px; }
+    .course-grid { grid-template-columns:repeat(auto-fill,minmax(275px,1fr));gap:15px; }
+    .course { position:relative;overflow:hidden;min-height:205px;padding:18px;border:1px solid rgba(226,232,240,.9);border-radius:16px;box-shadow:0 5px 17px rgba(31,56,92,.05);transition:transform .2s ease,box-shadow .2s ease,border-color .2s ease; }
+    .course:hover { transform:translateY(-4px);border-color:#a9ded4;box-shadow:0 14px 28px rgba(31,56,92,.1); }
+    .course-top { display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px; }
+    .course-icon { display:grid;width:40px;height:40px;place-items:center;border-radius:13px;background:#e5f7f2;font-size:20px; }
+    .course:nth-child(3n + 2) .course-icon { background:#fff0dc; }
+    .course:nth-child(3n) .course-icon { background:#eeedfe; }
+    .course-state { padding:5px 8px;border-radius:999px;background:#f1f5f9;color:#64748b;font-size:9px;font-weight:800;letter-spacing:.04em;text-transform:uppercase; }
+    .course-state.enrolled { background:#e6f8f1;color:#0f6e56; }
+    .course-code { display:inline-block;padding:4px 8px;border-radius:7px;background:#effaf7;font-size:10px;letter-spacing:.02em; }
+    .course h2 { min-height:38px;margin:8px 0 5px;font-size:15px;line-height:1.3; }
+    .course-meta { font-size:11px; }
+    .course-footer { padding-top:12px; }
+    .course-actions { flex-wrap:wrap;justify-content:flex-end; }
+    .enroll-button,.open-course { border-radius:9px;transition:transform .18s ease,box-shadow .18s ease; }
+    .enroll-button:not(:disabled):hover { transform:translateY(-2px);box-shadow:0 6px 13px rgba(13,148,136,.2); }
+    .open-course { background:#f2fbf8; }
+    .open-course:hover { background:#e3f7f1;text-decoration:none; }
+    .course-empty { grid-column:1/-1;padding:28px;border:1px dashed #cbd5e1;border-radius:15px;background:rgba(255,255,255,.78);color:var(--muted);font-size:13px;line-height:1.6;text-align:center; }
+    .notice { border-radius:12px; }
+    @media(max-width:680px) {
+      .course-hero { align-items:flex-start;flex-direction:column;padding:23px 20px; }
+      .course-hero-stats { width:100%;grid-template-columns:repeat(2,minmax(0,1fr)); }
+      .hero-stat { min-width:0; }
+      .course-filter-row { align-items:stretch;flex-direction:column; }
+      .course-search { width:100%; }
+      .course-grid { grid-template-columns:1fr; }
+    }
+    @media(prefers-reduced-motion:reduce) {
+      .course,.course-filter,.enroll-button,.open-course { transition:none; }
+      .course:hover,.enroll-button:not(:disabled):hover { transform:none; }
+    }
+    @media(max-width:520px) { .navbar { padding:10px 12px; }.nav-links { width:100%; } main { padding:22px 12px 40px; } }
+  </style>
+</head>
+<body>
+  <nav class="navbar">
+    <div class="nav-links">
+      <a href="dashboard.html">Home</a>
+      <a href="my-courses.html" class="active">My Courses</a>
+      <a href="profile.html">Profile</a>
+      <a href="course-materials.html">Materials</a>
+      <a href="quiz.html">Quiz</a>
+      <a href="assignments.html">Assignments</a>
+      <a href="code-editor.html">Code Lab</a>
+      <a href="timetable.html">Timetable</a>
+      <a href="notifications.html">Notifications</a>
+      <a href="leaderboard.html">Leaderboard</a>
+    </div>
+    <button class="nav-logout" type="button" onclick="window.Auth.logout()"><i class="fas fa-sign-out-alt"></i> Logout</button>
+  </nav>
+  <main>
+    <section class="course-hero">
+      <div class="course-hero-copy">
+        <div class="course-hero-kicker">📚 Your learning lineup</div>
+        <h1>My Courses</h1>
+        <p class="intro">Pick a course, meet your next big idea, and keep all your class resources in one place.</p>
+      </div>
+      <div class="course-hero-stats" aria-label="Course totals">
+        <div class="hero-stat"><strong id="enrolledCount">—</strong><span>In your lineup</span></div>
+        <div class="hero-stat"><strong id="availableCount">—</strong><span>Ready to explore</span></div>
+      </div>
+    </section>
+    <div id="notice" class="notice" role="status" aria-live="polite"></div>
+    <section class="course-toolbar" aria-label="Find a course">
+      <div class="course-filter-row">
+        <div class="course-filters" role="group" aria-label="Filter courses">
+          <button class="course-filter active" type="button" data-course-filter="all" aria-pressed="true">All <span class="course-filter-count" id="allFilterCount">0</span></button>
+          <button class="course-filter" type="button" data-course-filter="enrolled" aria-pressed="false">My courses <span class="course-filter-count" id="enrolledFilterCount">0</span></button>
+          <button class="course-filter" type="button" data-course-filter="available" aria-pressed="false">Available <span class="course-filter-count" id="availableFilterCount">0</span></button>
+        </div>
+        <label class="course-search">
+          <i class="fas fa-search" aria-hidden="true"></i>
+          <input id="courseSearch" type="search" autocomplete="off" placeholder="Search courses or lecturers..." aria-label="Search courses or lecturers">
+        </label>
+      </div>
+      <p class="course-results" id="courseResults" aria-live="polite">Loading your courses...</p>
+    </section>
+    <section id="courseGrid" class="course-grid" aria-live="polite"></section>
+  </main>
+  <script src="/assets/js/api-config.js"></script>
+  <script src="/assets/js/auth-utils.js"></script>
+  <script>
+    var user = window.Auth.protect();
+    var courseGrid = document.getElementById('courseGrid');
+    var notice = document.getElementById('notice');
+    var allCourses = [];
+    var activeFilter = 'all';
+    if (user && user.role === 'lecturer') window.location.href = 'lecturer-dashboard.html';
+    else if (user && user.role === 'student') loadCourses();
+
+    function node(tag, className, text) {
+      var element = document.createElement(tag);
+      if (className) element.className = className;
+      if (text !== undefined) element.textContent = text;
+      return element;
+    }
+    function showNotice(message, kind) {
+      notice.textContent = message;
+      notice.className = 'notice show ' + kind;
+    }
+    function formatTime(value) {
+      var parts = value.split(':');
+      var date = new Date();
+      date.setHours(Number(parts[0]), Number(parts[1]), 0, 0);
+      return date.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+    }
+    async function loadCourses() {
+      courseGrid.replaceChildren(node('div', 'course-empty', 'Loading your course lineup...'));
+      try {
+        var result = await window.Auth.request('/courses');
+        allCourses = result.courses || [];
+        document.getElementById('enrolledCount').textContent = allCourses.filter(function(course) { return course.enrolled; }).length;
+        document.getElementById('availableCount').textContent = allCourses.filter(function(course) { return !course.enrolled; }).length;
+        document.getElementById('allFilterCount').textContent = allCourses.length;
+        document.getElementById('enrolledFilterCount').textContent = allCourses.filter(function(course) { return course.enrolled; }).length;
+        document.getElementById('availableFilterCount').textContent = allCourses.filter(function(course) { return !course.enrolled; }).length;
+        renderCourses();
+      } catch (error) {
+        courseGrid.replaceChildren(node('div', 'course-empty', 'Courses could not be loaded. Please try again.'));
+        showNotice(error.message, 'error');
+      }
+    }
+    function renderCourses() {
+      courseGrid.replaceChildren();
+      var query = document.getElementById('courseSearch').value.trim().toLowerCase();
+      var courses = allCourses.filter(function(course) {
+        var matchesFilter = activeFilter === 'all' || (activeFilter === 'enrolled' ? course.enrolled : !course.enrolled);
+        var searchable = [course.courseCode, course.courseTitle, course.lecturerName, course.day, course.room].join(' ').toLowerCase();
+        return matchesFilter && searchable.indexOf(query) !== -1;
+      });
+      document.getElementById('courseResults').textContent = 'Showing ' + courses.length + ' of ' + allCourses.length + ' course' + (allCourses.length === 1 ? '' : 's');
+      if (!courses.length) {
+        var emptyMessage = allCourses.length
+          ? 'No courses match that search and filter. Try another keyword or switch to All.'
+          : 'No courses are available for your registered level yet. Your lecturer needs to add courses to their teaching timetable first.';
+        courseGrid.appendChild(node('div', 'course-empty', emptyMessage));
+        return;
+      }
+      courses.forEach(function(course) {
+        var card = node('article', 'course');
+        var top = node('div', 'course-top');
+        top.appendChild(node('div', 'course-icon', '🎓'));
+        top.appendChild(node('span', 'course-state' + (course.enrolled ? ' enrolled' : ''), course.enrolled ? 'In your lineup' : 'Ready to join'));
+        card.appendChild(top);
+        card.appendChild(node('div', 'course-code', course.courseCode + ' · ' + course.level + ' Level'));
+        card.appendChild(node('h2', '', course.courseTitle));
+        var meeting = (course.day || 'Schedule coming soon') + (course.startTime && course.endTime ? ' · ' + formatTime(course.startTime) + ' - ' + formatTime(course.endTime) : '') + (course.room ? ' · ' + course.room : '');
+        card.appendChild(node('div', 'course-meta', meeting));
+        var footer = node('div', 'course-footer');
+        footer.appendChild(node('span', 'instructor', course.lecturerName));
+        var actions = node('div', 'course-actions');
+        if (course.enrolled) {
+          var openLink = node('a', 'open-course', 'Open course');
+          openLink.href = 'course.html?id=' + encodeURIComponent(course.id);
+          actions.appendChild(openLink);
+        }
+        var button = node('button', 'enroll-button', course.enrolled ? 'Enrolled' : 'Enroll');
+        button.type = 'button';
+        button.disabled = course.enrolled;
+        if (!course.enrolled) button.addEventListener('click', async function() {
+          button.disabled = true;
+          try {
+            await window.Auth.request('/courses/' + encodeURIComponent(course.id) + '/enroll', { method: 'POST', body: JSON.stringify({}) });
+            course.enrolled = true;
+            button.textContent = 'Enrolled';
+            button.disabled = true;
+            card.querySelector('.course-state').textContent = 'In your lineup';
+            card.querySelector('.course-state').classList.add('enrolled');
+            var openLink = node('a', 'open-course', 'Open course');
+            openLink.href = 'course.html?id=' + encodeURIComponent(course.id);
+            actions.prepend(openLink);
+            document.getElementById('enrolledCount').textContent = Number(document.getElementById('enrolledCount').textContent) + 1;
+            document.getElementById('availableCount').textContent = Number(document.getElementById('availableCount').textContent) - 1;
+            document.getElementById('enrolledFilterCount').textContent = Number(document.getElementById('enrolledFilterCount').textContent) + 1;
+            document.getElementById('availableFilterCount').textContent = Number(document.getElementById('availableFilterCount').textContent) - 1;
+            showNotice('You are enrolled in ' + course.courseCode + '.', 'success');
+          } catch (error) {
+            button.disabled = false;
+            showNotice(error.message, 'error');
+          }
+        });
+        actions.appendChild(button);
+        footer.appendChild(actions);
+        card.appendChild(footer);
+        courseGrid.appendChild(card);
+      });
+    }
+    document.getElementById('courseSearch').addEventListener('input', renderCourses);
+    document.querySelectorAll('[data-course-filter]').forEach(function(button) {
+      button.addEventListener('click', function() {
+        activeFilter = button.dataset.courseFilter;
+        document.querySelectorAll('[data-course-filter]').forEach(function(filter) {
+          var isActive = filter === button;
+          filter.classList.toggle('active', isActive);
+          filter.setAttribute('aria-pressed', String(isActive));
+        });
+        renderCourses();
+      });
+    });
+  </script>
+  <script src="/assets/js/student-chat-widget.js"></script>
+</body>
+</html>

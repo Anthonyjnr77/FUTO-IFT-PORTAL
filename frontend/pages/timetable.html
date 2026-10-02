@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Timetable | FUTO IFT</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
-  <link rel="stylesheet" href="styles.css" />
+  <link rel="stylesheet" href="/assets/css/styles.css" />
   <style>
     :root { --primary:#0b1c3a; --teal:#0d9488; --teal-light:#14b8a6; --bg:#f4f7fb; --panel:rgba(255,255,255,0.96); --line:#e2e8f0; --muted:#64748b; --text:#0f172a; }
     * { box-sizing:border-box; }
@@ -58,9 +58,11 @@
   <nav class="navbar">
     <div class="nav-links">
       <a href="dashboard.html">Home</a>
+      <a href="my-courses.html">My Courses</a>
       <a href="profile.html">Profile</a>
       <a href="course-materials.html">Materials</a>
       <a href="quiz.html">Quiz</a>
+      <a href="assignments.html">Assignments</a>
       <a href="code-editor.html">Code Lab</a>
       <a href="timetable.html" class="active">Timetable</a>
       <a href="notifications.html">Notifications</a>
@@ -100,8 +102,8 @@
     </section>
   </main>
 
-  <script src="api-config.js"></script>
-  <script src="auth-utils.js"></script>
+  <script src="/assets/js/api-config.js"></script>
+  <script src="/assets/js/auth-utils.js"></script>
   <script>
     var SCHEDULE = [
       { level:'100', type:'Class', course:'IFT 101', when:'Mon 09:00 - 10:30', where:'Room A' },
@@ -134,8 +136,17 @@
       });
     }
 
-    document.getElementById('levelFilter').addEventListener('change', function(){ render(this.value); });
-    render('all');
+    document.addEventListener('DOMContentLoaded', function(){
+      var currentUser = window.Auth ? window.Auth.protect() : null;
+      if (!currentUser) return;
+      if (currentUser.role === 'lecturer') {
+        window.location.href = 'lecturer-timetable.html';
+        return;
+      }
+      document.getElementById('levelFilter').addEventListener('change', function(){ render(this.value); });
+      render('all');
+    });
   </script>
+  <script src="/assets/js/student-chat-widget.js"></script>
 </body>
 </html>

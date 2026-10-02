@@ -6,7 +6,7 @@
   <title>Code Practice Lab | FUTO IFT</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="/assets/css/styles.css">
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     html, body { height: 100%; overflow: hidden; font-family: 'Inter', system-ui, sans-serif; background: #0d1117; color: #e2e8f0; }
@@ -139,11 +139,12 @@
     <!-- NAVBAR -->
     <nav class="navbar">
       <div style="display:flex;gap:12px;align-items:center">
-        <a href="index.html" style="color:#fff;text-decoration:none;font-weight:700">Home</a>
-        <a href="dashboard.html" style="color:#fff;text-decoration:none">Dashboard</a>
+        <a href="dashboard.html" style="color:#fff;text-decoration:none;font-weight:700">Home</a>
+        <a href="my-courses.html" style="color:#fff;text-decoration:none">My Courses</a>
         <a href="profile.html" style="color:#fff;text-decoration:none">Profile</a>
         <a href="course-materials.html" style="color:#fff;text-decoration:none">Materials</a>
         <a href="quiz.html" style="color:#fff;text-decoration:none">Quiz</a>
+        <a href="assignments.html" style="color:#fff;text-decoration:none">Assignments</a>
         <a href="code-editor.html" style="color:#fff;text-decoration:none">Code Lab</a>
         <a href="timetable.html" style="color:#fff;text-decoration:none">Timetable</a>
         <a href="notifications.html" style="color:#fff;text-decoration:none">Notifications</a>
@@ -153,7 +154,6 @@
       <span class="nav-hint"><i class="fas fa-keyboard" style="margin-right:4px"></i>Ctrl+Enter to Run</span>
       <div class="nav-btn" id="btnFullscreen" title="Fullscreen" onclick="toggleFullscreen()"><i class="fas fa-expand"></i></div>
       <div class="nav-btn" title="Settings" onclick="toggleSettings()"><i class="fas fa-cog"></i></div>
-      <a href="lecturer-login.html" style="color:#fff;margin-left:12px;text-decoration:none">Lecturer</a>
     </nav>
 
     <!-- MAIN -->
@@ -269,8 +269,8 @@
     <i class="fas fa-columns"></i> <span id="toggleBtnText">Hide Preview</span>
   </button>
 
-  <script src="api-config.js"></script>
-  <script src="auth-utils.js"></script>
+  <script src="/assets/js/api-config.js"></script>
+  <script src="/assets/js/auth-utils.js"></script>
   <script>
     /* ===== TEMPLATES ===== */
     var TEMPLATES = {
@@ -624,5 +624,6 @@
       }, 800);
     });
   </script>
+  <script src="/assets/js/student-chat-widget.js"></script>
 </body>
 </html>

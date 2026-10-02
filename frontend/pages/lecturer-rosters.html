@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Course Rosters | FUTO IFT</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+  <link rel="stylesheet" href="/assets/css/styles.css" />
+  <style>
+    :root { --ink:#0b1c3a; --teal:#0d9488; --paper:#f0f4f8; --muted:#64748b; --line:#e2e8f0; }
+    body { margin:0;background:var(--paper);color:#1e293b;font-family:Inter,system-ui,sans-serif; }
+    .navbar { position:sticky;top:0;z-index:5;background:rgba(11,28,58,.96);display:flex;align-items:center;gap:16px;padding:12px 20px;min-height:48px; }
+    .nav-links { display:flex;gap:8px;flex-wrap:wrap;margin-right:auto; }
+    .nav-links a { color:rgba(255,255,255,.75);padding:8px 10px;border-radius:8px;text-decoration:none;font-size:13px;font-weight:600; }
+    .nav-links a:hover,.nav-links a.active { color:#fff;background:rgba(20,184,166,.16); }
+    .nav-logout { border:0;background:none;color:rgba(255,255,255,.65);cursor:pointer; }
+    main { max-width:1000px;margin:0 auto;padding:30px 20px 56px; }
+    h1 { margin:0 0 5px;color:var(--ink);font-size:26px; }
+    .intro { margin:0 0 20px;color:var(--muted);font-size:14px; }
+    .toolbar { display:flex;align-items:center;gap:12px;margin-bottom:16px; }
+    select,input { border:1px solid var(--line);border-radius:8px;padding:10px 11px;background:#fff;color:#1e293b;font:inherit;font-size:13px; }
+    select { min-width:min(420px,100%); }
+    .panel { background:#fff;border:1px solid var(--line);border-radius:10px;overflow:hidden; }
+    .panel-head { display:flex;align-items:center;justify-content:space-between;gap:12px;padding:16px 18px;border-bottom:1px solid #eef2f7; }
+    .panel-head h2 { margin:0;color:var(--ink);font-size:16px; }
+    .count { color:var(--muted);font-size:12px; }
+    .panel-body { padding:18px; }
+    .add-form { display:flex;gap:8px;margin-bottom:16px; }
+    .add-form input { flex:1;min-width:0; }
+    .primary { border:0;border-radius:8px;background:var(--teal);color:#fff;padding:10px 14px;font-weight:700;cursor:pointer;white-space:nowrap; }
+    .primary:disabled { opacity:.6;cursor:wait; }
+    .student-list { display:grid;gap:8px; }
+    .student { display:grid;grid-template-columns:1fr auto;align-items:center;gap:12px;padding:12px;border:1px solid var(--line);border-radius:8px; }
+    .student strong { display:block;color:var(--ink);font-size:13px; }
+    .student small { display:block;color:var(--muted);font-size:11px;margin-top:4px; }
+    .remove { border:1px solid #fecaca;border-radius:7px;background:#fff;color:#991b1b;padding:7px 9px;font-size:11px;font-weight:700;cursor:pointer; }
+    .notice { display:none;margin-bottom:14px;padding:11px 13px;border-radius:8px;font-size:13px; }
+    .notice.show { display:block; }.notice.error { color:#991b1b;background:#fef2f2;border:1px solid #fecaca; }.notice.success { color:#166534;background:#f0fdf4;border:1px solid #bbf7d0; }
+    .empty { color:var(--muted);padding:18px;border:1px dashed #cbd5e1;border-radius:8px;font-size:13px;line-height:1.5; }
+    .empty a { color:var(--teal);font-weight:700; }
+    @media(max-width:560px) { .navbar { padding:10px 12px; }.nav-links { width:100%; } main { padding:22px 12px 40px; }.toolbar,.add-form { align-items:stretch;flex-direction:column; }.student { grid-template-columns:1fr; }.remove { justify-self:start; } }
+  </style>
+</head>
+<body>
+  <nav class="navbar">
+    <div class="nav-links">
+      <a href="lecturer-dashboard.html">Dashboard</a>
+      <a href="lecturer-rosters.html" class="active">Course rosters</a>
+      <a href="lecturer-quizzes.html">Quizzes</a>
+      <a href="lecturer-timetable.html">Timetable</a>
+      <a href="lecturer-assignments.html">Assignments</a>
+    </div>
+    <button class="nav-logout" type="button" onclick="window.Auth.logout()"><i class="fas fa-sign-out-alt"></i> Logout</button>
+  </nav>
+  <main>
+    <h1>Course rosters</h1>
+    <p class="intro">Manage the students who receive course announcements, materials, assignments, and quizzes.</p>
+    <div id="notice" class="notice" role="status" aria-live="polite"></div>
+    <div class="toolbar"><label for="courseSelect">Course</label><select id="courseSelect"><option value="">Loading courses...</option></select></div>
+    <section class="panel">
+      <div class="panel-head"><h2 id="rosterTitle">Students</h2><span id="studentCount" class="count"></span></div>
+      <div class="panel-body">
+        <form id="addStudentForm" class="add-form">
+          <input id="studentMatric" required maxlength="11" inputmode="numeric" placeholder="Student matric number" aria-label="Student matric number" />
+          <button id="addStudentButton" class="primary" type="submit">Add student</button>
+        </form>
+        <div id="studentList" class="student-list"></div>
+      </div>
+    </section>
+  </main>
+  <script src="/assets/js/api-config.js"></script>
+  <script src="/assets/js/auth-utils.js"></script>
+  <script>
+    var lecturer = window.Auth.protectLecturer();
+    var courseSelect = document.getElementById('courseSelect');
+    var studentList = document.getElementById('studentList');
+    var notice = document.getElementById('notice');
+    if (lecturer) loadCourses();
+
+    function node(tag, className, text) {
+      var element = document.createElement(tag);
+      if (className) element.className = className;
+      if (text !== undefined) element.textContent = text;
+      return element;
+    }
+    function showNotice(message, kind) {
+      notice.textContent = message;
+      notice.className = 'notice show ' + kind;
+    }
+    async function loadCourses() {
+      try {
+        var result = await window.Auth.request('/lecturer/courses');
+        courseSelect.replaceChildren();
+        if (!result.courses.length) {
+          courseSelect.appendChild(new Option('Add a course to your timetable first', ''));
+          document.getElementById('addStudentButton').disabled = true;
+          studentList.replaceChildren(node('div', 'empty'));
+          var message = studentList.firstChild;
+          message.appendChild(document.createTextNode('No courses yet. '));
+          var link = node('a', '', 'Open teaching timetable');
+          link.href = 'lecturer-timetable.html';
+          message.appendChild(link);
+          return;
+        }
+        result.courses.forEach(function(course) {
+          courseSelect.appendChild(new Option(course.courseCode + ' · ' + course.courseTitle, course.id));
+        });
+        await loadRoster();
+      } catch (error) {
+        courseSelect.replaceChildren(new Option('Could not load courses', ''));
+        studentList.replaceChildren(node('div', 'empty', error.message));
+      }
+    }
+    async function loadRoster() {
+      var courseId = courseSelect.value;
+      if (!courseId) return;
+      studentList.replaceChildren(node('div', 'empty', 'Loading roster...'));
+      try {
+        var result = await window.Auth.request('/lecturer/courses/' + encodeURIComponent(courseId) + '/students');
+        document.getElementById('rosterTitle').textContent = result.course.courseCode + ' · ' + result.course.courseTitle;
+        document.getElementById('studentCount').textContent = result.students.length + ' student' + (result.students.length === 1 ? '' : 's');
+        renderStudents(result.students, courseId);
+      } catch (error) {
+        studentList.replaceChildren(node('div', 'empty', error.message));
+      }
+    }
+    function renderStudents(students, courseId) {
+      studentList.replaceChildren();
+      if (!students.length) {
+        studentList.appendChild(node('div', 'empty', 'No students enrolled yet. Add a student by matric number.'));
+        return;
+      }
+      students.forEach(function(student) {
+        var row = node('article', 'student');
+        var details = node('div');
+        details.appendChild(node('strong', '', student.name));
+        details.appendChild(node('small', '', student.matric + ' · Level ' + student.level));
+        var remove = node('button', 'remove', 'Remove');
+        remove.type = 'button';
+        remove.addEventListener('click', async function() {
+          if (!window.confirm('Remove ' + student.name + ' from this course?')) return;
+          remove.disabled = true;
+          try {
+            await window.Auth.request('/lecturer/courses/' + encodeURIComponent(courseId) + '/students/' + encodeURIComponent(student.id), { method: 'DELETE' });
+            showNotice(student.name + ' was removed from the course.', 'success');
+            await loadRoster();
+          } catch (error) {
+            remove.disabled = false;
+            showNotice(error.message, 'error');
+          }
+        });
+        row.append(details, remove);
+        studentList.appendChild(row);
+      });
+    }
+    courseSelect.addEventListener('change', loadRoster);
+    document.getElementById('addStudentForm').addEventListener('submit', async function(event) {
+      event.preventDefault();
+      var button = document.getElementById('addStudentButton');
+      button.disabled = true;
+      try {
+        await window.Auth.request('/lecturer/courses/' + encodeURIComponent(courseSelect.value) + '/students', {
+          method: 'POST',
+          body: JSON.stringify({ matric: document.getElementById('studentMatric').value })
+        });
+        document.getElementById('studentMatric').value = '';
+        showNotice('Student added to the course roster.', 'success');
+        await loadRoster();
+      } catch (error) {
+        showNotice(error.message, 'error');
+      } finally {
+        button.disabled = false;
+      }
+    });
+  </script>
+</body>
+</html>

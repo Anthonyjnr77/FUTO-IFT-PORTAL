@@ -1,0 +1,298 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Administrator | FUTO IFT</title>
+  <link rel="stylesheet" href="/assets/css/styles.css">
+  <style>
+    :root{--navy:#0b1c3a;--teal:#0d9488;--line:#dce5ee;--muted:#64748b}
+    *{box-sizing:border-box}body{margin:0;background:#f3f7fb;color:#10213b;font-family:Inter,system-ui,sans-serif}
+    header{display:flex;justify-content:space-between;align-items:center;gap:16px;padding:16px max(20px,calc((100% - 1120px)/2));background:var(--navy);color:#fff}
+    header a{color:#d5fff8;text-decoration:none}.logout{border:1px solid #ffffff55;border-radius:8px;background:transparent;color:white;padding:9px 13px;cursor:pointer}
+    main{width:min(1120px,calc(100% - 32px));margin:30px auto 60px}.intro{color:var(--muted)}
+    .panel{margin-top:22px;padding:22px;background:#fff;border:1px solid var(--line);border-radius:14px;box-shadow:0 8px 24px #10213b0a}
+    .panel h2{margin:0 0 8px;font-size:20px}.form-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
+    label{display:block;margin-bottom:6px;font-size:12px;font-weight:700}.field{width:100%;padding:10px 11px;border:1px solid #cbd5e1;border-radius:8px;background:white;font:inherit}
+    .field-wrap[hidden]{display:none}.primary,.small{border:0;border-radius:8px;background:var(--teal);color:white;font:inherit;font-weight:700;cursor:pointer}
+    .primary{margin-top:16px;padding:11px 16px}.small{padding:7px 9px}.small.secondary{background:#475569}.small:disabled{opacity:.5;cursor:not-allowed}
+    .status{min-height:20px;margin-top:10px;font-size:13px;color:#166534}.status.error{color:#b42318}
+    .table-wrap{overflow:auto}table{width:100%;border-collapse:collapse;min-width:780px}th,td{padding:11px 9px;border-bottom:1px solid var(--line);text-align:left;font-size:13px;vertical-align:middle}
+    th{color:#475569;font-size:11px;text-transform:uppercase;letter-spacing:.05em}td .field{min-width:112px;padding:7px}
+    .actions{display:flex;gap:6px}.identity{font-weight:700}.muted{color:var(--muted)}.notice{font-size:12px;color:var(--muted)}
+    .intent-list{display:grid;gap:10px;margin-top:16px}.intent-card{padding:14px;border:1px solid var(--line);border-radius:10px}
+    .intent-head{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}.intent-head h3{margin:0;font-size:15px}
+    .intent-card p{margin:7px 0;color:#334155;font-size:13px;line-height:1.5}.intent-card .muted{font-size:12px}
+    @media(max-width:760px){.form-grid{grid-template-columns:1fr 1fr}header{padding:14px 16px}}
+    @media(max-width:480px){.form-grid{grid-template-columns:1fr}.panel{padding:16px}header{align-items:flex-start}}
+  </style>
+</head>
+<body>
+  <header>
+    <div><strong>FUTO IFT · Administration</strong> <a href="admin.html">Accounts</a></div>
+    <button class="logout" type="button" onclick="window.Auth.logout()">Sign out</button>
+  </header>
+  <main>
+    <h1>Staff account management</h1>
+    <p class="intro">Create lecturer accounts and manage lecturer or administrator access. Student registration remains on the student portal.</p>
+    <section class="panel">
+      <h2>Create lecturer account</h2>
+      <p class="notice">Use a temporary password of at least 12 characters and share it with the account holder through a separate secure channel.</p>
+      <form id="createForm">
+        <div class="form-grid">
+          <div><label for="newName">Full name</label><input class="field" id="newName" required minlength="3" maxlength="100"></div>
+          <div><label for="newEmail">Email</label><input class="field" id="newEmail" type="email" required></div>
+          <div><label for="newIdentifier">Username</label><input class="field" id="newIdentifier" required minlength="3" maxlength="80" placeholder="Choose a username" autocomplete="username"></div>
+          <div><label for="newPassword">Temporary password</label><input class="field" id="newPassword" type="password" required minlength="12" autocomplete="new-password"></div>
+        </div>
+        <button class="primary" id="createButton" type="submit">Create lecturer account</button>
+        <div id="createStatus" class="status" role="status" aria-live="polite"></div>
+      </form>
+    </section>
+    <section class="panel">
+      <h2>Lecturer and administrator accounts</h2>
+      <p class="notice">Changing a role or disabling an account revokes its active sessions. The final active administrator cannot be demoted or disabled.</p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Name / email</th><th>Role</th><th>Status</th><th>Actions</th></tr></thead>
+          <tbody id="usersBody"><tr><td colspan="4">Loading accounts…</td></tr></tbody>
+        </table>
+      </div>
+      <div id="listStatus" class="status" role="status" aria-live="polite"></div>
+    </section>
+    <section class="panel">
+      <h2>Chatbot knowledge base</h2>
+      <p class="notice">Each intent maps a topic and example student phrases to one course resource and a short helpful explanation.</p>
+      <form id="intentForm">
+        <input id="intentId" type="hidden">
+        <div class="form-grid">
+          <div><label for="intentTopic">Topic tag</label><input class="field" id="intentTopic" required maxlength="100" placeholder="e.g. Relational databases"></div>
+          <div><label for="intentMaterial">Linked course resource</label><select class="field" id="intentMaterial" required><option value="">Loading resources…</option></select></div>
+          <div><label for="intentPhrases">Sample phrases (one per line)</label><textarea class="field" id="intentPhrases" required rows="4" placeholder="How do relational databases work?&#10;Explain database normalization"></textarea></div>
+          <div><label for="intentExplanation">Chatbot explanation</label><textarea class="field" id="intentExplanation" required maxlength="500" rows="4" placeholder="A brief explanation to accompany the resource link"></textarea></div>
+        </div>
+        <button class="primary" id="intentSave" type="submit">Add chatbot intent</button>
+        <button class="small secondary" id="intentCancel" type="button" hidden>Cancel edit</button>
+        <div id="intentStatus" class="status" role="status" aria-live="polite"></div>
+      </form>
+      <div id="intentList" class="intent-list"><p class="muted">Loading chatbot intents…</p></div>
+    </section>
+  </main>
+  <script src="/assets/js/api-config.js"></script>
+  <script src="/assets/js/auth-utils.js"></script>
+  <script>
+    var currentAdmin = window.Auth.protectAdmin();
+    var usersBody = document.getElementById('usersBody');
+    var materialsById = new Map();
+
+    function node(tag, text) {
+      var element = document.createElement(tag);
+      if (text !== undefined) element.textContent = text;
+      return element;
+    }
+    function setStatus(id, message, isError) {
+      var element = document.getElementById(id);
+      element.textContent = message;
+      element.classList.toggle('error', Boolean(isError));
+    }
+    async function loadUsers() {
+      try {
+        var result = await window.Auth.request('/admin/users');
+        usersBody.replaceChildren();
+        var staffUsers = result.users.filter(function(user) {
+          return user.role === 'lecturer' || user.role === 'admin';
+        });
+        if (!staffUsers.length) {
+          usersBody.appendChild(node('tr')).appendChild(node('td', 'No staff accounts found.'));
+          return;
+        }
+        staffUsers.forEach(function(user) {
+          var row = node('tr');
+          var identity = node('td');
+          identity.append(node('div', user.name), node('div', user.email || 'No email'));
+          identity.firstChild.className = 'identity';
+          identity.lastChild.className = 'muted';
+          row.appendChild(identity);
+          var roleCell = node('td');
+          var role = node('select');
+          role.className = 'field';
+          [['lecturer','Lecturer'],['admin','Administrator']].forEach(function(optionData) {
+            var option = node('option', optionData[1]);
+            option.value = optionData[0];
+            role.appendChild(option);
+          });
+          role.value = user.role;
+          roleCell.appendChild(role);
+          row.appendChild(roleCell);
+          row.appendChild(node('td', user.isActive ? 'Active' : 'Disabled'));
+          var actions = node('td');
+          actions.className = 'actions';
+          var roleButton = node('button', 'Save role');
+          roleButton.type = 'button';
+          roleButton.className = 'small';
+          roleButton.disabled = user.id === currentAdmin.id;
+          roleButton.addEventListener('click', async function() {
+            if (role.value === user.role) return;
+            await updateUser(user.id, 'role', { role: role.value });
+          });
+          var statusButton = node('button', user.isActive ? 'Disable' : 'Enable');
+          statusButton.type = 'button';
+          statusButton.className = 'small secondary';
+          statusButton.disabled = user.id === currentAdmin.id;
+          statusButton.addEventListener('click', async function() {
+            await updateUser(user.id, 'status', { isActive: !user.isActive });
+          });
+          actions.append(roleButton, statusButton);
+          row.appendChild(actions);
+          usersBody.appendChild(row);
+        });
+        setStatus('listStatus', '', false);
+      } catch (error) {
+        usersBody.replaceChildren();
+        usersBody.appendChild(node('tr')).appendChild(node('td', 'Staff accounts could not be loaded.'));
+        setStatus('listStatus', error.message, true);
+      }
+    }
+    async function updateUser(id, action, payload) {
+      try {
+        await window.Auth.request('/admin/users/' + encodeURIComponent(id) + '/' + action, {
+          method: 'POST', body: JSON.stringify(payload)
+        });
+        setStatus('listStatus', 'Account updated.', false);
+        await loadUsers();
+      } catch (error) {
+        setStatus('listStatus', error.message, true);
+      }
+    }
+    function resetIntentForm() {
+      document.getElementById('intentForm').reset();
+      document.getElementById('intentId').value = '';
+      document.getElementById('intentSave').textContent = 'Add chatbot intent';
+      document.getElementById('intentCancel').hidden = true;
+    }
+    function editIntent(intent) {
+      document.getElementById('intentId').value = intent.id;
+      document.getElementById('intentTopic').value = intent.topicTag;
+      document.getElementById('intentMaterial').value = intent.linkedMaterialId;
+      document.getElementById('intentPhrases').value = intent.samplePhrases.join('\n');
+      document.getElementById('intentExplanation').value = intent.explanation;
+      document.getElementById('intentSave').textContent = 'Save chatbot intent';
+      document.getElementById('intentCancel').hidden = false;
+      document.getElementById('intentTopic').focus();
+    }
+    async function loadIntents() {
+      var list = document.getElementById('intentList');
+      try {
+        var result = await window.Auth.request('/admin/chat-intents');
+        var select = document.getElementById('intentMaterial');
+        select.replaceChildren(node('option', result.materials.length ? 'Choose a course resource' : 'No resources have been shared yet'));
+        select.firstChild.value = '';
+        materialsById = new Map();
+        result.materials.forEach(function(material) {
+          materialsById.set(material.id, material);
+          var label = material.courseCode + ' · ' + material.title + ' (' + material.topicTag + ')';
+          var option = node('option', label);
+          option.value = material.id;
+          select.appendChild(option);
+        });
+        list.replaceChildren();
+        if (!result.intents.length) {
+          list.appendChild(node('p', 'No chatbot intents yet. Add one after a lecturer has shared a course resource.'));
+          return;
+        }
+        result.intents.forEach(function(intent) {
+          var card = node('article');
+          card.className = 'intent-card';
+          var top = node('div');
+          top.className = 'intent-head';
+          top.appendChild(node('h3', intent.topicTag));
+          var actions = node('div');
+          actions.className = 'actions';
+          var edit = node('button', 'Edit');
+          edit.type = 'button';
+          edit.className = 'small';
+          edit.addEventListener('click', function() { editIntent(intent); });
+          var remove = node('button', 'Remove');
+          remove.type = 'button';
+          remove.className = 'small secondary';
+          remove.addEventListener('click', async function() {
+            if (!window.confirm('Remove the "' + intent.topicTag + '" chatbot intent?')) return;
+            try {
+              await window.Auth.request('/admin/chat-intents/' + encodeURIComponent(intent.id), { method: 'DELETE' });
+              setStatus('intentStatus', 'Intent removed.', false);
+              await loadIntents();
+            } catch (error) {
+              setStatus('intentStatus', error.message, true);
+            }
+          });
+          actions.append(edit, remove);
+          top.appendChild(actions);
+          card.appendChild(top);
+          card.appendChild(node('p', intent.explanation));
+          card.appendChild(node('p', 'Examples: ' + intent.samplePhrases.join(' · ')));
+          var material = materialsById.get(intent.linkedMaterialId);
+          card.appendChild(node('div', 'muted', material ? 'Linked resource: ' + material.courseCode + ' · ' + material.title : 'The linked resource is no longer available.'));
+          list.appendChild(card);
+        });
+      } catch (error) {
+        list.replaceChildren(node('p', 'Chatbot knowledge base could not be loaded.'));
+        setStatus('intentStatus', error.message, true);
+      }
+    }
+    document.getElementById('createForm').addEventListener('submit', async function(event) {
+      event.preventDefault();
+      var button = document.getElementById('createButton');
+      button.disabled = true;
+      setStatus('createStatus', '', false);
+      try {
+        await window.Auth.request('/admin/users', {
+          method: 'POST',
+          body: JSON.stringify({
+            name: document.getElementById('newName').value.trim(),
+            email: document.getElementById('newEmail').value.trim(),
+            role: 'lecturer',
+            identifier: document.getElementById('newIdentifier').value.trim(),
+            password: document.getElementById('newPassword').value
+          })
+        });
+        this.reset();
+        setStatus('createStatus', 'Lecturer account created. Share its temporary password securely; it will not be shown again.', false);
+        await loadUsers();
+      } catch (error) {
+        setStatus('createStatus', error.message, true);
+      } finally {
+        button.disabled = false;
+      }
+    });
+    document.getElementById('intentCancel').addEventListener('click', resetIntentForm);
+    document.getElementById('intentForm').addEventListener('submit', async function(event) {
+      event.preventDefault();
+      var button = document.getElementById('intentSave');
+      var id = document.getElementById('intentId').value;
+      var payload = {
+        topicTag: document.getElementById('intentTopic').value.trim(),
+        linkedMaterialId: document.getElementById('intentMaterial').value,
+        samplePhrases: document.getElementById('intentPhrases').value.split(/\r?\n/).map(function(phrase) { return phrase.trim(); }).filter(Boolean),
+        explanation: document.getElementById('intentExplanation').value.trim()
+      };
+      button.disabled = true;
+      try {
+        await window.Auth.request('/admin/chat-intents' + (id ? '/' + encodeURIComponent(id) : ''), {
+          method: 'POST', body: JSON.stringify(payload)
+        });
+        resetIntentForm();
+        setStatus('intentStatus', id ? 'Intent updated.' : 'Intent added.', false);
+        await loadIntents();
+      } catch (error) {
+        setStatus('intentStatus', error.message, true);
+      } finally {
+        button.disabled = false;
+      }
+    });
+    if (currentAdmin) {
+      loadUsers();
+      loadIntents();
+    }
+  </script>
+</body>
+</html>

@@ -4,8 +4,10 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Lecturer Login | FUTO IFT</title>
+  <meta http-equiv="refresh" content="0;url=index.html?tab=lecturer-login" />
+  <script>window.location.replace('index.html?tab=lecturer-login');</script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
-  <link rel="stylesheet" href="styles.css" />
+  <link rel="stylesheet" href="/assets/css/styles.css" />
   <style>
     :root { --primary:#0b1c3a; --teal:#0d9488; --teal-light:#14b8a6; --bg:#f4f7fb; --panel:rgba(255,255,255,0.96); --line:#e2e8f0; --muted:#64748b; --text:#0f172a; }
     * { box-sizing:border-box; }
@@ -58,14 +60,14 @@
 
         <button class="link" type="button" onclick="forgotPassword()" style="background:none;border:0;cursor:pointer;width:100%">Forgot password?</button>
 
-        <div class="hint">Use the lecturer username and password created from the portal registration form.</div>
+        <div class="hint">Lecturer accounts are created by a portal administrator. Contact your department administrator if you need access.</div>
         <div class="link"><a href="index.html">Return to student portal</a></div>
       </div>
     </main>
   </div>
 
-  <script src="api-config.js"></script>
-  <script src="auth-utils.js"></script>
+  <script src="/assets/js/api-config.js"></script>
+  <script src="/assets/js/auth-utils.js"></script>
   <script>
     async function login(){
       var email = document.getElementById('email').value.trim();

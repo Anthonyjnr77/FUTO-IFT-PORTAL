@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Manage Quizzes | FUTO IFT</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+  <link rel="stylesheet" href="/assets/css/styles.css" />
+  <style>
+    :root { --ink:#0b1c3a; --teal:#0d9488; --paper:#f0f4f8; --muted:#64748b; --line:#e2e8f0; }
+    body { margin:0;background:var(--paper);color:#1e293b;font-family:Inter,system-ui,sans-serif; }
+    .navbar { position:sticky;top:0;z-index:5;background:rgba(11,28,58,.96);display:flex;align-items:center;gap:16px;padding:12px 20px;min-height:48px; }
+    .nav-links { display:flex;gap:8px;flex-wrap:wrap;margin-right:auto; }
+    .nav-links a { color:rgba(255,255,255,.75);padding:8px 10px;border-radius:8px;text-decoration:none;font-size:13px;font-weight:600; }
+    .nav-links a:hover,.nav-links a.active { color:#fff;background:rgba(20,184,166,.16); }
+    .nav-logout { border:0;background:none;color:rgba(255,255,255,.65);cursor:pointer; }
+    main { max-width:1100px;margin:0 auto;padding:30px 20px 56px; }
+    h1 { margin:0 0 5px;color:var(--ink);font-size:26px; }
+    .intro { margin:0 0 22px;color:var(--muted);font-size:14px; }
+    .layout { display:grid;grid-template-columns:minmax(0,1.3fr) minmax(260px,.7fr);gap:18px;align-items:start; }
+    .panel { background:#fff;border:1px solid var(--line);border-radius:10px;overflow:hidden; }
+    .panel-head { padding:16px 18px;border-bottom:1px solid #eef2f7; }
+    .panel-head h2 { margin:0;color:var(--ink);font-size:16px; }
+    .panel-body { padding:18px; }
+    .field { margin-bottom:14px; }
+    .field label,.question label { display:block;margin-bottom:6px;color:#334155;font-size:12px;font-weight:700; }
+    input,select,textarea { width:100%;border:1px solid var(--line);border-radius:8px;padding:10px 11px;font:inherit;font-size:13px;background:#fff; }
+    textarea { min-height:76px;resize:vertical;line-height:1.5; }
+    input:focus,select:focus,textarea:focus { outline:2px solid rgba(13,148,136,.2);border-color:var(--teal); }
+    .primary,.secondary { border:0;border-radius:8px;padding:10px 14px;font-weight:700;cursor:pointer; }
+    .primary { background:var(--teal);color:#fff; }.primary:disabled { opacity:.6;cursor:wait; }
+    .secondary { background:#e8f5f2;color:#0f6e56; }
+    .form-row { display:grid;grid-template-columns:1fr 180px;gap:12px; }
+    .question-list { display:grid;gap:12px;margin:14px 0; }
+    .question { border:1px solid var(--line);border-radius:8px;padding:14px;background:#fbfdff; }
+    .question-head { display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:10px; }
+    .question-head strong { color:var(--ink);font-size:13px; }
+    .remove-question { border:0;background:none;color:#b42318;cursor:pointer;font-weight:600;font-size:12px; }
+    .option-grid { display:grid;grid-template-columns:1fr 1fr;gap:8px; }
+    .correct-choice { display:flex;align-items:center;gap:8px;margin-top:10px;color:#475569;font-size:12px; }
+    .correct-choice input { width:16px;height:16px;accent-color:var(--teal); }
+    .paste-import { margin:10px 0 14px;border:1px solid var(--line);border-radius:8px;background:#fbfdff; }
+    .paste-import summary { padding:12px 14px;color:var(--ink);font-weight:700;font-size:13px;cursor:pointer; }
+    .paste-body { padding:0 14px 14px; }
+    .paste-help { margin:0 0 9px;color:var(--muted);font-size:12px;line-height:1.5; }
+    .paste-input { min-height:180px;font-family:ui-monospace,Consolas,monospace; }
+    .paste-actions { display:flex;gap:8px;flex-wrap:wrap;margin-top:9px; }
+    .import-preview { margin-top:10px;font-size:12px;line-height:1.5; }
+    .import-preview.success { color:#166534; }
+    .import-preview.error { color:#991b1b; }
+    .import-preview ul { margin:5px 0 0;padding-left:20px; }
+    .import-warning { margin:10px 0 0;color:#854f0b;font-size:11px; }
+    .notice { display:none;margin-bottom:16px;padding:11px 13px;border-radius:8px;font-size:13px; }
+    .notice.show { display:block; }.notice.error { color:#991b1b;background:#fef2f2;border:1px solid #fecaca; }.notice.success { color:#166534;background:#f0fdf4;border:1px solid #bbf7d0; }
+    .quiz-list { display:grid;gap:10px; }
+    .quiz-item { padding:13px;border:1px solid var(--line);border-radius:8px; }
+    .quiz-item strong { display:block;color:var(--ink);font-size:14px; }
+    .quiz-meta { display:block;color:var(--muted);font-size:11px;margin-top:5px; }
+    .results-button { margin-top:10px;border:1px solid var(--line);border-radius:7px;background:#fff;color:var(--teal);padding:7px 10px;font-weight:700;font-size:11px;cursor:pointer; }
+    .results-panel { margin-top:18px;padding-top:16px;border-top:1px solid #eef2f7; }
+    .results-panel h3 { margin:0 0 10px;color:var(--ink);font-size:14px; }
+    .result-list,.question-stats { display:grid;gap:8px; }
+    .result-row { display:grid;grid-template-columns:36px 1fr auto;align-items:center;gap:10px;padding:10px;border:1px solid var(--line);border-radius:7px; }
+    .rank { color:var(--teal);font-weight:800;font-size:12px; }
+    .result-row strong { display:block;color:var(--ink);font-size:12px; }
+    .result-row small,.question-stat small { color:var(--muted);font-size:10px; }
+    .result-score { color:var(--teal);font-weight:800;font-variant-numeric:tabular-nums; }
+    .question-stat { padding:10px;border-radius:7px;background:#f8fafc;font-size:12px;color:#334155;line-height:1.45; }
+    .question-stat small { display:block;margin-top:4px; }
+    .empty { color:var(--muted);padding:16px;border:1px dashed #cbd5e1;border-radius:8px;font-size:13px; }
+    .course-note { margin:0 0 14px;color:var(--muted);font-size:12px;line-height:1.5; }
+    .course-note a { color:var(--teal);font-weight:700; }
+    @media(max-width:850px) { .layout { grid-template-columns:1fr; } }
+    @media(max-width:520px) { .navbar { padding:10px 12px; }.nav-links { width:100%; } main { padding:22px 12px 40px; }.form-row,.option-grid { grid-template-columns:1fr; } }
+  </style>
+</head>
+<body>
+  <nav class="navbar">
+    <div class="nav-links">
+      <a href="lecturer-dashboard.html">Dashboard</a>
+      <a href="lecturer-rosters.html">Course rosters</a>
+      <a href="lecturer-quizzes.html" class="active">Quizzes</a>
+      <a href="lecturer-timetable.html">Timetable</a>
+      <a href="lecturer-assignments.html">Assignments</a>
+    </div>
+    <button class="nav-logout" type="button" onclick="window.Auth.logout()"><i class="fas fa-sign-out-alt"></i> Logout</button>
+  </nav>
+  <main>
+    <h1>Quizzes</h1>
+    <p class="intro">Create timed multiple-choice quizzes for courses on your teaching timetable.</p>
+    <div id="notice" class="notice" role="status" aria-live="polite"></div>
+    <div class="layout">
+      <section class="panel">
+        <div class="panel-head"><h2>Create a quiz</h2></div>
+        <div class="panel-body">
+          <p class="course-note">Quizzes can only be published for courses you have added to your <a href="lecturer-timetable.html">teaching timetable</a>.</p>
+          <form id="quizForm">
+            <div class="form-row">
+              <div class="field"><label for="courseCode">Course</label><select id="courseCode" required><option value="">Loading courses...</option></select></div>
+              <div class="field"><label for="duration">Time limit</label><select id="duration"><option value="5">5 minutes</option><option value="10" selected>10 minutes</option><option value="15">15 minutes</option><option value="30">30 minutes</option><option value="60">60 minutes</option></select></div>
+            </div>
+            <div class="field"><label for="quizTitle">Quiz title</label><input id="quizTitle" required minlength="3" maxlength="120" placeholder="Week 4: Database fundamentals" /></div>
+            <div class="form-row">
+              <div class="field"><label for="topicTag">Topic tag</label><input id="topicTag" required minlength="2" maxlength="100" placeholder="e.g. Relational databases" /></div>
+              <div class="field"><label for="passThreshold">Mastery threshold</label><select id="passThreshold"><option value="50">50%</option><option value="60">60%</option><option value="70" selected>70%</option><option value="80">80%</option><option value="90">90%</option></select></div>
+            </div>
+            <details id="pasteImporter" class="paste-import">
+              <summary>Paste questions from a document</summary>
+              <div class="paste-body">
+                <p class="paste-help">Separate questions with a blank line. Each block needs a question, options A-D, and the correct answer letter. Explanation is optional.</p>
+                <textarea id="pasteQuestions" class="paste-input" spellcheck="false" placeholder="Question: What does CPU stand for?&#10;A) Central Processing Unit&#10;B) Computer Personal Utility&#10;C) Core Program Upload&#10;D) Control Processing User&#10;Answer: A&#10;Explanation: The CPU executes program instructions."></textarea>
+                <div class="paste-actions">
+                  <button id="previewImport" class="secondary" type="button">Preview pasted questions</button>
+                  <button id="applyImport" class="primary" type="button" disabled>Use imported questions</button>
+                </div>
+                <div id="importPreview" class="import-preview" aria-live="polite"></div>
+                <p class="import-warning">Using imported questions replaces the current question cards. You can edit them before publishing.</p>
+              </div>
+            </details>
+            <div id="questionList" class="question-list"></div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px">
+              <button id="addQuestion" class="secondary" type="button"><i class="fas fa-plus"></i> Add question</button>
+              <button id="publishQuiz" class="primary" type="submit">Publish quiz</button>
+            </div>
+          </form>
+        </div>
+      </section>
+      <section class="panel">
+        <div class="panel-head"><h2>Your published quizzes</h2></div>
+        <div class="panel-body">
+          <div id="quizList" class="quiz-list"></div>
+          <section id="resultsPanel" class="results-panel" hidden>
+            <h3 id="resultsTitle">Quiz results</h3>
+            <div id="resultSummary" class="quiz-meta"></div>
+            <div id="resultList" class="result-list" style="margin-top:10px"></div>
+            <h3 style="margin-top:18px">Question accuracy</h3>
+            <div id="questionStats" class="question-stats"></div>
+          </section>
+        </div>
+      </section>
+    </div>
+  </main>
+  <script src="/assets/js/api-config.js"></script>
+  <script src="/assets/js/auth-utils.js"></script>
+  <script>
+    var lecturer = window.Auth.protectLecturer();
+    var questionList = document.getElementById('questionList');
+    var courseSelect = document.getElementById('courseCode');
+    var quizList = document.getElementById('quizList');
+    var notice = document.getElementById('notice');
+    var questionCount = 0;
+    var pendingImportedQuestions = null;
+
+    if (lecturer) {
+      addQuestion();
+      addQuestion();
+      loadCourses();
+      loadQuizzes();
+    }
+
+    function node(tag, className, text) {
+      var element = document.createElement(tag);
+      if (className) element.className = className;
+      if (text !== undefined) element.textContent = text;
+      return element;
+    }
+    function notify(message, kind) {
+      notice.textContent = message;
+      notice.className = 'notice show ' + kind;
+    }
+    function addField(container, labelText, className, placeholder, type) {
+      var wrapper = node('div', className || '');
+      var label = node('label', '', labelText);
+      var input = type === 'textarea' ? node('textarea') : node('input');
+      if (type !== 'textarea') input.type = type || 'text';
+      input.placeholder = placeholder || '';
+      input.required = true;
+      label.appendChild(input);
+      wrapper.appendChild(label);
+      container.appendChild(wrapper);
+      return input;
+    }
+    function addQuestion() {
+      questionCount++;
+      var index = questionCount;
+      var card = node('article', 'question');
+      var head = node('div', 'question-head');
+      head.appendChild(node('strong', '', 'Question ' + index));
+      var remove = node('button', 'remove-question', 'Remove');
+      remove.type = 'button';
+      remove.addEventListener('click', function() {
+        if (questionList.children.length <= 2) return;
+        card.remove();
+        Array.from(questionList.children).forEach(function(item, itemIndex) {
+          item.querySelector('.question-head strong').textContent = 'Question ' + (itemIndex + 1);
+        });
+      });
+      head.appendChild(remove);
+      card.appendChild(head);
+      var prompt = addField(card, 'Question', 'field', 'Enter the question', 'textarea');
+      prompt.maxLength = 1000;
+      var options = node('div', 'option-grid');
+      for (var i = 0; i < 4; i++) {
+        var option = addField(options, 'Option ' + String.fromCharCode(65 + i), '', 'Answer option', 'text');
+        option.maxLength = 500;
+      }
+      card.appendChild(options);
+      var correct = node('fieldset', 'correct-choice');
+      correct.style.border = '0';
+      correct.style.padding = '0';
+      correct.style.margin = '10px 0 0';
+      correct.appendChild(node('legend', '', 'Correct answer'));
+      for (var choice = 0; choice < 4; choice++) {
+        var label = node('label');
+        var radio = node('input');
+        radio.type = 'radio';
+        radio.name = 'correct-' + index;
+        radio.value = String(choice);
+        radio.required = true;
+        if (choice === 0) radio.checked = true;
+        label.append(radio, document.createTextNode(' ' + String.fromCharCode(65 + choice)));
+        correct.appendChild(label);
+      }
+      card.appendChild(correct);
+      var explanation = addField(card, 'Explanation (optional)', 'field', 'Explain the answer after submission', 'textarea');
+      explanation.required = false;
+      explanation.maxLength = 1500;
+      questionList.appendChild(card);
+    }
+    function parsePastedQuestions(source) {
+      var blocks = source.trim().split(/\r?\n\s*\r?\n+/).filter(function(block) { return block.trim(); });
+      var questions = [];
+      var errors = [];
+      if (!blocks.length) return { questions: [], errors: ['Paste at least two question blocks.'] };
+      blocks.forEach(function(block, blockIndex) {
+        var data = { q: '', options: {}, answer: null, exp: '' };
+        var currentField = '';
+        block.split(/\r?\n/).forEach(function(rawLine) {
+          var line = rawLine.trim();
+          if (!line) return;
+          var questionMatch = line.match(/^question\s*:\s*(.*)$/i);
+          var optionMatch = line.match(/^(?:option\s+)?([A-D])\s*[).:]\s*(.*)$/i);
+          var answerMatch = line.match(/^answer\s*:\s*([A-D])\s*$/i);
+          var explanationMatch = line.match(/^explanation\s*:\s*(.*)$/i);
+          if (questionMatch) {
+            data.q = questionMatch[1].trim();
+            currentField = 'q';
+          } else if (optionMatch) {
+            var optionLetter = optionMatch[1].toUpperCase();
+            if (Object.prototype.hasOwnProperty.call(data.options, optionLetter)) {
+              errors.push('Question ' + (blockIndex + 1) + ': option ' + optionLetter + ' is repeated.');
+            }
+            data.options[optionLetter] = optionMatch[2].trim();
+            currentField = optionLetter;
+          } else if (answerMatch) {
+            data.answer = answerMatch[1].toUpperCase();
+            currentField = '';
+          } else if (explanationMatch) {
+            data.exp = explanationMatch[1].trim();
+            currentField = 'exp';
+          } else if (currentField === 'q' || currentField === 'exp') {
+            data[currentField] += (data[currentField] ? ' ' : '') + line;
+          } else if (currentField) {
+            data.options[currentField] += (data.options[currentField] ? ' ' : '') + line;
+          } else {
+            errors.push('Question ' + (blockIndex + 1) + ': could not read line "' + line + '".');
+          }
+        });
+        var optionLetters = ['A', 'B', 'C', 'D'];
+        if (!data.q) errors.push('Question ' + (blockIndex + 1) + ': add a Question: line.');
+        optionLetters.forEach(function(letter) {
+          if (!data.options[letter]) errors.push('Question ' + (blockIndex + 1) + ': add a non-empty ' + letter + ' option.');
+        });
+        if (!data.answer) errors.push('Question ' + (blockIndex + 1) + ': add Answer: A, B, C, or D.');
+        else if (!data.options[data.answer]) errors.push('Question ' + (blockIndex + 1) + ': answer ' + data.answer + ' has no option.');
+        if (data.q && optionLetters.every(function(letter) { return !!data.options[letter]; }) && data.answer && data.options[data.answer]) {
+          questions.push({ q: data.q, opts: optionLetters.map(function(letter) { return data.options[letter]; }), ans: optionLetters.indexOf(data.answer), exp: data.exp });
+        }
+      });
+      if (blocks.length < 2) errors.push('Add at least two question blocks for a quiz.');
+      if (blocks.length > 40) errors.push('A quiz can contain at most 40 questions.');
+      return { questions: questions, errors: errors };
+    }
+    function previewPastedQuestions() {
+      var result = parsePastedQuestions(document.getElementById('pasteQuestions').value);
+      var preview = document.getElementById('importPreview');
+      var applyButton = document.getElementById('applyImport');
+      preview.replaceChildren();
+      pendingImportedQuestions = null;
+      applyButton.disabled = true;
+      if (result.errors.length) {
+        preview.className = 'import-preview error';
+        preview.appendChild(node('strong', '', result.questions.length + ' valid question' + (result.questions.length === 1 ? '' : 's') + ', ' + result.errors.length + ' issue' + (result.errors.length === 1 ? '' : 's')));
+        var errors = node('ul');
+        result.errors.forEach(function(message) { errors.appendChild(node('li', '', message)); });
+        preview.appendChild(errors);
+        return;
+      }
+      pendingImportedQuestions = result.questions;
+      applyButton.disabled = false;
+      preview.className = 'import-preview success';
+      preview.textContent = result.questions.length + ' questions ready to import.';
+    }
+    function applyImportedQuestions() {
+      if (!pendingImportedQuestions) return;
+      questionList.replaceChildren();
+      questionCount = 0;
+      pendingImportedQuestions.forEach(function(question) {
+        addQuestion();
+        var card = questionList.lastElementChild;
+        var textareas = card.querySelectorAll('textarea');
+        var options = card.querySelectorAll('.option-grid input');
+        textareas[0].value = question.q;
+        textareas[1].value = question.exp;
+        question.opts.forEach(function(option, index) { options[index].value = option; });
+        card.querySelector('input[type="radio"][value="' + question.ans + '"]').checked = true;
+      });
+      pendingImportedQuestions = null;
+      document.getElementById('applyImport').disabled = true;
+      document.getElementById('importPreview').textContent = 'Imported questions are ready to edit.';
+      document.getElementById('importPreview').className = 'import-preview success';
+    }
+    async function loadCourses() {
+      try {
+        var result = await window.Auth.request('/lecturer/courses');
+        courseSelect.replaceChildren();
+        if (!result.courses.length) {
+          courseSelect.appendChild(new Option('Add a timetable course first', ''));
+          document.getElementById('publishQuiz').disabled = true;
+          return;
+        }
+        courseSelect.appendChild(new Option('Select a course', ''));
+        result.courses.forEach(function(course) {
+          courseSelect.appendChild(new Option(course.courseCode + ' · ' + course.courseTitle, course.id));
+        });
+      } catch (error) {
+        courseSelect.replaceChildren(new Option('Could not load courses', ''));
+        notify(error.message, 'error');
+      }
+    }
+    async function loadQuizzes() {
+      quizList.replaceChildren(node('div', 'empty', 'Loading quizzes...'));
+      try {
+        var result = await window.Auth.request('/lecturer/quizzes');
+        quizList.replaceChildren();
+        if (!result.quizzes.length) {
+          quizList.appendChild(node('div', 'empty', 'No quizzes published yet.'));
+          return;
+        }
+        result.quizzes.forEach(function(quiz) {
+          var item = node('article', 'quiz-item');
+          item.appendChild(node('strong', '', quiz.courseCode + ' · ' + quiz.title));
+          item.appendChild(node('span', 'quiz-meta', quiz.questionCount + ' questions · ' + quiz.durationMinutes + ' minutes · ' + quiz.attemptCount + ' attempts'));
+          var resultsButton = node('button', 'results-button', 'View results');
+          resultsButton.type = 'button';
+          resultsButton.addEventListener('click', function() { loadResults(quiz); });
+          item.appendChild(resultsButton);
+          quizList.appendChild(item);
+        });
+      } catch (error) {
+        quizList.replaceChildren(node('div', 'empty', 'Quizzes could not be loaded.'));
+        notify(error.message, 'error');
+      }
+    }
+    async function loadResults(quiz) {
+      var panel = document.getElementById('resultsPanel');
+      panel.hidden = false;
+      document.getElementById('resultsTitle').textContent = quiz.courseCode + ' · ' + quiz.title;
+      document.getElementById('resultList').replaceChildren(node('div', 'empty', 'Loading results...'));
+      document.getElementById('questionStats').replaceChildren();
+      try {
+        var result = await window.Auth.request('/lecturer/quizzes/' + encodeURIComponent(quiz.id) + '/results');
+        document.getElementById('resultSummary').textContent = result.attempts + ' total attempt' + (result.attempts === 1 ? '' : 's') + ' · Best score per student';
+        var resultList = document.getElementById('resultList');
+        resultList.replaceChildren();
+        if (!result.leaderboard.length) resultList.appendChild(node('div', 'empty', 'No students have taken this quiz yet.'));
+        result.leaderboard.forEach(function(student, index) {
+          var row = node('div', 'result-row');
+          row.appendChild(node('span', 'rank', '#' + (index + 1)));
+          var identity = node('div');
+          identity.appendChild(node('strong', '', student.name));
+          identity.appendChild(node('small', '', student.matric + (student.level ? ' · Level ' + student.level : '') + ' · ' + student.attemptCount + ' attempt' + (student.attemptCount === 1 ? '' : 's')));
+          row.append(identity, node('span', 'result-score', student.score + '%'));
+          resultList.appendChild(row);
+        });
+        var stats = document.getElementById('questionStats');
+        stats.replaceChildren();
+        result.questionStats.forEach(function(item, index) {
+          var stat = node('div', 'question-stat');
+          stat.appendChild(node('div', '', (index + 1) + '. ' + item.question));
+          stat.appendChild(node('small', '', item.correctPercent + '% correct · ' + item.responseCount + ' answered'));
+          stats.appendChild(stat);
+        });
+      } catch (error) {
+        document.getElementById('resultList').replaceChildren(node('div', 'empty', error.message));
+      }
+    }
+    document.getElementById('previewImport').addEventListener('click', previewPastedQuestions);
+    document.getElementById('applyImport').addEventListener('click', applyImportedQuestions);
+    document.getElementById('addQuestion').addEventListener('click', addQuestion);
+    document.getElementById('quizForm').addEventListener('submit', async function(event) {
+      event.preventDefault();
+      var button = document.getElementById('publishQuiz');
+      button.disabled = true;
+      try {
+        var questions = Array.from(questionList.children).map(function(card) {
+          var textareas = card.querySelectorAll('textarea');
+          var inputs = card.querySelectorAll('.option-grid input');
+          var answer = card.querySelector('input[type="radio"]:checked');
+          return {
+            q: textareas[0].value,
+            opts: Array.from(inputs).map(function(input) { return input.value; }),
+            ans: answer ? Number(answer.value) : -1,
+            exp: textareas[1].value
+          };
+        });
+        await window.Auth.request('/lecturer/quizzes', {
+          method: 'POST',
+          body: JSON.stringify({
+            courseId: courseSelect.value,
+            title: document.getElementById('quizTitle').value,
+            topicTag: document.getElementById('topicTag').value,
+            passThreshold: Number(document.getElementById('passThreshold').value),
+            durationMinutes: Number(document.getElementById('duration').value),
+            questions: questions
+          })
+        });
+        document.getElementById('quizTitle').value = '';
+        document.getElementById('topicTag').value = '';
+        questionList.replaceChildren();
+        questionCount = 0;
+        addQuestion();
+        addQuestion();
+        notify('Quiz published for students.', 'success');
+        await loadQuizzes();
+      } catch (error) {
+        notify(error.message, 'error');
+      } finally {
+        if (courseSelect.options.length > 1) button.disabled = false;
+      }
+    });
+  </script>
+</body>
+</html>

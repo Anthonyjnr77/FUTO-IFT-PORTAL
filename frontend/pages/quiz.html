@@ -6,7 +6,7 @@
   <title>Quiz | FUTO IFT</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="/assets/css/styles.css">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -47,6 +47,14 @@
     .select-header p { font-size: 13px; color: #64748b; margin-top: 4px; }
 
     .course-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 14px; margin-bottom: 28px; }
+    .published-quizzes { margin: 0 0 24px; }
+    .published-quizzes h2 { color: #0b1c3a; font-size: 15px; margin: 0 0 10px; }
+    .published-quiz-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 10px; }
+    .published-quiz { display: block; padding: 14px; background: #fff; border: 1px solid #e2e8f0; border-radius: 8px; text-decoration: none; transition: border-color .2s, background .2s; }
+    .published-quiz:hover { border-color: #0d9488; background: #f0fdf9; }
+    .published-quiz strong { display: block; color: #0b1c3a; font-size: 13px; }
+    .published-quiz span { display: block; color: #64748b; font-size: 11px; margin-top: 5px; }
+    .published-empty { grid-column: 1 / -1; color: #64748b; background: #fff; border: 1px dashed #cbd5e1; border-radius: 8px; padding: 14px; font-size: 13px; }
     .course-card { background: #fff; border-radius: 14px; padding: 18px; border: 2px solid #f1f5f9; cursor: pointer; transition: all .25s; box-shadow: 0 1px 6px rgba(0,0,0,.06); }
     .course-card:hover { border-color: #0d9488; transform: translateY(-3px); box-shadow: 0 10px 28px rgba(0,0,0,.1); }
     .course-card.selected { border-color: #0d9488; background: linear-gradient(135deg,#f0fdf9,#fff); box-shadow: 0 0 0 4px rgba(13,148,136,.1); }
@@ -193,18 +201,18 @@
   </div>
 
   <nav class="navbar">
-    <a href="index.html" class="nav-link" style="color:#fff;text-decoration:none;font-weight:700;margin-right:12px">Home</a>
-    <a href="dashboard.html" class="nav-link" style="color:#fff;text-decoration:none;margin-right:12px">Dashboard</a>
+    <a href="dashboard.html" class="nav-link" style="color:#fff;text-decoration:none;font-weight:700;margin-right:12px">Home</a>
+    <a href="my-courses.html" class="nav-link" style="color:#fff;text-decoration:none;margin-right:12px">My Courses</a>
     <a href="profile.html" class="nav-link" style="color:#fff;text-decoration:none;margin-right:12px">Profile</a>
     <a href="course-materials.html" class="nav-link" style="color:#fff;text-decoration:none;margin-right:12px">Materials</a>
     <a href="quiz.html" class="nav-link" style="color:#fff;text-decoration:none;margin-right:12px">Quiz</a>
+    <a href="assignments.html" class="nav-link" style="color:#fff;text-decoration:none;margin-right:12px">Assignments</a>
     <a href="code-editor.html" class="nav-link" style="color:#fff;text-decoration:none;margin-right:12px">Code Lab</a>
     <a href="timetable.html" class="nav-link" style="color:#fff;text-decoration:none;margin-right:12px">Timetable</a>
     <a href="notifications.html" class="nav-link" style="color:#fff;text-decoration:none;margin-right:12px">Notifications</a>
     <a href="leaderboard.html" class="nav-link" style="color:#fff;text-decoration:none;margin-right:12px">Leaderboard</a>
     <div class="nav-spacer"></div>
     <div class="nav-secure"><i class="fas fa-shield-alt" style="color:#14b8a6"></i> Secure Session</div>
-    <a href="lecturer-login.html" style="color:#fff;margin-left:12px;text-decoration:none">Lecturer</a>
   </nav>
 
   <main class="page">
@@ -217,6 +225,13 @@
       </div>
 
       <div class="course-grid" id="courseGrid"></div>
+
+      <section class="published-quizzes" aria-labelledby="publishedQuizHeading">
+        <h2 id="publishedQuizHeading">Quizzes set by your lecturers</h2>
+        <div class="published-quiz-list" id="publishedQuizList" aria-live="polite">
+          <div class="published-empty">Loading lecturer quizzes...</div>
+        </div>
+      </section>
 
       <div class="quiz-settings">
         <div class="settings-title"><i class="fas fa-sliders-h" style="color:#0d9488;font-size:13px"></i> Quiz Settings</div>
@@ -354,8 +369,8 @@
 
   </main>
 
-  <script src="api-config.js"></script>
-  <script src="auth-utils.js"></script>
+  <script src="/assets/js/api-config.js"></script>
+  <script src="/assets/js/auth-utils.js"></script>
   <script>
     /* ===== QUESTION BANK ===== */
     var QUESTION_BANK = {
@@ -518,6 +533,38 @@
         card.onclick = function() { selectCourse(c.code); };
         grid.appendChild(card);
       });
+    }
+
+    async function loadPublishedQuizzes() {
+      var list = document.getElementById('publishedQuizList');
+      try {
+        var result = await window.Auth.request('/quizzes');
+        list.replaceChildren();
+        if (!result.quizzes || !result.quizzes.length) {
+          var empty = document.createElement('div');
+          empty.className = 'published-empty';
+          empty.textContent = 'No lecturer quizzes are available yet.';
+          list.appendChild(empty);
+          return;
+        }
+        result.quizzes.forEach(function(quiz) {
+          var link = document.createElement('a');
+          link.className = 'published-quiz';
+          link.href = 'take-quiz.html?id=' + encodeURIComponent(quiz.id);
+          var title = document.createElement('strong');
+          title.textContent = quiz.courseCode + ' · ' + quiz.title;
+          var meta = document.createElement('span');
+          meta.textContent = (quiz.topicTag ? quiz.topicTag + ' · ' : '') + quiz.questionCount + ' questions · ' + quiz.durationMinutes + ' minutes · Mastery target ' + quiz.passThreshold + '% · ' + (quiz.lecturerName || 'Lecturer');
+          link.append(title, meta);
+          list.appendChild(link);
+        });
+      } catch (error) {
+        list.replaceChildren();
+        var empty = document.createElement('div');
+        empty.className = 'published-empty';
+        empty.textContent = 'Lecturer quizzes could not be loaded.';
+        list.appendChild(empty);
+      }
     }
 
     function selectCourse(code) {
@@ -751,8 +798,14 @@
 
     /* ===== INIT ===== */
     document.addEventListener('DOMContentLoaded', function() {
-      if (window.Auth) window.Auth.protect();
+      var currentUser = window.Auth ? window.Auth.protect() : null;
+      if (!currentUser) return;
+      if (currentUser.role === 'lecturer') {
+        window.location.href = 'lecturer-quizzes.html';
+        return;
+      }
       renderCourseGrid();
+      loadPublishedQuizzes();
     });
 
     window.addEventListener('load', function() {
@@ -764,5 +817,6 @@
       }, 800);
     });
   </script>
+  <script src="/assets/js/student-chat-widget.js"></script>
 </body>
 </html>

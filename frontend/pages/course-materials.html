@@ -6,7 +6,7 @@
   <title>Course Materials | FUTO IFT</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="/assets/css/styles.css">
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: 'Inter', system-ui, sans-serif; background: #f0f4f8; min-height: 100vh; color: #1e293b; }
@@ -122,9 +122,11 @@
   <nav class="navbar">
     <div class="nav-links">
       <a href="dashboard.html">Home</a>
+      <a href="my-courses.html">My Courses</a>
       <a href="profile.html">Profile</a>
       <a href="course-materials.html" class="active">Materials</a>
       <a href="quiz.html">Quiz</a>
+      <a href="assignments.html">Assignments</a>
       <a href="code-editor.html">Code Lab</a>
       <a href="timetable.html">Timetable</a>
       <a href="notifications.html">Notifications</a>
@@ -222,8 +224,8 @@
 
   </main>
 
-  <script src="api-config.js"></script>
-  <script src="auth-utils.js"></script>
+  <script src="/assets/js/api-config.js"></script>
+  <script src="/assets/js/auth-utils.js"></script>
   <script>
     /* LEVEL COLORS */
     var LEVEL_COLORS = {
@@ -267,6 +269,7 @@
       { id:20, code:'IFT 504', title:'Final Year Project Guide',               topic:'Proposal and documentation',   level:'500', sem:'2', type:'slide', size:'3.4 MB', date:'Apr 2024', icon:'fa-file-powerpoint', downloads:201 }
     ];
 
+    var SHARED_MATERIALS = [];
     var currentLevel  = 'all';
     var currentSearch = '';
     var currentType   = 'all';
@@ -274,7 +277,7 @@
     var sortAZ        = true;
 
     function getFiltered() {
-      var list = MATERIALS.slice();
+      var list = MATERIALS.concat(SHARED_MATERIALS);
       if (currentLevel !== 'all') {
         list = list.filter(function(m) { return m.level === currentLevel; });
       }
@@ -282,7 +285,7 @@
         list = list.filter(function(m) { return m.type === currentType; });
       }
       if (currentSem !== 'all') {
-        list = list.filter(function(m) { return m.sem === currentSem; });
+        list = list.filter(function(m) { return m.sem === 'all' || m.sem === currentSem; });
       }
       if (currentSearch) {
         var q = currentSearch.toLowerCase();
@@ -303,6 +306,7 @@
       if (type === 'pdf')   return 'PDF Notes';
       if (type === 'video') return 'Video';
       if (type === 'slide') return 'Slides';
+      if (type === 'document') return 'Document';
       return type;
     }
 
@@ -317,6 +321,7 @@
       if (type === 'pdf')   return 'fa-file-pdf';
       if (type === 'video') return 'fa-play-circle';
       if (type === 'slide') return 'fa-file-powerpoint';
+      if (type === 'document') return 'fa-file-word';
       return 'fa-file';
     }
 
@@ -324,7 +329,42 @@
       if (type === 'pdf')   return 'Download';
       if (type === 'video') return 'Watch';
       if (type === 'slide') return 'View';
+      if (type === 'document') return 'Download';
       return 'Open';
+    }
+
+    function escapeHTML(value) {
+      return String(value).replace(/[&<>"']/g, function(character) {
+        return { '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[character];
+      });
+    }
+
+    async function loadSharedMaterials() {
+      try {
+        var result = await window.Auth.request('/materials');
+        SHARED_MATERIALS = (result.materials || []).map(function(material, index) {
+          var extension = (material.fileName || '').split('.').pop().toLowerCase();
+          var type = material.resourceType === 'video' ? 'video' : extension === 'pdf' ? 'pdf' : extension === 'txt' ? 'document' : 'slide';
+          return {
+            id: -index - 1,
+            code: material.courseCode,
+            title: material.title,
+            topic: (material.topicTag || 'Course resource') + ' · Shared by ' + material.lecturerName,
+            level: String(material.level),
+            sem: 'all',
+            type: type,
+            size: material.resourceType === 'video' ? 'Online video' : (material.sizeBytes / (1024 * 1024)).toFixed(2) + ' MB',
+            date: new Date(material.createdAt).toLocaleDateString(),
+            icon: getTypeIcon(type),
+            downloads: 0,
+            url: material.resourceType === 'video' ? material.resourceUrl : material.downloadUrl,
+            fileName: material.fileName || material.title,
+            shared: true
+          };
+        });
+      } catch (error) {
+        SHARED_MATERIALS = [];
+      }
     }
 
     function render() {
@@ -352,16 +392,16 @@
             '<span class="mat-type-badge ' + getTypeBadgeClass(m.type) + '">' +
               '<i class="fas ' + typeIcon + '"></i> ' + getTypeLabel(m.type) +
             '</span>' +
-            '<div class="mat-level-dot" style="background:' + lc.bg + ';color:' + lc.text + '">' + m.level + '</div>' +
+            '<div class="mat-level-dot" style="background:' + lc.bg + ';color:' + lc.text + '">' + escapeHTML(m.level) + '</div>' +
           '</div>' +
           '<div class="mat-card-body">' +
-            '<div class="mat-code">' + m.code + ' &bull; Sem ' + m.sem + '</div>' +
-            '<div class="mat-title">' + m.title + '</div>' +
-            '<div class="mat-topic"><i class="fas fa-tag" style="font-size:9px"></i> ' + m.topic + '</div>' +
+            '<div class="mat-code">' + escapeHTML(m.code) + (m.sem === 'all' ? '' : ' &bull; Sem ' + escapeHTML(m.sem)) + '</div>' +
+            '<div class="mat-title">' + escapeHTML(m.title) + '</div>' +
+            '<div class="mat-topic"><i class="fas fa-tag" style="font-size:9px"></i> ' + escapeHTML(m.topic) + '</div>' +
           '</div>' +
           '<div class="mat-card-footer">' +
             '<div class="mat-meta">' +
-              '<i class="fas fa-hdd" style="font-size:9px"></i> ' + m.size +
+              '<i class="fas fa-hdd" style="font-size:9px"></i> ' + escapeHTML(m.size) +
               ' &bull; <i class="fas fa-download" style="font-size:9px"></i> ' + m.downloads +
             '</div>' +
             '<button class="mat-action" onclick="handleActionById(' + m.id + ')">' +
@@ -374,13 +414,14 @@
     }
 
     function updateStats() {
-      var pdfs   = MATERIALS.filter(function(m){ return m.type === 'pdf'; }).length;
-      var videos = MATERIALS.filter(function(m){ return m.type === 'video'; }).length;
-      var slides = MATERIALS.filter(function(m){ return m.type === 'slide'; }).length;
+      var allMaterials = MATERIALS.concat(SHARED_MATERIALS);
+      var pdfs   = allMaterials.filter(function(m){ return m.type === 'pdf'; }).length;
+      var videos = allMaterials.filter(function(m){ return m.type === 'video'; }).length;
+      var slides = allMaterials.filter(function(m){ return m.type === 'slide' || m.type === 'document'; }).length;
       document.getElementById('countPDF').textContent   = pdfs;
       document.getElementById('countVideo').textContent = videos;
       document.getElementById('countSlide').textContent = slides;
-      document.getElementById('countTotal').textContent = MATERIALS.length;
+      document.getElementById('countTotal').textContent = allMaterials.length;
     }
 
     function setLevel(level, btn) {
@@ -413,8 +454,16 @@
     }
 
     function handleActionById(id) {
-      var m = MATERIALS.filter(function(x){ return x.id === id; })[0];
+      var m = MATERIALS.concat(SHARED_MATERIALS).filter(function(x){ return x.id === id; })[0];
       if (!m) return;
+      if (m.shared) {
+        if (m.type === 'video') {
+          window.open(m.url, '_blank', 'noopener,noreferrer');
+          return;
+        }
+        downloadSharedMaterial(m);
+        return;
+      }
       var url = m.url || (m.type === 'pdf' || m.type === 'slide'
         ? 'https://example.com/materials/' + m.code.replace(/\s+/g,'_') + '.pdf'
         : '#');
@@ -433,12 +482,38 @@
       a.remove();
     }
 
+    async function downloadSharedMaterial(material) {
+      try {
+        var response = await fetch(material.url, {
+          headers: { Authorization: 'Bearer ' + (localStorage.getItem('futo_token') || '') }
+        });
+        if (!response.ok) {
+          var error = await response.json();
+          throw new Error(error.error || 'The material could not be downloaded.');
+        }
+        var objectUrl = URL.createObjectURL(await response.blob());
+        var link = document.createElement('a');
+        link.href = objectUrl;
+        link.download = material.fileName;
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        URL.revokeObjectURL(objectUrl);
+      } catch (error) {
+        window.alert(error.message);
+      }
+    }
+
     /* INIT */
     document.addEventListener('DOMContentLoaded', function() {
-      if (window.Auth) window.Auth.protect();
+      var currentUser = window.Auth ? window.Auth.protect() : null;
+      if (!currentUser) return;
+      if (currentUser.role === 'lecturer') { window.location.href = 'lecturer-dashboard.html'; return; }
 
-      updateStats();
-      render();
+      loadSharedMaterials().then(function() {
+        updateStats();
+        render();
+      });
 
       document.getElementById('searchInput').addEventListener('input', function() {
         currentSearch = this.value.trim();
@@ -464,5 +539,6 @@
       }, 800);
     });
   </script>
+  <script src="/assets/js/student-chat-widget.js"></script>
 </body>
 </html>
