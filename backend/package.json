@@ -2,18 +2,21 @@
   "name": "futo-ift-portal-backend",
   "version": "1.0.0",
   "private": true,
+  "type": "commonjs",
   "description": "Backend API for the FUTO IFT learning portal",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "dev": "node --watch server.js"
+    "dev": "node --watch server.js",
+    "test": "node --test"
   },
   "dependencies": {
-    "better-sqlite3": "^11.10.0",
+    "@types/node": "^24.19.1",
     "dotenv": "^16.6.1",
-    "nodemailer": "^7.0.6"
+    "nodemailer": "^10.0.14",
+    "pg": "^8.23.1"
   },
   "engines": {
-    "node": ">=18"
+    "node": ">=20"
   }
 }

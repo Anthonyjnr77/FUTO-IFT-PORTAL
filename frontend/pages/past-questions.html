@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Exam Revision Guide | LearnIT</title>
+  <link rel="stylesheet" href="/assets/css/styles.css">
+  <style>
+    :root{--navy:#0b1c3a;--teal:#0d9488;--line:#dce5ee;--muted:#64748b}
+    *{box-sizing:border-box}body{margin:0;background:#f3f7fb;color:#10213b;font-family:Inter,system-ui,sans-serif}
+    nav{display:flex;align-items:center;gap:10px;padding:13px max(18px,calc((100% - 1120px)/2));background:var(--navy);color:#fff}
+    nav a{color:#d5fff8;text-decoration:none;font-size:13px;font-weight:700}
+    main{width:min(1000px,calc(100% - 32px));margin:28px auto 56px}
+    h1{margin:0 0 8px;color:var(--navy)}.intro{margin:0;color:var(--muted);line-height:1.6}
+    .guide-note{margin:16px 0;padding:12px 14px;border:1px solid #bae6fd;border-radius:10px;background:#f0f9ff;color:#075985;font-size:13px;line-height:1.5}
+    .notice{min-height:20px;margin:12px 0;color:#b42318;font-size:13px}
+    .topic-list{display:grid;gap:14px;margin-top:18px}
+    .topic{padding:18px;background:#fff;border:1px solid var(--line);border-radius:12px;box-shadow:0 3px 12px #10213b08}
+    .topic.priority{border-left:4px solid #ef9f27}
+    .topic-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
+    .topic h2{margin:0;color:var(--navy);font-size:17px}.course{margin:5px 0;color:var(--muted);font-size:12px}
+    .frequency{white-space:nowrap;color:#0f766e;font-size:12px;font-weight:800}
+    .priority-reasons{margin:12px 0;padding:10px 12px;border-radius:8px;background:#fffbeb;color:#854d0e;font-size:12px;line-height:1.5}
+    .questions{margin-top:12px;border-top:1px solid #edf2f7}
+    .question{padding:12px 0;border-bottom:1px solid #edf2f7}
+    .question:last-child{border-bottom:0}.question p{margin:6px 0 0;line-height:1.55;font-size:14px}
+    .year{color:var(--muted);font-size:11px;font-weight:700}
+    .empty{padding:18px;border:1px dashed #cbd5e1;border-radius:10px;color:var(--muted);background:#fff;font-size:13px}
+    @media(max-width:580px){nav{padding:12px 16px}.topic{padding:14px}.topic-head{flex-direction:column}.frequency{white-space:normal}}
+  </style>
+</head>
+<body>
+  <nav><a href="dashboard.html">LearnIT</a><span aria-hidden="true">›</span><a href="my-courses.html">My Courses</a><span aria-hidden="true">›</span><strong>Exam revision</strong></nav>
+  <main>
+    <h1>Past-question revision guide</h1>
+    <p class="intro">Explore questions from previous exams and focus your revision on topics that appear more often.</p>
+    <p class="guide-note">These rankings use questions uploaded by your lecturers and administrators, alongside your reading and quiz history. They are revision guidance only—not a prediction or guarantee of future exam questions.</p>
+    <div id="notice" class="notice" role="alert" aria-live="polite"></div>
+    <section id="topicList" class="topic-list" aria-live="polite"><div class="empty">Loading your revision guide…</div></section>
+  </main>
+  <script src="/assets/js/api-config.js"></script>
+  <script src="/assets/js/auth-utils.js"></script>
+  <script>
+    var user = window.Auth.protect();
+    var topicList = document.getElementById('topicList');
+    var requestedCourseId = new URLSearchParams(window.location.search).get('courseId');
+
+    function element(tag, className, text) {
+      var item = document.createElement(tag);
+      if (className) item.className = className;
+      if (text !== undefined) item.textContent = text;
+      return item;
+    }
+
+    function renderRecommendations(recommendations) {
+      topicList.replaceChildren();
+      if (!recommendations.length) {
+        topicList.appendChild(element('div', 'empty', 'No past questions have been added for your enrolled courses yet. Check back after your lecturers upload revision questions.'));
+        return;
+      }
+      recommendations.forEach(function(item) {
+        var card = element('article', 'topic' + (item.priority ? ' priority' : ''));
+        var head = element('div', 'topic-head');
+        var heading = element('div');
+        heading.append(element('h2', '', item.topicTag), element('p', 'course', item.courseCode + ' · ' + item.courseTitle));
+        head.append(heading, element('div', 'frequency', item.questionCount + ' question' + (item.questionCount === 1 ? '' : 's') + ' · ' + item.years.length + ' exam year' + (item.years.length === 1 ? '' : 's')));
+        card.appendChild(head);
+        if (item.priorityReasons.length) card.appendChild(element('p', 'priority-reasons', 'Suggested focus: ' + item.priorityReasons.join(' ')));
+        var questions = element('div', 'questions');
+        item.questions.forEach(function(question) {
+          var row = element('article', 'question');
+          row.append(element('span', 'year', 'Past question · ' + question.examYear), element('p', '', question.questionText));
+          questions.appendChild(row);
+        });
+        card.appendChild(questions);
+        topicList.appendChild(card);
+      });
+    }
+
+    async function loadGuide() {
+      if (!user || user.role !== 'student') {
+        if (user) window.location.href = user.role === 'lecturer' ? 'lecturer-dashboard.html' : 'admin.html';
+        return;
+      }
+      topicList.replaceChildren(element('div', 'empty', 'Loading your revision guide…'));
+      try {
+        var path = '/student/exam-predictions' + (requestedCourseId ? '?courseId=' + encodeURIComponent(requestedCourseId) : '');
+        var result = await window.Auth.request(path);
+        renderRecommendations(result.recommendations || []);
+      } catch (error) {
+        document.getElementById('notice').textContent = 'The revision guide could not be loaded: ' + error.message;
+        topicList.replaceChildren();
+      }
+    }
+    loadGuide();
+  </script>
+</body>
+</html>

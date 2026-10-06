@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Lecturer Login | FUTO IFT</title>
+  <title>Lecturer Login | LearnIT</title>
   <meta http-equiv="refresh" content="0;url=index.html?tab=lecturer-login" />
   <script>window.location.replace('index.html?tab=lecturer-login');</script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
@@ -36,7 +36,7 @@
       <div class="card-header">
         <div class="brand">
           <span class="brand-mark"><i class="fa-solid fa-chalkboard-user"></i></span>
-          FUTO IFT
+          LearnIT
         </div>
         <div class="header-title">Lecturer Access</div>
         <div class="header-sub">Use lecturer credentials to post announcements and view student scores.</div>
@@ -85,6 +85,10 @@
         window.Auth.setLecturer({ user: result.user.identifier, name: result.user.name, token: result.token });
         window.location.href = 'lecturer-dashboard.html';
       } catch (error) {
+        if (error.passwordResetRequired) {
+          window.location.href = 'forgot-password.html?email=' + encodeURIComponent(email);
+          return;
+        }
         alert(error.message);
       }
     }

@@ -136,22 +136,136 @@
   function renderProgress(progress) {
     var container = document.getElementById('topicRecommendations');
     container.replaceChildren();
-    var needsReview = progress.filter(function(item) { return item.masteryLevel === 'below_threshold'; });
-    needsReview.slice(0, 5).forEach(function(item) {
-      var card = node('article', 'topic-recommendation');
-      card.appendChild(node('strong', '', item.courseCode + ' · ' + item.topicTag));
-      card.appendChild(node('p', '', 'Latest score ' + item.lastScore + '%; mastery target ' + item.passThreshold + '%.'));
-      if (item.recommendation && item.recommendation.material) {
-        var material = item.recommendation.material;
-        var link = node('a', '', 'Review ' + material.title);
-        link.href = 'course.html?id=' + encodeURIComponent(item.courseId) + '#material-' + encodeURIComponent(material.id);
-        card.appendChild(link);
-      } else {
-        card.appendChild(node('p', '', 'Ask your lecturer to share a resource tagged with this topic.'));
+    var topics = progress.slice().sort(function(a, b) {
+      var aBelow = a.masteryLevel === 'below_threshold';
+      var bBelow = b.masteryLevel === 'below_threshold';
+      return Number(bBelow) - Number(aBelow) ||
+        Number(a.averageScore || a.lastScore || 0) - Number(b.averageScore || b.lastScore || 0) ||
+        String(a.courseCode || '').localeCompare(String(b.courseCode || '')) ||
+        String(a.topicTag || '').localeCompare(String(b.topicTag || ''));
+    });
+    topics.forEach(function(item) {
+      var belowThreshold = item.masteryLevel === 'below_threshold';
+      var averageScore = Number.isFinite(Number(item.averageScore)) ? Number(item.averageScore) : Number(item.lastScore);
+      var latestScore = Number(item.lastScore);
+      var threshold = Number(item.passThreshold);
+      var safeAverage = Number.isFinite(averageScore) ? Math.max(0, Math.min(100, averageScore)) : 0;
+      var card = node('article', 'topic-performance' + (belowThreshold ? ' is-below' : ''));
+      var heading = node('div', 'topic-performance-head');
+      var identity = node('div');
+      identity.append(
+        node('strong', '', (item.courseCode || 'Course') + ' · ' + (item.topicTag || 'Untagged topic')),
+        node('small', '', (item.courseTitle || 'Recorded quiz topic') +
+          (Number(item.attemptCount) > 0 ? ' · ' + item.attemptCount + ' attempt' + (Number(item.attemptCount) === 1 ? '' : 's') : ''))
+      );
+      heading.append(identity, node(
+        'span',
+        'topic-mastery' + (belowThreshold ? ' is-below' : ''),
+        belowThreshold ? 'Needs review' : 'Mastery met'
+      ));
+      card.appendChild(heading);
+
+      var scoreText = Number.isFinite(averageScore) ? 'Average ' + Math.round(averageScore) + '%' : 'Average unavailable';
+      scoreText += Number.isFinite(latestScore) ? ' · Latest ' + Math.round(latestScore) + '%' : '';
+      scoreText += Number.isFinite(threshold) ? ' · Target ' + Math.round(threshold) + '%' : '';
+      card.appendChild(node('div', 'topic-score-copy', scoreText));
+
+      var track = node('div', 'topic-score-track');
+      track.setAttribute('role', 'progressbar');
+      track.setAttribute('aria-label', 'Average score for ' + (item.topicTag || 'topic'));
+      track.setAttribute('aria-valuemin', '0');
+      track.setAttribute('aria-valuemax', '100');
+      track.setAttribute('aria-valuenow', String(Math.round(safeAverage)));
+      var fill = node('div', 'topic-score-fill');
+      fill.style.width = safeAverage + '%';
+      track.appendChild(fill);
+      card.appendChild(track);
+
+      if (belowThreshold) {
+        if (item.recommendation && item.recommendation.material) {
+          var material = item.recommendation.material;
+          var link = node('a', 'topic-review-link', 'Review ' + material.title);
+          link.href = 'course.html?id=' + encodeURIComponent(item.courseId) + '#material-' + encodeURIComponent(material.id);
+          card.appendChild(link);
+        } else {
+          card.appendChild(node('p', 'topic-review-note', 'Ask your lecturer to share a resource tagged with this topic.'));
+        }
       }
       container.appendChild(card);
     });
-    if (!needsReview.length) showEmpty(container, progress.length ? 'You are meeting the mastery targets for your recorded quiz topics.' : 'Complete a tagged quiz to get personalized topic guidance.');
+    if (!topics.length) showEmpty(container, 'Complete a tagged quiz to get personalized topic performance and mastery guidance.');
+  }
+
+  function localDateKey(date) {
+    return date.getFullYear() + '-' +
+      String(date.getMonth() + 1).padStart(2, '0') + '-' +
+      String(date.getDate()).padStart(2, '0');
+  }
+
+  function readingStatusLabel(status) {
+    if (status === 'completed') return 'Read';
+    if (status === 'in_progress') return 'In progress';
+    return 'Outstanding';
+  }
+
+  function renderReadingProgress(readings) {
+    var summary = document.getElementById('readingSummaryStats');
+    var list = document.getElementById('readingProgressList');
+    var today = localDateKey(new Date());
+    var completedCount = readings.filter(function(item) { return item.status === 'completed'; }).length;
+    var overdueCount = readings.filter(function(item) {
+      return item.status !== 'completed' && item.targetDate && item.targetDate < today;
+    }).length;
+    var values = [
+      [readings.length, 'Materials'],
+      [completedCount, 'Completed'],
+      [readings.length - completedCount, 'Outstanding'],
+      [overdueCount, 'Overdue']
+    ];
+    summary.replaceChildren();
+    values.forEach(function(value) {
+      var stat = node('div', 'reading-summary-stat');
+      stat.append(node('strong', '', String(value[0])), node('span', '', value[1]));
+      summary.appendChild(stat);
+    });
+
+    list.replaceChildren();
+    var orderedReadings = readings.slice().sort(function(a, b) {
+      function priority(item) {
+        if (item.status !== 'completed' && item.targetDate && item.targetDate < today) return 0;
+        if (item.status === 'in_progress') return 1;
+        if (item.status !== 'completed') return 2;
+        return 3;
+      }
+      return priority(a) - priority(b) ||
+        String(a.targetDate || '9999-12-31').localeCompare(String(b.targetDate || '9999-12-31')) ||
+        String(a.material && a.material.title || '').localeCompare(String(b.material && b.material.title || ''));
+    });
+    orderedReadings.forEach(function(item) {
+      var material = item.material || {};
+      var overdue = item.status !== 'completed' && item.targetDate && item.targetDate < today;
+      var link = node('a', 'reading-item');
+      link.href = 'course.html?id=' + encodeURIComponent(material.courseId || '') +
+        '#material-' + encodeURIComponent(material.id || '');
+      var copy = node('div', 'reading-item-copy');
+      copy.append(
+        node('strong', '', material.title || 'Course material'),
+        node('span', '', (material.courseCode || 'Course') + ' · ' + (material.topicTag || 'Untagged topic'))
+      );
+      if (item.targetDate) {
+        var target = new Date(item.targetDate + 'T00:00:00');
+        copy.appendChild(node('span', '', 'Target date: ' + target.toLocaleDateString([], {
+          day: 'numeric', month: 'short', year: 'numeric'
+        })));
+      }
+      link.append(copy, node(
+        'span',
+        'reading-status' + (overdue ? ' is-overdue' : ''),
+        overdue ? 'Overdue' : readingStatusLabel(item.status)
+      ));
+      list.appendChild(link);
+    });
+    if (!orderedReadings.length) showEmpty(list, 'No course materials are available for your enrolled courses yet.');
   }
 
   function renderQuizHistory(results) {
@@ -191,6 +305,13 @@
     document.getElementById('navMatric').textContent = user.matric || '---';
     document.getElementById('currentDate').textContent = new Date().toLocaleDateString('en-GB', {
       weekday: 'long', day: 'numeric', month: 'long', year: 'numeric'
+    });
+    window.Auth.request('/student/reading-progress').then(function(result) {
+      renderReadingProgress(result.readings || []);
+    }).catch(function(error) {
+      showEmpty(document.getElementById('readingProgressList'), 'Your reading plan could not be loaded: ' + error.message);
+      var summary = document.getElementById('readingSummaryStats');
+      summary.replaceChildren(node('div', 'overview-error', 'Reading progress is unavailable right now.'));
     });
     try {
       var results = await Promise.all([

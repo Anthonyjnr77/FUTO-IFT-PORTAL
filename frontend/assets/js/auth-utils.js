@@ -3,7 +3,7 @@ window.Auth = {
   apiBase: window.FUTO_API_BASE || (
     ((window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') && window.location.protocol !== 'file:')
       ? 'http://localhost:3000/api'
-      : 'https://futo-ift-portal.onrender.com/api'
+      : 'https://atwcwcvvysygaevkdppi.supabase.co/functions/v1/api'
   ),
 
   request: async function(path, options) {
@@ -13,7 +13,11 @@ window.Auth = {
     if (token) config.headers.Authorization = 'Bearer ' + token;
     var response = await fetch(this.apiBase + path, config);
     var body = await response.json();
-    if (!response.ok) throw new Error(body.error || 'Request failed.');
+    if (!response.ok) {
+      var error = new Error(body.error || 'Request failed.');
+      error.passwordResetRequired = body.passwordResetRequired === true;
+      throw error;
+    }
     return body;
   },
 

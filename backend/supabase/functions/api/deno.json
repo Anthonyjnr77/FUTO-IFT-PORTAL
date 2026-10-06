@@ -1,0 +1,11 @@
+{
+  "nodeModulesDir": "auto",
+  "compilerOptions": {
+    "types": ["npm:@types/node@^24.0.0"]
+  },
+  "imports": {
+    "dotenv": "npm:dotenv@^16.6.1",
+    "nodemailer": "npm:nodemailer@^10.0.14",
+    "pg": "npm:pg@^8.23.1"
+  }
+}

@@ -1,0 +1,15 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "Supabase CLI login",
+			"type": "shell",
+			"command": "C:\\Users\\User\\.supabase\\bin\\supabase.exe",
+			"args": [
+				"login"
+			],
+			"isBackground": true,
+			"problemMatcher": []
+		}
+	]
+}

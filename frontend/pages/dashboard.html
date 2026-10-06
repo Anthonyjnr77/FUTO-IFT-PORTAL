@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Dashboard | FUTO IFT Learning Platform</title>
+  <title>Dashboard | LearnIT</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <link rel="stylesheet" href="/assets/css/styles.css">
@@ -193,6 +193,32 @@
     .topic-recommendation strong { color: #854d0e; font-size: 13px; }
     .topic-recommendation p { color: #64748b; font-size: 12px; margin: 5px 0 8px; }
     .topic-recommendation a, .chat-resource a { color: #0d9488; font-size: 12px; font-weight: 700; }
+    .reading-summary-stats { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 8px; margin-bottom: 12px; }
+    .reading-summary-stat { padding: 10px; border: 1px solid #e2e8f0; border-radius: 10px; background: #f8fafc; }
+    .reading-summary-stat strong { display: block; color: #0b1c3a; font-size: 18px; }
+    .reading-summary-stat span { display: block; margin-top: 2px; color: #64748b; font-size: 10px; }
+    .reading-list { display: grid; gap: 8px; max-height: 390px; overflow-y: auto; }
+    .reading-item { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; padding: 11px 12px; border: 1px solid #edf2f7; border-radius: 10px; background: #f8fafc; color: inherit; text-decoration: none; }
+    .reading-item:hover { border-color: rgba(13,148,136,.35); }
+    .reading-item-copy { min-width: 0; }
+    .reading-item strong { display: block; color: #0b1c3a; font-size: 12px; }
+    .reading-item span { display: block; margin-top: 4px; color: #64748b; font-size: 10px; line-height: 1.45; }
+    .reading-status { flex-shrink: 0; color: #0d9488; font-size: 10px; font-weight: 800; text-align: right; }
+    .reading-status.is-overdue { color: #b42318; }
+    .topic-performance-list { display: grid; gap: 9px; }
+    .topic-performance { padding: 12px; border: 1px solid #e2e8f0; border-radius: 11px; background: #f8fafc; }
+    .topic-performance.is-below { border-color: #fde68a; background: #fffbeb; }
+    .topic-performance-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; }
+    .topic-performance strong { display: block; color: #0b1c3a; font-size: 12px; }
+    .topic-performance small { display: block; margin-top: 3px; color: #64748b; font-size: 10px; }
+    .topic-mastery { flex-shrink: 0; color: #0f766e; font-size: 10px; font-weight: 800; text-align: right; }
+    .topic-mastery.is-below { color: #a16207; }
+    .topic-score-copy { margin-top: 8px; color: #475569; font-size: 10px; }
+    .topic-score-track { height: 7px; margin-top: 6px; overflow: hidden; border-radius: 99px; background: #e2e8f0; }
+    .topic-score-fill { height: 100%; border-radius: inherit; background: #0d9488; }
+    .topic-performance.is-below .topic-score-fill { background: #d97706; }
+    .topic-review-link { display: inline-block; margin-top: 8px; color: #0d9488; font-size: 11px; font-weight: 700; }
+    .topic-review-note { margin-top: 7px; color: #854d0e; font-size: 10px; line-height: 1.45; }
     .ai-card { min-height: 245px; }
     .ai-input-row input { min-width: 0; }
     .ai-send-btn:disabled { cursor: wait; opacity: .65; }
@@ -284,6 +310,7 @@
       .dashboard-courses-card .student-courses { grid-template-columns: 1fr; }
       .student-quick-access { grid-template-columns: 1fr; }
       .student-quick-access .quick-card { min-height: 78px; }
+      .reading-summary-stats { grid-template-columns: repeat(2,minmax(0,1fr)); }
     }
     @media(prefers-reduced-motion: reduce) {
       .hero-mascot { animation: none; }
@@ -337,7 +364,6 @@
         <span class="nav-notification-count" id="notificationCount" hidden></span>
       </a>
     </div>
-    <button class="nav-icon-btn" title="Settings"><i class="fas fa-cog"></i></button>
     <button class="nav-logout" onclick="window.Auth && window.Auth.logout()">
       <i class="fas fa-sign-out-alt"></i> Logout
     </button>
@@ -371,24 +397,22 @@
           <div class="overview-heading"><h2>What needs your attention</h2><a href="assignments.html">All assignments &rarr;</a></div>
           <div class="overview-list" id="attentionList"><div class="overview-empty">Loading your coursework...</div></div>
         </section>
-        <section class="ai-card" aria-label="AI Study Assistant">
+        <section class="ai-card" aria-label="Course resource assistant">
           <div class="ai-header-row">
             <div class="ai-pulse" aria-hidden="true"></div>
-            <div class="ai-title">🤖 AI Study Assistant</div>
-            <span class="ai-online">✦ Ready to help</span>
+            <div class="ai-title">🤖 Course Resource Assistant</div>
+            <span class="ai-online">✦ Course-aware</span>
           </div>
-          <div class="ai-sub">Ask a question, explore a topic, or get a quick quiz idea.</div>
+          <div class="ai-sub">Ask about a topic and get a relevant resource from courses you’re enrolled in.</div>
           <div class="ai-input-row">
-            <input type="text" id="aiInput" maxlength="500" placeholder="e.g. Explain QuickSort..." aria-label="Ask the AI Study Assistant">
-            <button class="ai-send-btn" id="aiBtn" type="button">Ask AI</button>
+            <input type="text" id="aiInput" maxlength="500" placeholder="e.g. Explain computer fundamentals..." aria-label="Ask about a course topic">
+            <button class="ai-send-btn" id="aiBtn" type="button">Find a resource</button>
           </div>
           <div class="ai-response" id="aiResponse" role="status" aria-live="polite"></div>
-          <div class="ai-chips" aria-label="Suggested questions">
-            <button class="ai-chip" type="button" onclick="setAIQ('Explain QuickSort')">QuickSort</button>
-            <button class="ai-chip" type="button" onclick="setAIQ('What is a Stack data structure?')">Stacks</button>
-            <button class="ai-chip" type="button" onclick="setAIQ('Explain SQL JOIN')">SQL JOIN</button>
-            <button class="ai-chip" type="button" onclick="setAIQ('OSI model layers')">OSI Model</button>
-            <button class="ai-chip" type="button" onclick="setAIQ('Generate a quiz on Data Structures')">Quiz idea</button>
+          <div class="ai-chips" aria-label="Example topic questions">
+            <button class="ai-chip" type="button" onclick="setAIQ('Explain computer fundamentals')">Computer fundamentals</button>
+            <button class="ai-chip" type="button" onclick="setAIQ('Help me find materials about databases')">Databases</button>
+            <button class="ai-chip" type="button" onclick="setAIQ('Show me resources about networking')">Networking</button>
           </div>
         </section>
       </div>
@@ -414,8 +438,18 @@
 
       <div class="overview-grid dashboard-progress">
         <section class="overview-card">
-          <div class="overview-heading"><h2>Topics to review</h2><a href="quiz.html">Practice quizzes &rarr;</a></div>
-          <div id="topicRecommendations" aria-live="polite"><div class="overview-empty">Loading your learning progress...</div></div>
+          <div class="overview-heading"><h2>Topic performance</h2><a href="quiz.html">Practice quizzes &rarr;</a></div>
+          <div id="topicRecommendations" class="topic-performance-list" aria-live="polite"><div class="overview-empty">Loading your learning progress...</div></div>
+        </section>
+        <section class="overview-card">
+          <div class="overview-heading"><h2>Your reading plan</h2><a href="my-courses.html">My courses &rarr;</a></div>
+          <div id="readingSummaryStats" class="reading-summary-stats" aria-label="Reading progress summary">
+            <div class="reading-summary-stat"><strong>—</strong><span>Materials</span></div>
+            <div class="reading-summary-stat"><strong>—</strong><span>Completed</span></div>
+            <div class="reading-summary-stat"><strong>—</strong><span>Outstanding</span></div>
+            <div class="reading-summary-stat"><strong>—</strong><span>Overdue</span></div>
+          </div>
+          <div id="readingProgressList" class="reading-list" aria-live="polite"><div class="overview-empty">Loading your reading plan...</div></div>
         </section>
         <section class="overview-card">
           <div class="overview-heading"><h2>Recent quiz results</h2><a href="quiz.html">Take a quiz &rarr;</a></div>
@@ -427,6 +461,8 @@
         <div class="overview-heading"><div><span class="section-kicker">Jump back in</span><h2>Quick access</h2></div></div>
         <div class="quick-grid student-quick-access">
         <a href="course-materials.html" class="quick-card"><div class="quick-icon" style="background:#e6f1fb">📚</div><div><div class="quick-name">Course Materials</div><div class="quick-desc">Browse notes and learning resources</div></div></a>
+        <a href="my-courses.html" class="quick-card"><div class="quick-icon" style="background:#e1f5ee">📖</div><div><div class="quick-name">Reading Progress</div><div class="quick-desc">Track reading status and target dates in each course</div></div></a>
+        <a href="past-questions.html" class="quick-card"><div class="quick-icon" style="background:#faeeda">📝</div><div><div class="quick-name">Past-question Guide</div><div class="quick-desc">Review previous exam questions and topic trends</div></div></a>
         <a href="quiz.html" class="quick-card"><div class="quick-icon" style="background:#faeeda">✅</div><div><div class="quick-name">Take a Quiz</div><div class="quick-desc">Practice and review your results</div></div></a>
         <a href="code-editor.html" class="quick-card"><div class="quick-icon" style="background:#eeedfe">💻</div><div><div class="quick-name">Code Practice Lab</div><div class="quick-desc">Practice HTML, CSS and JavaScript</div></div></a>
         </div>
@@ -588,15 +624,6 @@
       { icon: '🎥', bg: '#e1f5ee', title: 'Watch: AI and Machine Learning', sub: 'IFT 501 — New video lecture uploaded this week.',      urgent: false }
     ];
 
-    var AI_ANSWERS = {
-      quicksort: 'QuickSort selects a pivot element, partitions the array into elements less than and greater than the pivot, then recursively sorts each part. Average time complexity: O(n log n). Worst case: O(n2) when pivot is always the smallest or largest element.',
-      stack:     'A Stack is a LIFO (Last-In, First-Out) data structure. Key operations: push() adds to the top, pop() removes from the top, peek() views the top without removing. Common uses include the function call stack, undo operations, and browser history.',
-      sql:       'SQL JOIN combines rows from two or more tables based on a related column. Types: INNER JOIN (matching rows only), LEFT JOIN (all left + matching right), RIGHT JOIN (all right + matching left), FULL OUTER JOIN (all rows from both tables).',
-      osi:       'The OSI model has 7 layers (bottom to top): 1. Physical (cables and bits), 2. Data Link (MAC addresses), 3. Network (IP routing), 4. Transport (TCP/UDP), 5. Session (connection management), 6. Presentation (encryption), 7. Application (HTTP, FTP, DNS).',
-      quiz:      'Here are 3 quick Data Structures questions: 1. Which data structure uses LIFO? Answer: Stack. 2. Time complexity of Binary Search? Answer: O(log n). 3. Height of a balanced BST with n nodes? Answer: O(log n). Head to the Quiz page for a full timed test!',
-      def:       'Great question! Check Course Materials for lecture notes on that topic, then take a practice quiz to reinforce your understanding. For deeper help, visit your department tutorial session on Thursdays.'
-    };
-
     function animateValue(id, start, end, duration, suffix) {
       var el = document.getElementById(id);
       if (!el) return;
@@ -625,49 +652,40 @@
       resp.style.display = 'block';
       resp.innerHTML = '<div class="ai-typing"><span></span><span></span><span></span></div>';
       inp.value = '';
-      setTimeout(function() {
-        var ql = q.toLowerCase();
-        var ans = AI_ANSWERS.def;
-        if (ql.indexOf('quicksort') !== -1 || ql.indexOf('quick sort') !== -1) ans = AI_ANSWERS.quicksort;
-        else if (ql.indexOf('stack') !== -1)                                    ans = AI_ANSWERS.stack;
-        else if (ql.indexOf('sql') !== -1 || ql.indexOf('join') !== -1)        ans = AI_ANSWERS.sql;
-        else if (ql.indexOf('osi') !== -1 || ql.indexOf('network') !== -1)     ans = AI_ANSWERS.osi;
-        else if (ql.indexOf('quiz') !== -1 || ql.indexOf('generat') !== -1)    ans = AI_ANSWERS.quiz;
-        resp.replaceChildren(document.createTextNode('🤖 ' + ans));
-        if (window.searchCourseResources) {
-          window.searchCourseResources(q).then(function(result) {
-            if (result.resource) {
-              var resource = document.createElement('div');
-              resource.className = 'chat-resource';
-              var title = document.createElement('strong');
-              title.textContent = result.resource.courseCode + ' · ' + result.resource.topicTag;
-              var file = document.createElement('span');
-              file.textContent = result.resource.title + ' (' + result.confidence + '% match)';
-              var link = document.createElement('a');
-              link.href = result.resource.courseUrl;
-              link.textContent = 'Open this course resource →';
-              resource.append(title, file, link);
-              resp.appendChild(resource);
-            } else {
-              var fallback = document.createElement('span');
-              fallback.className = 'chat-fallback';
-              fallback.textContent = result.answer;
-              resp.appendChild(fallback);
-            }
-          }).catch(function(error) {
-            var failure = document.createElement('span');
-            failure.className = 'chat-fallback';
-            failure.textContent = error.message.toLowerCase().indexOf('authentication') !== -1
-              ? 'Please sign in again to search your enrolled-course materials.'
-              : 'Course resource search is unavailable: ' + error.message;
-            resp.appendChild(failure);
-          }).finally(function() {
-            button.disabled = false;
-          });
-        } else {
-          button.disabled = false;
+      if (!window.searchCourseResources) {
+        resp.textContent = 'Course resource search is unavailable. Please refresh the page and try again.';
+        button.disabled = false;
+        return;
+      }
+      window.searchCourseResources(q).then(function(result) {
+        resp.replaceChildren();
+        var answer = document.createElement('p');
+        answer.textContent = result.answer;
+        resp.appendChild(answer);
+        if (result.resource) {
+          var resource = document.createElement('div');
+          resource.className = 'chat-resource';
+          var title = document.createElement('strong');
+          title.textContent = result.resource.courseCode + ' · ' + result.resource.topicTag;
+          var file = document.createElement('span');
+          file.textContent = result.resource.title + ' (' + result.confidence + '% match)';
+          var link = document.createElement('a');
+          link.href = result.resource.courseUrl;
+          link.textContent = 'Open this course resource →';
+          resource.append(title, file, link);
+          resp.appendChild(resource);
         }
-      }, 450);
+      }).catch(function(error) {
+        resp.replaceChildren();
+        var failure = document.createElement('span');
+        failure.className = 'chat-fallback';
+        failure.textContent = error.message.toLowerCase().indexOf('authentication') !== -1
+          ? 'Please sign in again to search your enrolled-course materials.'
+          : 'Course resource search is unavailable: ' + error.message;
+        resp.appendChild(failure);
+      }).finally(function() {
+        button.disabled = false;
+      });
     }
 
     document.addEventListener('DOMContentLoaded', function() {

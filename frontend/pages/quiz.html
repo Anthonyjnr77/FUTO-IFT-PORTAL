@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Quiz | FUTO IFT</title>
+  <title>Quiz | LearnIT</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <link rel="stylesheet" href="/assets/css/styles.css">
@@ -47,6 +47,10 @@
     .select-header p { font-size: 13px; color: #64748b; margin-top: 4px; }
 
     .course-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 14px; margin-bottom: 28px; }
+    .quiz-level-tabs { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin: 0 0 16px; }
+    .quiz-level-tab { padding: 8px 13px; border: 1px solid #dbe4ee; border-radius: 999px; background: #fff; color: #475569; font: inherit; font-size: 12px; font-weight: 700; cursor: pointer; transition: background .18s,border-color .18s,color .18s; }
+    .quiz-level-tab:hover { border-color: #0d9488; color: #0f766e; }
+    .quiz-level-tab[aria-pressed="true"] { border-color: #0b1c3a; background: #0b1c3a; color: #fff; }
     .published-quizzes { margin: 0 0 24px; }
     .published-quizzes h2 { color: #0b1c3a; font-size: 15px; margin: 0 0 10px; }
     .published-quiz-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 10px; }
@@ -220,10 +224,18 @@
     <!-- ===== SCREEN 1: COURSE SELECT ===== -->
     <div class="screen active rise" id="screenSelect">
       <div class="select-header">
-        <h1>Select a Course to Begin</h1>
-        <p>Choose any IFT course below, set your preferences, and start your quiz.</p>
+        <h1>Select Your Level and Course</h1>
+        <p>Choose a level from 100L to 500L, select a course, set your preferences, and start your quiz.</p>
       </div>
 
+      <div class="quiz-level-tabs" id="quizLevelTabs" role="group" aria-label="Filter quizzes by level">
+        <button class="quiz-level-tab" type="button" data-level="all" aria-pressed="true">All Levels</button>
+        <button class="quiz-level-tab" type="button" data-level="100" aria-pressed="false">100 Level</button>
+        <button class="quiz-level-tab" type="button" data-level="200" aria-pressed="false">200 Level</button>
+        <button class="quiz-level-tab" type="button" data-level="300" aria-pressed="false">300 Level</button>
+        <button class="quiz-level-tab" type="button" data-level="400" aria-pressed="false">400 Level</button>
+        <button class="quiz-level-tab" type="button" data-level="500" aria-pressed="false">500 Level</button>
+      </div>
       <div class="course-grid" id="courseGrid"></div>
 
       <section class="published-quizzes" aria-labelledby="publishedQuizHeading">
@@ -503,6 +515,8 @@
 
     /* STATE */
     var selectedCourse = null;
+    var selectedQuizLevel = 'all';
+    var publishedQuizzes = [];
     var questions = [];
     var userAnswers = [];
     var currentIndex = 0;
@@ -515,11 +529,22 @@
     /* ===== COURSE SELECT ===== */
     function renderCourseGrid() {
       var grid = document.getElementById('courseGrid');
-      COURSES.forEach(function(c) {
+      grid.replaceChildren();
+      var visibleCourses = COURSES.filter(function(course) {
+        return selectedQuizLevel === 'all' || String(course.level) === selectedQuizLevel;
+      });
+      if (selectedCourse && !visibleCourses.some(function(course) { return course.code === selectedCourse; })) {
+        selectedCourse = null;
+        var startButton = document.getElementById('btnStart');
+        startButton.disabled = true;
+        document.getElementById('btnStartText').textContent = 'Select a course to begin';
+      }
+      visibleCourses.forEach(function(c) {
         var lc = LEVEL_COLORS[c.level] || { bg: '#f1f5f9', text: '#475569' };
         var card = document.createElement('div');
         card.className = 'course-card';
         card.id = 'card_' + c.code.replace(' ', '_');
+        if (c.code === selectedCourse) card.classList.add('selected');
         card.innerHTML =
           '<div class="course-card-top">' +
             '<span class="course-code">' + c.code + '</span>' +
@@ -533,36 +558,76 @@
         card.onclick = function() { selectCourse(c.code); };
         grid.appendChild(card);
       });
+      if (!visibleCourses.length) {
+        var empty = document.createElement('div');
+        empty.className = 'published-empty';
+        empty.textContent = 'No practice courses are available for this level yet.';
+        grid.appendChild(empty);
+      }
+    }
+
+    function renderPublishedQuizzes() {
+      var list = document.getElementById('publishedQuizList');
+      list.replaceChildren();
+      var visibleQuizzes = publishedQuizzes.filter(function(quiz) {
+        return selectedQuizLevel === 'all' || String(quiz.level || '') === selectedQuizLevel;
+      });
+      if (!visibleQuizzes.length) {
+        var empty = document.createElement('div');
+        empty.className = 'published-empty';
+        empty.textContent = publishedQuizzes.length
+          ? 'No lecturer quizzes are available for this level.'
+          : 'No lecturer quizzes are available yet.';
+        list.appendChild(empty);
+        return;
+      }
+      visibleQuizzes.forEach(function(quiz) {
+        var link = document.createElement('a');
+        link.className = 'published-quiz';
+        link.href = 'take-quiz.html?id=' + encodeURIComponent(quiz.id);
+        var title = document.createElement('strong');
+        title.textContent = quiz.courseCode + ' · ' + quiz.title;
+        var meta = document.createElement('span');
+        meta.textContent = (quiz.level ? quiz.level + ' Level · ' : '') +
+          (quiz.topicTag ? quiz.topicTag + ' · ' : '') +
+          quiz.questionCount + ' questions · ' + quiz.durationMinutes +
+          ' minutes · Mastery target ' + quiz.passThreshold + '% · ' +
+          (quiz.lecturerName || 'Lecturer');
+        link.append(title, meta);
+        list.appendChild(link);
+      });
+    }
+
+    function setQuizLevel(level) {
+      selectedQuizLevel = level;
+      document.querySelectorAll('.quiz-level-tab').forEach(function(button) {
+        button.setAttribute('aria-pressed', String(button.dataset.level === level));
+      });
+      renderCourseGrid();
+      renderPublishedQuizzes();
     }
 
     async function loadPublishedQuizzes() {
       var list = document.getElementById('publishedQuizList');
       try {
         var result = await window.Auth.request('/quizzes');
-        list.replaceChildren();
-        if (!result.quizzes || !result.quizzes.length) {
-          var empty = document.createElement('div');
-          empty.className = 'published-empty';
-          empty.textContent = 'No lecturer quizzes are available yet.';
-          list.appendChild(empty);
-          return;
+        publishedQuizzes = result.quizzes || [];
+        if (publishedQuizzes.some(function(quiz) { return !quiz.level && quiz.courseId; })) {
+          var courseResult = await window.Auth.request('/courses');
+          var levelsByCourseId = new Map((courseResult.courses || []).map(function(course) {
+            return [course.id, course.level];
+          }));
+          publishedQuizzes = publishedQuizzes.map(function(quiz) {
+            return { ...quiz, level: quiz.level || levelsByCourseId.get(quiz.courseId) || '' };
+          });
         }
-        result.quizzes.forEach(function(quiz) {
-          var link = document.createElement('a');
-          link.className = 'published-quiz';
-          link.href = 'take-quiz.html?id=' + encodeURIComponent(quiz.id);
-          var title = document.createElement('strong');
-          title.textContent = quiz.courseCode + ' · ' + quiz.title;
-          var meta = document.createElement('span');
-          meta.textContent = (quiz.topicTag ? quiz.topicTag + ' · ' : '') + quiz.questionCount + ' questions · ' + quiz.durationMinutes + ' minutes · Mastery target ' + quiz.passThreshold + '% · ' + (quiz.lecturerName || 'Lecturer');
-          link.append(title, meta);
-          list.appendChild(link);
-        });
+        renderPublishedQuizzes();
       } catch (error) {
+        publishedQuizzes = [];
         list.replaceChildren();
         var empty = document.createElement('div');
         empty.className = 'published-empty';
-        empty.textContent = 'Lecturer quizzes could not be loaded.';
+        empty.textContent = 'Lecturer quizzes and their course levels could not be loaded.';
         list.appendChild(empty);
       }
     }
@@ -805,6 +870,10 @@
         return;
       }
       renderCourseGrid();
+      document.getElementById('quizLevelTabs').addEventListener('click', function(event) {
+        var button = event.target.closest('.quiz-level-tab');
+        if (button) setQuizLevel(button.dataset.level);
+      });
       loadPublishedQuizzes();
     });
 

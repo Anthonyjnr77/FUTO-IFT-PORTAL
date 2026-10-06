@@ -1,0 +1,110 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": null,
+  "rewrites": [
+    {
+      "source": "/",
+      "destination": "/pages/index.html"
+    },
+    {
+      "source": "/admin-login.html",
+      "destination": "/pages/admin-login.html"
+    },
+    {
+      "source": "/admin.html",
+      "destination": "/pages/admin.html"
+    },
+    {
+      "source": "/assignments.html",
+      "destination": "/pages/assignments.html"
+    },
+    {
+      "source": "/code-editor.html",
+      "destination": "/pages/code-editor.html"
+    },
+    {
+      "source": "/course-materials.html",
+      "destination": "/pages/course-materials.html"
+    },
+    {
+      "source": "/course.html",
+      "destination": "/pages/course.html"
+    },
+    {
+      "source": "/dashboard.html",
+      "destination": "/pages/dashboard.html"
+    },
+    {
+      "source": "/forgot-password.html",
+      "destination": "/pages/forgot-password.html"
+    },
+    {
+      "source": "/index.html",
+      "destination": "/pages/index.html"
+    },
+    {
+      "source": "/leaderboard.html",
+      "destination": "/pages/leaderboard.html"
+    },
+    {
+      "source": "/lecturer-assignments.html",
+      "destination": "/pages/lecturer-assignments.html"
+    },
+    {
+      "source": "/lecturer-dashboard.html",
+      "destination": "/pages/lecturer-dashboard.html"
+    },
+    {
+      "source": "/lecturer-login.html",
+      "destination": "/pages/lecturer-login.html"
+    },
+    {
+      "source": "/lecturer-past-questions.html",
+      "destination": "/pages/lecturer-past-questions.html"
+    },
+    {
+      "source": "/lecturer-quizzes.html",
+      "destination": "/pages/lecturer-quizzes.html"
+    },
+    {
+      "source": "/lecturer-rosters.html",
+      "destination": "/pages/lecturer-rosters.html"
+    },
+    {
+      "source": "/lecturer-timetable.html",
+      "destination": "/pages/lecturer-timetable.html"
+    },
+    {
+      "source": "/my-courses.html",
+      "destination": "/pages/my-courses.html"
+    },
+    {
+      "source": "/notifications.html",
+      "destination": "/pages/notifications.html"
+    },
+    {
+      "source": "/past-questions.html",
+      "destination": "/pages/past-questions.html"
+    },
+    {
+      "source": "/profile.html",
+      "destination": "/pages/profile.html"
+    },
+    {
+      "source": "/quiz.html",
+      "destination": "/pages/quiz.html"
+    },
+    {
+      "source": "/reset-password.html",
+      "destination": "/pages/reset-password.html"
+    },
+    {
+      "source": "/take-quiz.html",
+      "destination": "/pages/take-quiz.html"
+    },
+    {
+      "source": "/timetable.html",
+      "destination": "/pages/timetable.html"
+    }
+  ]
+}

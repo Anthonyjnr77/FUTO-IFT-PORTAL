@@ -3,12 +3,13 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Administrator sign in | FUTO IFT</title>
+  <title>Administrator sign in | LearnIT</title>
   <link rel="stylesheet" href="/assets/css/styles.css">
   <style>
     body{min-height:100vh;margin:0;display:grid;place-items:center;background:linear-gradient(135deg,#0b1c3a,#164e63);font-family:Inter,system-ui,sans-serif;color:#0f172a}
     main{width:min(100% - 32px,440px);padding:28px;background:#fff;border-radius:20px;box-shadow:0 24px 64px #02061755}
     h1{margin:0 0 8px;color:#0b1c3a}.muted{color:#64748b;font-size:14px;line-height:1.6}
+    .recovery{display:block;margin-top:14px;text-align:right;font-size:13px}
     label{display:block;margin:18px 0 6px;font-size:13px;font-weight:700}
     input{width:100%;box-sizing:border-box;padding:12px;border:1px solid #cbd5e1;border-radius:9px;font:inherit}
     button{width:100%;margin-top:20px;padding:12px;border:0;border-radius:9px;background:#0d9488;color:white;font:inherit;font-weight:700;cursor:pointer}
@@ -28,6 +29,7 @@
       <button id="submitButton" type="submit">Sign in</button>
       <div id="status" class="status" role="status" aria-live="polite"></div>
     </form>
+    <a class="recovery" href="forgot-password.html">Forgot administrator password?</a>
     <p class="muted"><a href="index.html">Return to the student portal</a></p>
   </main>
   <script src="/assets/js/api-config.js"></script>

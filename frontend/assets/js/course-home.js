@@ -50,10 +50,14 @@
     if (!announcements.length) showEmpty('announcementList', 'No announcements have been posted for this course.');
   }
 
-  function renderMaterials(materials) {
+  function renderMaterials(materials, readings) {
     var list = document.getElementById('materialList');
     list.replaceChildren();
     materials.forEach(function(material) {
+      var reading = readings.find(function(item) { return item.material.id === material.id; }) || {
+        status: 'not_started',
+        targetDate: null
+      };
       var card = node('article', 'content-item');
       card.id = 'material-' + material.id;
       card.appendChild(node('strong', '', material.title));
@@ -64,9 +68,71 @@
         downloadMaterial(material, button);
       });
       card.appendChild(button);
+      var controls = node('form', 'reading-controls');
+      var statusField = node('div', 'reading-field');
+      var statusId = 'reading-status-' + material.id;
+      var statusLabel = node('label', '', 'Reading status');
+      statusLabel.htmlFor = statusId;
+      var statusSelect = node('select');
+      statusSelect.id = statusId;
+      [['not_started', 'Not started'], ['in_progress', 'In progress'], ['completed', 'Completed']].forEach(function(option) {
+        var optionNode = node('option', '', option[1]);
+        optionNode.value = option[0];
+        statusSelect.appendChild(optionNode);
+      });
+      statusSelect.value = reading.status;
+      statusField.append(statusLabel, statusSelect);
+      var dateField = node('div', 'reading-field');
+      var dateId = 'reading-date-' + material.id;
+      var dateLabel = node('label', '', 'Target date (optional)');
+      dateLabel.htmlFor = dateId;
+      var dateInput = node('input');
+      dateInput.type = 'date';
+      dateInput.id = dateId;
+      dateInput.value = reading.targetDate || '';
+      dateField.append(dateLabel, dateInput);
+      var save = node('button', 'reading-save', 'Save');
+      save.type = 'submit';
+      controls.append(statusField, dateField, save);
+      controls.addEventListener('submit', async function(event) {
+        event.preventDefault();
+        save.disabled = true;
+        try {
+          var result = await window.Auth.request('/student/reading-progress', {
+            method: 'POST',
+            body: JSON.stringify({
+              materialId: material.id,
+              status: statusSelect.value,
+              targetDate: dateInput.value || null
+            })
+          });
+          reading.status = result.reading.status;
+          reading.targetDate = result.reading.targetDate;
+          updateReadingMeta(meta, reading);
+          showNotice('Reading progress saved.', 'success');
+        } catch (error) {
+          showNotice('Reading progress could not be saved: ' + error.message, 'error');
+        } finally {
+          save.disabled = false;
+        }
+      });
+      card.appendChild(controls);
+      var meta = node('div', 'reading-meta');
+      updateReadingMeta(meta, reading);
+      card.appendChild(meta);
       list.appendChild(card);
     });
     if (!materials.length) showEmpty('materialList', 'No course materials have been shared yet.');
+  }
+
+  function updateReadingMeta(element, reading) {
+    if (reading.status !== 'completed' && reading.targetDate) {
+      var today = new Date();
+      var todayString = [today.getFullYear(), String(today.getMonth() + 1).padStart(2, '0'), String(today.getDate()).padStart(2, '0')].join('-');
+      element.textContent = reading.targetDate < todayString ? 'Target date passed · Reading still outstanding' : 'Target date: ' + reading.targetDate;
+      return;
+    }
+    element.textContent = reading.status === 'completed' ? 'Marked as completed' : 'No target date set';
   }
 
   async function downloadMaterial(material, button) {
@@ -149,7 +215,8 @@
         window.Auth.request('/materials'),
         window.Auth.request('/assignments'),
         window.Auth.request('/quizzes'),
-        window.Auth.request('/announcements')
+        window.Auth.request('/announcements'),
+        window.Auth.request('/student/reading-progress?courseId=' + encodeURIComponent(courseId))
       ]);
       var course = (results[0].courses || []).find(function(item) {
         return item.id === courseId && item.enrolled;
@@ -163,7 +230,7 @@
         return;
       }
 
-      document.title = course.courseCode + ' | FUTO IFT';
+      document.title = course.courseCode + ' | LearnIT';
       document.getElementById('courseCode').textContent = course.courseCode + ' · ' + course.level + ' Level';
       document.getElementById('courseTitle').textContent = course.courseTitle;
       document.getElementById('courseMeta').replaceChildren(
@@ -175,7 +242,11 @@
         (course.room ? ' · ' + course.room : '');
 
       renderAnnouncements((results[4].announcements || []).filter(function(item) { return item.courseId === courseId; }));
-      renderMaterials((results[1].materials || []).filter(function(item) { return item.courseId === courseId; }));
+      document.getElementById('examPredictionLink').href = 'past-questions.html?courseId=' + encodeURIComponent(courseId);
+      renderMaterials(
+        (results[1].materials || []).filter(function(item) { return item.courseId === courseId; }),
+        results[5].readings || []
+      );
       renderAssignments((results[2].assignments || []).filter(function(item) { return item.courseId === courseId; }));
       renderQuizzes((results[3].quizzes || []).filter(function(item) {
         return item.courseId ? item.courseId === courseId : item.courseCode === course.courseCode;

@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Course Home | FUTO IFT</title>
+  <title>Course Home | LearnIT</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
   <link rel="stylesheet" href="/assets/css/styles.css" />
   <style>
@@ -36,6 +36,12 @@
     .item-action:hover { text-decoration:underline; }
     .download-button { margin-top:9px;border:0;background:none;padding:0;color:var(--teal);font:inherit;font-size:12px;font-weight:700;cursor:pointer; }
     .download-button:disabled { opacity:.6;cursor:wait; }
+    .reading-controls { display:grid;grid-template-columns:minmax(120px,1fr) minmax(130px,1fr) auto;align-items:end;gap:8px;margin-top:12px;padding-top:10px;border-top:1px solid var(--line); }
+    .reading-field label { display:block;margin-bottom:4px;color:var(--muted);font-size:10px;font-weight:700; }
+    .reading-field select,.reading-field input { width:100%;min-height:36px;border:1px solid #cbd5e1;border-radius:7px;background:white;padding:6px 8px;color:#1e293b;font:inherit;font-size:12px; }
+    .reading-save { min-height:36px;padding:0 10px;border:0;border-radius:7px;background:var(--teal);color:white;font-weight:700;cursor:pointer; }
+    .reading-save:disabled { opacity:.6;cursor:wait; }
+    .reading-meta { margin-top:6px;color:var(--muted);font-size:11px; }
     .empty { padding:15px;border:1px dashed #cbd5e1;border-radius:9px;color:var(--muted);font-size:12px;line-height:1.5; }
     .notice { display:none;margin-bottom:14px;padding:11px 13px;border-radius:8px;font-size:13px; }
     .notice.show { display:block; }.notice.error { color:#991b1b;background:#fef2f2;border:1px solid #fecaca; }.notice.success { color:#166534;background:#f0fdf4;border:1px solid #bbf7d0; }
@@ -86,6 +92,11 @@
       <section class="panel">
         <h2>Quizzes <a href="quiz.html">All quizzes &rarr;</a></h2>
         <div id="quizList" class="item-list"><div class="empty">Loading quizzes...</div></div>
+      </section>
+      <section class="panel">
+        <h2>Past exam questions</h2>
+        <p class="content-meta">Review past questions and topic trends for this course.</p>
+        <a id="examPredictionLink" class="item-action" href="past-questions.html">Open exam revision guide</a>
       </section>
     </div>
   </main>

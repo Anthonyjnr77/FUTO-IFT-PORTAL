@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Past Questions | LearnIT</title>
+  <link rel="stylesheet" href="/assets/css/styles.css">
+  <style>
+    :root{--navy:#0b1c3a;--teal:#0d9488;--line:#dce5ee;--muted:#64748b}
+    *{box-sizing:border-box}body{margin:0;background:#f3f7fb;color:#10213b;font-family:Inter,system-ui,sans-serif}
+    header{display:flex;justify-content:space-between;align-items:center;gap:16px;padding:14px max(20px,calc((100% - 1100px)/2));background:var(--navy);color:#fff}
+    header a{color:#d5fff8;text-decoration:none;font-weight:800}.logout{border:1px solid #ffffff55;border-radius:8px;background:transparent;color:white;padding:9px 13px;cursor:pointer}
+    main{width:min(1100px,calc(100% - 32px));margin:28px auto 56px}h1{margin:0 0 7px;color:var(--navy)}
+    .intro,.help{color:var(--muted);line-height:1.55}.layout{display:grid;grid-template-columns:minmax(280px,.8fr) minmax(0,1.2fr);gap:18px;margin-top:20px}
+    .panel{padding:20px;background:#fff;border:1px solid var(--line);border-radius:13px;box-shadow:0 4px 16px #10213b08}
+    .panel h2{margin:0 0 8px;font-size:18px}.field{display:block;width:100%;margin-top:14px;padding:10px 11px;border:1px solid #cbd5e1;border-radius:8px;background:#fff;color:#10213b;font:inherit}
+    label{display:block;margin-top:13px;font-size:12px;font-weight:700}.field-wrap{margin-top:5px}
+    textarea.field{min-height:130px;resize:vertical;line-height:1.45}
+    .primary,.delete{border:0;border-radius:8px;padding:10px 13px;font:inherit;font-weight:700;cursor:pointer}
+    .primary{margin-top:14px;background:var(--teal);color:#fff}.primary:disabled,.delete:disabled{opacity:.55;cursor:wait}
+    .status{min-height:20px;margin-top:10px;color:#166534;font-size:13px}.status.error{color:#b42318}
+    .question-list{display:grid;gap:10px;margin-top:14px}.question{padding:13px;border:1px solid var(--line);border-radius:10px}
+    .question-head{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}.question strong{color:var(--navy)}
+    .meta{margin:5px 0;color:var(--muted);font-size:12px}.question p{margin:8px 0 0;white-space:pre-wrap;line-height:1.5;font-size:13px}
+    .delete{flex:none;background:#fee2e2;color:#991b1b}.empty{padding:14px;border:1px dashed #cbd5e1;border-radius:9px;color:var(--muted);font-size:13px}
+    @media(max-width:720px){header{padding:13px 16px}.layout{grid-template-columns:1fr}.panel{padding:16px}}
+  </style>
+</head>
+<body>
+  <header><a id="homeLink" href="lecturer-dashboard.html">LearnIT · Past questions</a><button class="logout" type="button" onclick="window.Auth.logout()">Sign out</button></header>
+  <main>
+    <h1>Past exam question bank</h1>
+    <p class="intro">Add course questions with their exam year and topic. LearnIT uses these entries to rank revision topics for enrolled students.</p>
+    <div class="layout">
+      <section class="panel">
+        <h2>Add a past question</h2>
+        <p class="help">Questions are visible to students enrolled in the selected course. Do not add answers or confidential upcoming exam content.</p>
+        <form id="questionForm">
+          <label for="courseId">Course</label>
+          <select class="field" id="courseId" required><option value="">Loading courses…</option></select>
+          <label for="examYear">Exam year</label>
+          <input class="field" id="examYear" type="number" min="1950" required>
+          <label for="topicTag">Topic tag</label>
+          <input class="field" id="topicTag" minlength="2" maxlength="100" required placeholder="e.g. Computer fundamentals">
+          <label for="questionText">Question</label>
+          <textarea class="field" id="questionText" minlength="10" maxlength="3000" required placeholder="Enter the past exam question as it appeared."></textarea>
+          <button class="primary" id="saveButton" type="submit">Add to question bank</button>
+        </form>
+        <div id="status" class="status" role="status" aria-live="polite"></div>
+      </section>
+      <section class="panel">
+        <h2>Questions you can manage</h2>
+        <div id="questionList" class="question-list"><div class="empty">Loading past questions…</div></div>
+      </section>
+    </div>
+  </main>
+  <script src="/assets/js/api-config.js"></script>
+  <script src="/assets/js/auth-utils.js"></script>
+  <script>
+    var user = window.Auth.getAdmin() || window.Auth.getLecturer() || window.Auth.get();
+    var courseSelect = document.getElementById('courseId');
+    var questionList = document.getElementById('questionList');
+    var statusElement = document.getElementById('status');
+    document.getElementById('examYear').max = String(new Date().getFullYear());
+
+    function element(tag, className, text) {
+      var item = document.createElement(tag);
+      if (className) item.className = className;
+      if (text !== undefined) item.textContent = text;
+      return item;
+    }
+    function setStatus(message, isError) {
+      statusElement.textContent = message;
+      statusElement.classList.toggle('error', Boolean(isError));
+    }
+    function renderQuestions(questions) {
+      questionList.replaceChildren();
+      if (!questions.length) {
+        questionList.appendChild(element('div', 'empty', 'No past questions have been added for your courses yet.'));
+        return;
+      }
+      questions.forEach(function(question) {
+        var card = element('article', 'question');
+        var head = element('div', 'question-head');
+        head.append(element('strong', '', question.courseCode + ' · ' + question.topicTag), element('span', 'meta', String(question.examYear)));
+        var remove = element('button', 'delete', 'Remove');
+        remove.type = 'button';
+        remove.addEventListener('click', function() { deleteQuestion(question, remove); });
+        head.appendChild(remove);
+        card.append(head, element('p', '', question.questionText));
+        questionList.appendChild(card);
+      });
+    }
+    async function loadQuestions() {
+      questionList.replaceChildren(element('div', 'empty', 'Loading past questions…'));
+      try {
+        var result = await window.Auth.request('/past-questions');
+        courseSelect.replaceChildren(new Option(result.courses.length ? 'Choose a course' : 'No courses available', ''));
+        result.courses.forEach(function(course) {
+          courseSelect.appendChild(new Option(course.courseCode + ' · ' + course.courseTitle, course.id));
+        });
+        document.getElementById('saveButton').disabled = result.courses.length === 0;
+        renderQuestions(result.pastQuestions || []);
+      } catch (error) {
+        questionList.replaceChildren(element('div', 'empty', 'Past questions could not be loaded.'));
+        setStatus(error.message, true);
+      }
+    }
+    async function deleteQuestion(question, button) {
+      if (!window.confirm('Remove this question from the past-question bank?')) return;
+      button.disabled = true;
+      try {
+        await window.Auth.request('/past-questions/' + encodeURIComponent(question.id), { method: 'DELETE' });
+        setStatus('Past question removed.', false);
+        await loadQuestions();
+      } catch (error) {
+        setStatus('The past question could not be removed: ' + error.message, true);
+        button.disabled = false;
+      }
+    }
+    document.getElementById('questionForm').addEventListener('submit', async function(event) {
+      event.preventDefault();
+      var button = document.getElementById('saveButton');
+      button.disabled = true;
+      try {
+        await window.Auth.request('/past-questions', {
+          method: 'POST',
+          body: JSON.stringify({
+            courseId: courseSelect.value,
+            examYear: Number(document.getElementById('examYear').value),
+            topicTag: document.getElementById('topicTag').value,
+            questionText: document.getElementById('questionText').value
+          })
+        });
+        document.getElementById('questionText').value = '';
+        setStatus('Past question added. Students enrolled in the course can now see it in their revision guide.', false);
+        await loadQuestions();
+      } catch (error) {
+        setStatus(error.message, true);
+      } finally {
+        button.disabled = false;
+      }
+    });
+    if (!user) {
+      window.location.href = 'index.html';
+    } else if (user.role !== 'lecturer' && user.role !== 'admin') {
+      window.location.href = 'dashboard.html';
+    } else if (user) {
+      document.getElementById('homeLink').href = user.role === 'admin' ? 'admin.html' : 'lecturer-dashboard.html';
+      loadQuestions();
+    }
+  </script>
+</body>
+</html>

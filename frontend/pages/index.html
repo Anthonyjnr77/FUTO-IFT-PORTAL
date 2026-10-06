@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Login | FUTO IFT Learning Platform</title>
+  <title>Login | LearnIT</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <link rel="stylesheet" href="/assets/css/styles.css">
@@ -177,7 +177,7 @@
 
       <div class="logo-area">
         <div class="logo-icon">🎓</div>
-        <div class="logo-title">FUTO IFT PORTAL</div>
+        <div class="logo-title">LearnIT</div>
         <div class="logo-sub">Federal University of Technology, Owerri</div>
         <div class="dept-badge">Dept. of Information Technology</div>
       </div>
@@ -339,7 +339,7 @@
   </div>
 
   <!-- AI FAB -->
-  <button class="ai-fab" id="aiFab" onclick="toggleAI()" title="FUTO AI Assistant">
+  <button class="ai-fab" id="aiFab" onclick="toggleAI()" title="LearnIT Assistant">
     🤖
     <div class="fab-badge"></div>
   </button>
@@ -348,13 +348,13 @@
   <div class="ai-panel" id="aiPanel">
     <div class="ai-panel-header">
       <div class="ai-status-dot"></div>
-      <div class="ai-panel-title">FUTO IFT Assistant</div>
+      <div class="ai-panel-title">LearnIT Assistant</div>
       <span class="ai-panel-sub">Always online</span>
       <button class="ai-close" onclick="toggleAI()"><i class="fas fa-times"></i></button>
     </div>
     <div class="ai-messages" id="aiMessages">
       <div class="ai-bubble">
-        Hi! I am your FUTO IFT portal assistant. I can help with login issues, matric number format, course info and more. What do you need?
+        Hi! I am your LearnIT assistant. I can help with login issues, matric number format, course info and more. What do you need?
       </div>
     </div>
     <div class="ai-chips-row" id="aiChips">
@@ -561,6 +561,10 @@
         showAlert('loginAlert', 'Login successful! Redirecting to dashboard...', 'success');
         setTimeout(function() { window.location.href = 'dashboard.html'; }, 900);
       }).catch(function(error) {
+        if (error.passwordResetRequired) {
+          window.location.href = 'forgot-password.html';
+          return;
+        }
         showAlert('loginAlert', error.message, 'error');
       }).finally(function() {
         setLoading('login', false);
@@ -635,6 +639,10 @@
         showAlert('lecturerLoginAlert', 'Lecturer login successful! Redirecting...', 'success');
         setTimeout(function() { window.location.href = 'lecturer-dashboard.html'; }, 900);
       }).catch(function(error) {
+        if (error.passwordResetRequired) {
+          window.location.href = 'forgot-password.html?email=' + encodeURIComponent(email);
+          return;
+        }
         showAlert('lecturerLoginAlert', error.message, 'error');
       }).finally(function() {
         setLoading('lecturerLogin', false);
