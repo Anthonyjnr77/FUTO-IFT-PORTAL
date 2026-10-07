@@ -6,6 +6,7 @@
   <title>Timetable | LearnIT</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
   <link rel="stylesheet" href="/assets/css/styles.css" />
+  <script src="/assets/js/theme.js"></script>
   <style>
     :root { --primary:#0b1c3a; --teal:#0d9488; --teal-light:#14b8a6; --bg:#f4f7fb; --panel:rgba(255,255,255,0.96); --line:#e2e8f0; --muted:#64748b; --text:#0f172a; }
     * { box-sizing:border-box; }
@@ -80,20 +81,17 @@
     <section class="panel">
       <div class="panel-header">
         <span class="eyebrow"><i class="fa-solid fa-calendar-days"></i> Planning</span>
-        <h1>Class & Exam Timetable</h1>
-        <p>Filter your schedule by level to see upcoming classes and assessments.</p>
+        <h1>Class Timetable</h1>
+        <p>View your enrolled curriculum courses and the class times published by your lecturers. Exam dates appear only when officially scheduled.</p>
       </div>
       <div class="panel-body">
         <div class="toolbar">
           <div class="filter">
-            <label for="levelFilter">Level</label>
-            <select id="levelFilter">
-              <option value="all">All Levels</option>
-              <option value="100">100 Level</option>
-              <option value="200">200 Level</option>
-              <option value="300">300 Level</option>
-              <option value="400">400 Level</option>
-              <option value="500">500 Level</option>
+            <label for="semesterFilter">Semester</label>
+            <select id="semesterFilter">
+              <option value="all">All Semesters</option>
+              <option value="Harmattan">Harmattan Semester</option>
+              <option value="Rain">Rain Semester</option>
             </select>
           </div>
         </div>
@@ -105,46 +103,65 @@
   <script src="/assets/js/api-config.js"></script>
   <script src="/assets/js/auth-utils.js"></script>
   <script>
-    var SCHEDULE = [
-      { level:'100', type:'Class', course:'IFT 101', when:'Mon 09:00 - 10:30', where:'Room A' },
-      { level:'100', type:'Exam', course:'IFT 101', when:'Fri 09:00 - 11:00', where:'Hall B' },
-      { level:'200', type:'Class', course:'IFT 201', when:'Tue 11:00 - 12:30', where:'Room C' },
-      { level:'200', type:'Exam', course:'IFT 201', when:'Thu 13:00 - 15:00', where:'Hall A' },
-      { level:'300', type:'Class', course:'IFT 302', when:'Wed 09:00 - 10:30', where:'Room D' },
-      { level:'300', type:'Exam', course:'IFT 302', when:'Fri 09:00 - 11:00', where:'Hall C' },
-      { level:'400', type:'Class', course:'IFT 401', when:'Mon 13:00 - 15:00', where:'Room E' },
-      { level:'500', type:'Class', course:'IFT 501', when:'Thu 10:00 - 12:00', where:'Room F' }
-    ];
+    var STUDENT_COURSES = [];
 
-    function render(level){
-      var list = SCHEDULE.filter(function(s){ return level === 'all' ? true : s.level === level; });
+    function render(semester){
+      var list = STUDENT_COURSES.filter(function(course) {
+        return semester === 'all' || course.semester === semester;
+      });
       var el = document.getElementById('schedule');
       el.innerHTML = '';
 
       if (!list.length) {
-        el.innerHTML = '<div class="empty">No schedule found for this level.</div>';
+        el.innerHTML = '<div class="empty">You are not enrolled in any courses for this semester yet. Browse My Courses to register.</div>';
         return;
       }
 
       list.forEach(function(it){
         var card = document.createElement('div');
         card.className = 'schedule-item';
-        card.innerHTML = '<div class="pill ' + (it.type === 'Exam' ? 'exam' : 'class') + '">' + it.type + '</div>' +
-          '<div><div class="course">' + it.course + '</div><div class="meta">' + it.when + ' • ' + it.where + '</div></div>' +
-          '<div class="meta">Level ' + it.level + '</div>';
+        var schedule = it.day && it.startTime && it.endTime
+          ? it.day + ' · ' + formatTime(it.startTime) + ' - ' + formatTime(it.endTime) + (it.room ? ' · ' + it.room : '')
+          : 'Class schedule has not been published.';
+        card.innerHTML = '<div class="pill class">' + escapeHTML(it.semester || 'Semester not specified') + '</div>' +
+          '<div><div class="course">' + escapeHTML(it.courseCode) + ' · ' + escapeHTML(it.courseTitle) + '</div><div class="meta">' + escapeHTML(schedule) + '</div></div>' +
+          '<div class="meta">' + escapeHTML(it.level) + ' Level · ' + escapeHTML(String(it.units)) + ' units</div>';
         el.appendChild(card);
       });
     }
 
-    document.addEventListener('DOMContentLoaded', function(){
+    function formatTime(value) {
+      var parts = value.split(':');
+      var date = new Date();
+      date.setHours(Number(parts[0]), Number(parts[1]), 0, 0);
+      return date.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+    }
+
+    function escapeHTML(value) {
+      return String(value).replace(/[&<>"']/g, function(character) {
+        return { '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[character];
+      });
+    }
+
+    document.addEventListener('DOMContentLoaded', async function(){
       var currentUser = window.Auth ? window.Auth.protect() : null;
       if (!currentUser) return;
       if (currentUser.role === 'lecturer') {
         window.location.href = 'lecturer-timetable.html';
         return;
       }
-      document.getElementById('levelFilter').addEventListener('change', function(){ render(this.value); });
-      render('all');
+      document.getElementById('semesterFilter').addEventListener('change', function(){ render(this.value); });
+      try {
+        var result = await window.Auth.request('/courses');
+        STUDENT_COURSES = (result.courses || []).filter(function(course) { return course.enrolled; });
+        render('all');
+      } catch (error) {
+        var schedule = document.getElementById('schedule');
+        var message = document.createElement('div');
+        message.className = 'empty';
+        message.textContent = 'Your timetable could not be loaded: ' + error.message;
+        schedule.replaceChildren(message);
+      }
     });
   </script>
   <script src="/assets/js/student-chat-widget.js"></script>

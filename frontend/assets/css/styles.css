@@ -258,6 +258,296 @@ body {
   border-top-color: #fff;
   border-radius: 50%;
   animation: spin 0.7s linear infinite;
+}
+
+/* ===== THEME PREFERENCE ===== */
+.learnit-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  flex: 0 0 auto;
+  color: #fff;
+  font: 800 14px/1 system-ui, sans-serif;
+  letter-spacing: 0.04em;
+  text-decoration: none;
+}
+
+.learnit-brand img {
+  display: block;
+  width: 38px;
+  height: 38px;
+  padding: 2px;
+  border: 1px solid rgba(255, 255, 255, 0.55);
+  border-radius: 9px;
+  background: #fff;
+  object-fit: contain;
+}
+
+.topbar .learnit-brand {
+  margin-right: 12px;
+}
+
+header #homeLink.learnit-brand {
+  gap: 9px;
+}
+
+.brand-mark img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border-radius: inherit;
+  object-fit: contain;
+}
+
+html[data-theme="dark"] {
+  --learnit-bg: #0b1220;
+  --learnit-surface: #111c2e;
+  --learnit-surface-raised: #18263a;
+  --learnit-text: #e2e8f0;
+  --learnit-heading: #f1f5f9;
+  --learnit-muted: #a3b2c7;
+  --learnit-border: #334155;
+  --learnit-input: #0f1a2b;
+  color-scheme: dark;
+}
+
+html[data-theme="dark"] body {
+  background-color: var(--learnit-bg) !important;
+  background-image: none !important;
+  color: var(--learnit-text) !important;
+}
+
+html[data-theme="dark"] body :is(
+  .card,
+  .panel,
+  .glass-card,
+  .course,
+  .stat-card,
+  .hero-banner,
+  .hero-meta,
+  .content-item,
+  .history-panel,
+  .history-list,
+  .info-box,
+  .empty,
+  .course-empty,
+  .course-search,
+  .course-semester-filter,
+  .course-filter:not(.active),
+  .quiz-card,
+  .question-card,
+  .question,
+  .question-stat,
+  .result-row,
+  .score-item,
+  .submission,
+  .student,
+  .schedule-item,
+  .manage,
+  .paste-import,
+  .assignment-button,
+  .assignment-card,
+  .notification-card,
+  .metric-card,
+  .schedule-panel,
+  .panel-header,
+  .icon-button,
+  .today-button,
+  .results-button
+) {
+  background-color: var(--learnit-surface) !important;
+  border-color: var(--learnit-border) !important;
+  color: var(--learnit-text) !important;
+}
+
+html[data-theme="dark"] body :is(
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6,
+  p,
+  li,
+  label,
+  td,
+  th,
+  small,
+  strong,
+  summary,
+  blockquote,
+  dd,
+  dt,
+  legend,
+  .intro,
+  .course-meta,
+  .history-line,
+  .content-meta,
+  .field-label,
+  .stat-label,
+  .progress-label,
+  .hero-sub,
+  .empty,
+  .panel-header p
+) {
+  color: var(--learnit-text) !important;
+}
+
+html[data-theme="dark"] body :is(.assignment-button.active, .assignment-button:hover) {
+  background-color: var(--learnit-surface-raised) !important;
+}
+
+html[data-theme="dark"] body :is(.primary, .button, .today-button) {
+  color: #fff !important;
+}
+
+html[data-theme="dark"] body :is(input, select, textarea, .text-input, .field) {
+  background-color: var(--learnit-input) !important;
+  border-color: var(--learnit-border) !important;
+  color: var(--learnit-text) !important;
+}
+
+html[data-theme="dark"] body:has(#resetForm) main {
+  background-color: var(--learnit-surface) !important;
+  border-color: var(--learnit-border) !important;
+}
+
+html[data-theme="dark"] body :is(input, textarea)::placeholder {
+  color: var(--learnit-muted) !important;
+}
+
+html[data-theme="dark"] body :is(.navbar, .topbar) {
+  background-color: #101a2b !important;
+  border-color: var(--learnit-border) !important;
+}
+
+html[data-theme="dark"] body :is(.navbar, .topbar) :is(a, span, strong, button) {
+  color: var(--learnit-text);
+}
+
+.learnit-theme-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 36px;
+  padding: 7px 11px;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+  font: 600 12px/1 system-ui, sans-serif;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background-color 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
+}
+
+.learnit-theme-toggle:hover {
+  background: rgba(255, 255, 255, 0.18);
+  transform: translateY(-1px);
+}
+
+.learnit-theme-toggle:focus-visible {
+  outline: 3px solid #14b8a6;
+  outline-offset: 3px;
+}
+
+body > .learnit-theme-toggle {
+  position: fixed;
+  top: 18px;
+  right: 18px;
+  z-index: 10001;
+  border-color: rgba(148, 163, 184, 0.4);
+  background: #0b1c3a;
+  box-shadow: 0 4px 16px rgba(15, 23, 42, 0.2);
+}
+
+html[data-theme="light"] body:has(.glass-card) {
+  background: #f0f4f8 !important;
+}
+
+html[data-theme="light"] body:has(.glass-card) .glass-card {
+  background: #fff !important;
+  border-color: #e2e8f0 !important;
+  color: #1e293b !important;
+}
+
+html[data-theme="light"] body:has(.glass-card) :is(.logo-title, .form-section, .field label, .checkbox-label) {
+  color: #0b1c3a !important;
+}
+
+html[data-theme="light"] body:has(.glass-card) :is(.logo-sub, .matric-hint, .pw-label) {
+  color: #64748b !important;
+}
+
+html[data-theme="light"] body:has(.glass-card) .input-wrap input {
+  background: #fff !important;
+  border-color: #cbd5e1 !important;
+  color: #1e293b !important;
+}
+
+html[data-theme="light"] body:has(.glass-card) .tab-btn {
+  color: #64748b !important;
+}
+
+html[data-theme="light"] body:has(.glass-card) .tab-btn.active {
+  color: #0d9488 !important;
+}
+
+html[data-theme="light"] body:has(.glass-card) .input-wrap input::placeholder {
+  color: #94a3b8 !important;
+}
+
+html[data-theme="light"] body:has(.brand .brand-mark) {
+  background: #f0f4f8 !important;
+  color: #1e293b !important;
+}
+
+html[data-theme="light"] body:has(.brand .brand-mark) .card {
+  background: #fff !important;
+  border-color: #e2e8f0 !important;
+  color: #1e293b !important;
+}
+
+html[data-theme="light"] body:has(.brand .brand-mark) :is(.brand h1, h2, label) {
+  color: #0b1c3a !important;
+}
+
+html[data-theme="light"] body:has(.brand .brand-mark) :is(.brand p, .intro) {
+  color: #64748b !important;
+}
+
+html[data-theme="light"] body:has(.brand .brand-mark) input {
+  background: #fff !important;
+  border-color: #cbd5e1 !important;
+  color: #1e293b !important;
+}
+
+html[data-theme="light"] body:has(.brand .brand-mark) input::placeholder {
+  color: #94a3b8 !important;
+}
+
+html[data-theme="light"] body:has(.brand .brand-mark) label {
+  color: #475569 !important;
+}
+
+html[data-theme="light"] body:has(.brand .brand-mark) .message.success {
+  background: #f0fdf4 !important;
+  border-color: #bbf7d0 !important;
+  color: #166534 !important;
+}
+
+html[data-theme="light"] body:has(.brand .brand-mark) .message.error {
+  background: #fef2f2 !important;
+  border-color: #fecaca !important;
+  color: #991b1b !important;
+}
+
+@media (max-width: 640px) {
+  .learnit-theme-toggle {
+    min-height: 34px;
+    padding: 7px 9px;
+  }
   display: inline-block;
 }
 

@@ -7,6 +7,7 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <link rel="stylesheet" href="/assets/css/styles.css">
+  <script src="/assets/js/theme.js"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: 'Inter', system-ui, sans-serif; background: #f0f4f8; min-height: 100vh; color: #1e293b; }
@@ -167,7 +168,7 @@
         <div class="stat-pill-icon" style="background:#fefce8">📊</div>
         <div>
           <div class="stat-pill-val" id="countSlide">0</div>
-          <div class="stat-pill-label">Slide Decks</div>
+          <div class="stat-pill-label">Slides & Documents</div>
         </div>
       </div>
       <div class="stat-pill">
@@ -190,11 +191,12 @@
         <option value="pdf">PDF Notes</option>
         <option value="video">Video Lectures</option>
         <option value="slide">Slide Decks</option>
+        <option value="document">Other Documents</option>
       </select>
       <select class="filter-select" id="semFilter">
         <option value="all">All Semesters</option>
-        <option value="1">Semester 1</option>
-        <option value="2">Semester 2</option>
+        <option value="Harmattan">Harmattan Semester</option>
+        <option value="Rain">Rain Semester</option>
       </select>
       <button class="filter-btn active" id="sortBtn" onclick="toggleSort()">
         <i class="fas fa-sort-alpha-down" id="sortIcon"></i>
@@ -213,6 +215,7 @@
     </div>
 
     <!-- Grid -->
+    <div id="materialsError" class="empty-sub" role="alert" hidden></div>
     <div class="materials-grid rise d3" id="materialsGrid"></div>
 
     <!-- Empty state -->
@@ -236,40 +239,10 @@
       '500': { bg: '#fde8e8', text: '#9b1c1c', active: '#e24b4a' }
     };
 
-    /* MATERIALS DATA */
-    var MATERIALS = [
-      /* 100 LEVEL */
-      { id:1,  code:'IFT 101', title:'Introduction to Information Technology', topic:'Basics of IT and computing', level:'100', sem:'1', type:'pdf',   size:'1.8 MB', date:'Jan 2024', icon:'fa-file-pdf',    downloads:142 },
-      { id:2,  code:'IFT 102', title:'Computer Fundamentals',                  topic:'Hardware, software and OS',   level:'100', sem:'1', type:'video', size:'210 MB', date:'Jan 2024', icon:'fa-play-circle', downloads:98  },
-      { id:3,  code:'IFT 103', title:'Introduction to Programming (Python)',   topic:'Variables, loops, functions', level:'100', sem:'2', type:'pdf',   size:'3.2 MB', date:'Feb 2024', icon:'fa-file-pdf',    downloads:201 },
-      { id:4,  code:'IFT 104', title:'Digital Logic Design',                   topic:'Logic gates and circuits',    level:'100', sem:'2', type:'slide', size:'4.5 MB', date:'Mar 2024', icon:'fa-file-powerpoint', downloads:76 },
-
-      /* 200 LEVEL */
-      { id:5,  code:'IFT 201', title:'Computer Architecture',                  topic:'CPU, memory and hardware',    level:'200', sem:'1', type:'pdf',   size:'2.4 MB', date:'Jan 2024', icon:'fa-file-pdf',    downloads:188 },
-      { id:6,  code:'IFT 202', title:'Object Oriented Programming (Java)',     topic:'Classes, objects, inheritance',level:'200',sem:'1', type:'pdf',   size:'5.1 MB', date:'Feb 2024', icon:'fa-file-pdf',    downloads:165 },
-      { id:7,  code:'IFT 204', title:'Data Structures and Algorithms',         topic:'Arrays, stacks, queues, trees',level:'200',sem:'2', type:'video', size:'380 MB', date:'Mar 2024', icon:'fa-play-circle', downloads:220 },
-      { id:8,  code:'IFT 205', title:'Discrete Mathematics',                   topic:'Sets, logic, graph theory',   level:'200', sem:'2', type:'slide', size:'6.2 MB', date:'Apr 2024', icon:'fa-file-powerpoint', downloads:134 },
-
-      /* 300 LEVEL */
-      { id:9,  code:'IFT 301', title:'Operating Systems',                      topic:'Processes, memory, scheduling',level:'300',sem:'1', type:'pdf',   size:'4.8 MB', date:'Jan 2024', icon:'fa-file-pdf',    downloads:175 },
-      { id:10, code:'IFT 302', title:'Database Management Systems',            topic:'SQL and relational databases', level:'300', sem:'1', type:'video', size:'145 MB', date:'Feb 2024', icon:'fa-play-circle', downloads:210 },
-      { id:11, code:'IFT 303', title:'Web Technologies',                       topic:'HTML, CSS, JavaScript',        level:'300', sem:'2', type:'pdf',   size:'3.9 MB', date:'Mar 2024', icon:'fa-file-pdf',    downloads:192 },
-      { id:12, code:'IFT 305', title:'Software Engineering',                   topic:'SDLC, UML and design patterns',level:'300',sem:'2', type:'slide', size:'7.1 MB', date:'Apr 2024', icon:'fa-file-powerpoint', downloads:143 },
-
-      /* 400 LEVEL */
-      { id:13, code:'IFT 401', title:'Computer Networks',                      topic:'TCP/IP, OSI model and routing',level:'400',sem:'1', type:'video', size:'320 MB', date:'Jan 2024', icon:'fa-play-circle', downloads:156 },
-      { id:14, code:'IFT 402', title:'Information Security',                   topic:'Cryptography and cyber threats',level:'400',sem:'1', type:'pdf',  size:'5.5 MB', date:'Feb 2024', icon:'fa-file-pdf',    downloads:189 },
-      { id:15, code:'IFT 403', title:'Mobile Application Development',         topic:'Android and iOS fundamentals', level:'400', sem:'2', type:'video', size:'410 MB', date:'Mar 2024', icon:'fa-play-circle', downloads:234 },
-      { id:16, code:'IFT 405', title:'Human Computer Interaction',             topic:'UI/UX design principles',      level:'400', sem:'2', type:'slide', size:'8.3 MB', date:'Apr 2024', icon:'fa-file-powerpoint', downloads:112 },
-
-      /* 500 LEVEL */
-      { id:17, code:'IFT 501', title:'Artificial Intelligence',                topic:'Machine learning basics',      level:'500', sem:'1', type:'pdf',   size:'6.5 MB', date:'Jan 2024', icon:'fa-file-pdf',    downloads:198 },
-      { id:18, code:'IFT 502', title:'Cloud Computing',                        topic:'AWS, Azure and deployment',    level:'500', sem:'1', type:'video', size:'290 MB', date:'Feb 2024', icon:'fa-play-circle', downloads:167 },
-      { id:19, code:'IFT 503', title:'Research Methodology',                   topic:'Writing and referencing',      level:'500', sem:'2', type:'pdf',   size:'2.1 MB', date:'Mar 2024', icon:'fa-file-pdf',    downloads:88  },
-      { id:20, code:'IFT 504', title:'Final Year Project Guide',               topic:'Proposal and documentation',   level:'500', sem:'2', type:'slide', size:'3.4 MB', date:'Apr 2024', icon:'fa-file-powerpoint', downloads:201 }
-    ];
-
+    var CURRICULUM_COURSES = [];
     var SHARED_MATERIALS = [];
+    var materialsLoadError = '';
+    var curriculumLoadError = '';
     var currentLevel  = 'all';
     var currentSearch = '';
     var currentType   = 'all';
@@ -277,7 +250,29 @@
     var sortAZ        = true;
 
     function getFiltered() {
-      var list = MATERIALS.concat(SHARED_MATERIALS);
+      var coursesWithoutMaterials = CURRICULUM_COURSES
+        .filter(function(course) {
+          return !SHARED_MATERIALS.some(function(material) {
+            return material.code === course.courseCode;
+          });
+        })
+        .map(function(course) {
+          return {
+            id: 'course-' + course.id,
+            code: course.courseCode,
+            title: course.courseTitle,
+            topic: materialsLoadError
+              ? 'Course resource availability could not be loaded.'
+              : course.enrolled
+                ? 'No materials uploaded yet.'
+                : 'Enroll in this course to access its materials.',
+            level: String(course.level),
+            sem: course.semester,
+            units: course.units,
+            type: 'course'
+          };
+        });
+      var list = SHARED_MATERIALS.concat(coursesWithoutMaterials);
       if (currentLevel !== 'all') {
         list = list.filter(function(m) { return m.level === currentLevel; });
       }
@@ -303,10 +298,10 @@
     }
 
     function getTypeLabel(type) {
+      if (type === 'document') return 'Document';
       if (type === 'pdf')   return 'PDF Notes';
       if (type === 'video') return 'Video';
       if (type === 'slide') return 'Slides';
-      if (type === 'document') return 'Document';
       return type;
     }
 
@@ -342,16 +337,20 @@
     async function loadSharedMaterials() {
       try {
         var result = await window.Auth.request('/materials');
+        var courseByCode = new Map(CURRICULUM_COURSES.map(function(course) {
+          return [course.courseCode, course];
+        }));
         SHARED_MATERIALS = (result.materials || []).map(function(material, index) {
           var extension = (material.fileName || '').split('.').pop().toLowerCase();
-          var type = material.resourceType === 'video' ? 'video' : extension === 'pdf' ? 'pdf' : extension === 'txt' ? 'document' : 'slide';
+          var type = material.resourceType === 'video' ? 'video' : extension === 'pdf' ? 'pdf' : 'document';
+          var course = courseByCode.get(material.courseCode);
           return {
             id: -index - 1,
             code: material.courseCode,
             title: material.title,
             topic: (material.topicTag || 'Course resource') + ' · Shared by ' + material.lecturerName,
-            level: String(material.level),
-            sem: 'all',
+            level: String(course ? course.level : material.level),
+            sem: course ? course.semester : 'all',
             type: type,
             size: material.resourceType === 'video' ? 'Online video' : (material.sizeBytes / (1024 * 1024)).toFixed(2) + ' MB',
             date: new Date(material.createdAt).toLocaleDateString(),
@@ -363,7 +362,16 @@
           };
         });
       } catch (error) {
-        SHARED_MATERIALS = [];
+        materialsLoadError = error.message || 'Course materials could not be loaded.';
+      }
+    }
+
+    async function loadCurriculum() {
+      try {
+        var result = await window.Auth.request('/curriculum');
+        CURRICULUM_COURSES = result.courses || [];
+      } catch (error) {
+        curriculumLoadError = error.message || 'The course catalog could not be loaded.';
       }
     }
 
@@ -375,12 +383,37 @@
 
       if (list.length === 0) {
         empty.style.display = 'block';
+        empty.querySelector('.empty-title').textContent = curriculumLoadError
+          ? 'Course catalog unavailable'
+          : 'No materials found';
+        empty.querySelector('.empty-sub').textContent = curriculumLoadError || 'Try a different search term, level or type filter.';
         return;
       }
       empty.style.display = 'none';
 
       list.forEach(function(m, idx) {
         var lc = LEVEL_COLORS[m.level] || { bg: '#f1f5f9', text: '#475569' };
+        if (m.type === 'course') {
+          var courseCard = document.createElement('div');
+          courseCard.className = 'mat-card';
+          courseCard.style.animationDelay = (idx * 0.04) + 's';
+          courseCard.innerHTML =
+            '<div class="mat-card-top">' +
+              '<span class="mat-type-badge"><i class="fas fa-book"></i> Course</span>' +
+              '<div class="mat-level-dot" style="background:' + lc.bg + ';color:' + lc.text + '">' + escapeHTML(m.level) + '</div>' +
+            '</div>' +
+            '<div class="mat-card-body">' +
+              '<div class="mat-code">' + escapeHTML(m.code) + ' &bull; ' + escapeHTML(m.sem) + ' Semester</div>' +
+              '<div class="mat-title">' + escapeHTML(m.title) + '</div>' +
+              '<div class="mat-topic"><i class="fas fa-tag" style="font-size:9px"></i> ' + escapeHTML(m.topic) + '</div>' +
+              '<div class="mat-topic">' + escapeHTML(String(m.units)) + ' unit' + (m.units === 1 ? '' : 's') + '</div>' +
+            '</div>' +
+            '<div class="mat-card-footer"><a class="mat-action" href="my-courses.html">' +
+              '<span>Browse courses</span><div class="mat-action-icon"><i class="fas fa-arrow-right"></i></div>' +
+            '</a></div>';
+          grid.appendChild(courseCard);
+          return;
+        }
         var typeIcon = getTypeIcon(m.type);
         var actionLabel = getActionLabel(m.type);
 
@@ -395,7 +428,7 @@
             '<div class="mat-level-dot" style="background:' + lc.bg + ';color:' + lc.text + '">' + escapeHTML(m.level) + '</div>' +
           '</div>' +
           '<div class="mat-card-body">' +
-            '<div class="mat-code">' + escapeHTML(m.code) + (m.sem === 'all' ? '' : ' &bull; Sem ' + escapeHTML(m.sem)) + '</div>' +
+            '<div class="mat-code">' + escapeHTML(m.code) + (m.sem === 'all' ? '' : ' &bull; ' + escapeHTML(m.sem) + ' Semester') + '</div>' +
             '<div class="mat-title">' + escapeHTML(m.title) + '</div>' +
             '<div class="mat-topic"><i class="fas fa-tag" style="font-size:9px"></i> ' + escapeHTML(m.topic) + '</div>' +
           '</div>' +
@@ -414,7 +447,7 @@
     }
 
     function updateStats() {
-      var allMaterials = MATERIALS.concat(SHARED_MATERIALS);
+      var allMaterials = SHARED_MATERIALS;
       var pdfs   = allMaterials.filter(function(m){ return m.type === 'pdf'; }).length;
       var videos = allMaterials.filter(function(m){ return m.type === 'video'; }).length;
       var slides = allMaterials.filter(function(m){ return m.type === 'slide' || m.type === 'document'; }).length;
@@ -454,7 +487,7 @@
     }
 
     function handleActionById(id) {
-      var m = MATERIALS.concat(SHARED_MATERIALS).filter(function(x){ return x.id === id; })[0];
+      var m = SHARED_MATERIALS.filter(function(x){ return x.id === id; })[0];
       if (!m) return;
       if (m.shared) {
         if (m.type === 'video') {
@@ -464,18 +497,10 @@
         downloadSharedMaterial(m);
         return;
       }
-      var url = m.url || (m.type === 'pdf' || m.type === 'slide'
-        ? 'https://example.com/materials/' + m.code.replace(/\s+/g,'_') + '.pdf'
-        : '#');
-      if (m.type === 'video' && !m.url) {
-        // open a generic search if no direct video URL
-        window.open('https://www.youtube.com/results?search_query=' + encodeURIComponent(m.code + ' ' + m.title), '_blank');
-        return;
-      }
-      // open download/open link
+      if (!m.url) return;
       var a = document.createElement('a');
-      a.href = url;
-      if (m.type === 'pdf' || m.type === 'slide') a.setAttribute('download', '');
+      a.href = m.url;
+      if (m.type !== 'video') a.setAttribute('download', '');
       a.target = '_blank';
       document.body.appendChild(a);
       a.click();
@@ -510,7 +535,11 @@
       if (!currentUser) return;
       if (currentUser.role === 'lecturer') { window.location.href = 'lecturer-dashboard.html'; return; }
 
-      loadSharedMaterials().then(function() {
+      loadCurriculum().then(loadSharedMaterials).then(function() {
+        var error = document.getElementById('materialsError');
+        var messages = [curriculumLoadError, materialsLoadError].filter(Boolean);
+        error.hidden = messages.length === 0;
+        error.textContent = messages.join(' ');
         updateStats();
         render();
       });

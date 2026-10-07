@@ -7,6 +7,7 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <link rel="stylesheet" href="/assets/css/styles.css">
+  <script src="/assets/js/theme.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -475,35 +476,34 @@
         <div class="stat-icon" style="background:#e1f5ee">📈</div>
         <div class="stat-value" id="statProgress">0%</div>
         <div class="stat-label">Curriculum Progress</div>
-        <span class="stat-delta delta-up">&#8593; 4% this week</span>
+        <span class="stat-delta">Based on completed course resources</span>
       </div>
       <div class="stat-card rise d2">
         <div class="stat-icon" style="background:#e6f1fb">📝</div>
-        <div class="stat-value">12</div>
+        <div class="stat-value" id="statQuizCount">0</div>
         <div class="stat-label">Quizzes Completed</div>
-        <span class="stat-delta delta-up">&#8593; 2 new this week</span>
+        <span class="stat-delta">Your completed lecturer quizzes</span>
       </div>
       <div class="stat-card rise d3">
         <div class="stat-icon" style="background:#faeeda">⚡</div>
         <div class="stat-value" id="statAvgScore">0%</div>
         <div class="stat-label">Average Quiz Score</div>
-        <span class="stat-delta delta-up">&#8593; 6% vs last month</span>
+        <span class="stat-delta">Based on your recorded quiz results</span>
       </div>
       <div class="stat-card rise d4">
         <div class="stat-icon" style="background:#fcebeb">⏰</div>
-        <div class="stat-value">5</div>
+        <div class="stat-value">--</div>
         <div class="stat-label">Days to Next Exam</div>
-        <span class="stat-delta delta-warn">IFT 302 upcoming</span>
+        <span class="stat-delta">No exam date published</span>
       </div>
     </div>
 
     <div class="announcement rise d2">
       <div class="announcement-icon">📢</div>
       <div>
-        <div class="announcement-title">Exam Timetable Released — IFT 302</div>
+        <div class="announcement-title">Official exam dates will appear here when announced</div>
         <div class="announcement-body">
-          Written exam scheduled for <strong>Friday, 19 June 2026 at 9:00 AM</strong> — Hall C, Block A.
-          Bring your matriculation card and two HB pencils. Registration closes Thursday at midnight.
+          Exam dates and venues are shown only after they have been officially published.
         </div>
       </div>
     </div>
@@ -596,33 +596,10 @@
   <script src="/assets/js/auth-utils.js"></script>
   <script src="/assets/js/student-dashboard.js"></script>
   <script>
-    var COURSES = [
-      { code: 'IFT 201', pct: 88, color: '#0d9488' },
-      { code: 'IFT 204', pct: 41, color: '#e24b4a' },
-      { code: 'IFT 302', pct: 65, color: '#ef9f27' },
-      { code: 'IFT 401', pct: 79, color: '#0d9488' },
-      { code: 'IFT 501', pct: 52, color: '#378add' }
-    ];
-
-    var QUIZ_RESULTS = [
-      { code: 'IFT 201', topic: 'CPU and Hardware fundamentals', score: 82 },
-      { code: 'IFT 204', topic: 'Arrays, stacks and queues',     score: 41 },
-      { code: 'IFT 302', topic: 'SQL and relational models',     score: 58 }
-    ];
-
-    var ACTIVITY = [
-      { text: 'Completed IFT 201 quiz — scored 82%',  time: '2h ago',     color: '#0d9488' },
-      { text: 'Downloaded IFT 302 lecture notes PDF', time: 'Yesterday',  color: '#378add' },
-      { text: 'Practiced HTML layouts in Code Lab',   time: '2 days ago', color: '#7f77dd' },
-      { text: 'IFT 204 quiz — review recommended',    time: '3 days ago', color: '#e24b4a' },
-      { text: 'Watched IFT 401 video lecture (TCP/IP)', time: '4 days ago', color: '#0d9488' }
-    ];
-
-    var RECS = [
-      { icon: '📄', bg: '#e6f1fb', title: 'Review: Data Structures',   sub: 'IFT 204 — Low score detected. Read the remedial PDF.',      urgent: true  },
-      { icon: '📊', bg: '#faeeda', title: 'Practice: Database SQL',    sub: 'IFT 302 — Exam in 5 days. Take a practice quiz now.',       urgent: true  },
-      { icon: '🎥', bg: '#e1f5ee', title: 'Watch: AI and Machine Learning', sub: 'IFT 501 — New video lecture uploaded this week.',      urgent: false }
-    ];
+    var COURSES = [];
+    var QUIZ_RESULTS = [];
+    var ACTIVITY = [];
+    var RECS = [];
 
     function animateValue(id, start, end, duration, suffix) {
       var el = document.getElementById(id);
@@ -706,7 +683,7 @@
       document.getElementById('currentDate').textContent =
         new Date().toLocaleDateString('en-GB', { weekday:'long', day:'numeric', month:'long', year:'numeric' });
 
-      animateValue('statProgress', 0, 68, 1000, '%');
+      document.getElementById('statProgress').textContent = '--';
 
       function computeAvgFromSaved() {
         var savedQuizzes = window.Auth ? window.Auth.getQuizResults() : [];
@@ -717,6 +694,7 @@
 
       var savedData = computeAvgFromSaved();
       animateValue('statAvgScore', 0, savedData.avg, 1000, '%');
+      document.getElementById('statQuizCount').textContent = savedData.savedQuizzes.length;
       var savedQuizzes = savedData.savedQuizzes;
 
       /* Progress bars */
@@ -758,6 +736,9 @@
           '</div>'
         );
       });
+      if (!displayResults.length) {
+        qrContainer.textContent = 'Your quiz results will appear here after you complete a quiz.';
+      }
 
       /* Recommendations */
       var recContainer = document.getElementById('recommendations');
@@ -780,6 +761,12 @@
           '</a>'
         );
       });
+      if (!RECS.length) {
+        recContainer.textContent = 'Study recommendations will appear when your course activity provides enough information.';
+        recBadge.textContent = 'No recommendations yet';
+        recBadge.style.background = '#f1f5f9';
+        recBadge.style.color = '#475569';
+      }
 
       /* Activity feed */
       var actContainer = document.getElementById('activityFeed');
@@ -792,10 +779,13 @@
           '</div>'
         );
       });
+      if (!ACTIVITY.length) {
+        actContainer.textContent = 'Your recent course activity will appear here.';
+      }
 
       /* Chart */
-      var allLabels = ['IFT 201','IFT 402','IFT 204','IFT 302','IFT 401','IFT 501'];
-      var allScores = [88, 72, 41, 58, 79, 52];
+      var allLabels = [];
+      var allScores = [];
       var ctx = document.getElementById('perfChart').getContext('2d');
       window.perfChart = new Chart(ctx, {
         type: 'line',
@@ -864,7 +854,8 @@
           // update perfChart if present
           try {
             if (window.perfChart) {
-              var newScores = saved.length > 0 ? saved.map(function(q){ return q.score; }).slice(0,6) : [88,72,41,58,79,52];
+              var newScores = saved.map(function(q){ return q.score; }).slice(0,6);
+              window.perfChart.data.labels = saved.slice(0,6).map(function(q){ return q.courseCode; });
               window.perfChart.data.datasets[0].data = newScores;
               window.perfChart.update();
             }

@@ -6,6 +6,7 @@
   <title>Teaching Timetable | LearnIT</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
   <link rel="stylesheet" href="/assets/css/styles.css" />
+  <script src="/assets/js/theme.js"></script>
   <style>
     :root { --ink:#0b1c3a; --teal:#0d9488; --paper:#f0f4f8; --muted:#64748b; --line:#e2e8f0; }
     body { margin:0;background:var(--paper);color:#1e293b;font-family:Inter,system-ui,sans-serif; }
@@ -64,6 +65,7 @@
       <a href="lecturer-quizzes.html">Quizzes</a>
       <a href="lecturer-timetable.html" class="active">Timetable</a>
       <a href="lecturer-assignments.html">Assignments</a>
+      <a href="lecturer-past-questions.html">Past questions</a>
     </div>
     <button class="nav-logout" type="button" onclick="window.Auth.logout()"><i class="fas fa-sign-out-alt"></i> Logout</button>
   </nav>
@@ -93,11 +95,9 @@
       <div class="manage-content">
         <div class="manage-layout">
           <section>
-            <h2>Add a class</h2>
+            <h2>Schedule a curriculum course</h2>
             <form id="courseForm">
-              <div class="field"><label for="courseCode">Course code</label><input id="courseCode" required maxlength="20" placeholder="IFT 302" /></div>
-              <div class="field"><label for="courseTitle">Course title</label><input id="courseTitle" required minlength="3" maxlength="120" placeholder="Database Management Systems" /></div>
-              <div class="field"><label for="level">Level</label><select id="level" required><option value="">Select level</option><option value="100">100 Level</option><option value="200">200 Level</option><option value="300">300 Level</option><option value="400">400 Level</option><option value="500">500 Level</option></select></div>
+              <div class="field"><label for="catalogCourse">Curriculum course</label><select id="catalogCourse" required><option value="">Loading curriculum courses...</option></select></div>
               <div class="field"><label for="day">Day</label><select id="day" required><option value="">Select day</option><option>Monday</option><option>Tuesday</option><option>Wednesday</option><option>Thursday</option><option>Friday</option><option>Saturday</option><option>Sunday</option></select></div>
               <div class="field"><label>Meeting time</label><div class="time-row"><input id="startTime" type="time" aria-label="Start time" required /><input id="endTime" type="time" aria-label="End time" required /></div></div>
               <div class="field"><label for="room">Room or venue</label><input id="room" maxlength="80" placeholder="Room D" /></div>
@@ -122,12 +122,14 @@
     var scheduleDate = document.getElementById('scheduleDate');
     var selectedDate = new Date();
     var allCourses = [];
+    var catalogCourses = [];
     var followsToday = true;
     var observedToday = localDateValue(new Date());
 
     if (lecturer) {
       setSelectedDate(new Date(), true);
       loadCourses();
+      loadCurriculumCourses();
     }
 
     function node(tag, className, text) {
@@ -225,17 +227,46 @@
         notify(error.message, 'error');
       }
     }
+    async function loadCurriculumCourses() {
+      var select = document.getElementById('catalogCourse');
+      try {
+        var result = await window.Auth.request('/curriculum');
+        catalogCourses = result.courses || [];
+        select.replaceChildren(new Option('Select a curriculum course', ''));
+        catalogCourses.forEach(function(course) {
+          select.appendChild(new Option(
+            course.courseCode + ' · ' + course.courseTitle + ' · ' + course.level + ' Level · ' + course.semester,
+            course.id
+          ));
+        });
+        if (!catalogCourses.length) {
+          select.replaceChildren(new Option('No curriculum courses are available', ''));
+          document.getElementById('saveCourse').disabled = true;
+        }
+      } catch (error) {
+        select.replaceChildren(new Option('Could not load curriculum courses', ''));
+        document.getElementById('saveCourse').disabled = true;
+        notify('Curriculum courses could not be loaded: ' + error.message, 'error');
+      }
+    }
     document.getElementById('courseForm').addEventListener('submit', async function(event) {
       event.preventDefault();
       var button = document.getElementById('saveCourse');
+      var selectedCourse = catalogCourses.find(function(course) {
+        return course.id === document.getElementById('catalogCourse').value;
+      });
+      if (!selectedCourse) {
+        notify('Select a course from the official curriculum.', 'error');
+        return;
+      }
       button.disabled = true;
       try {
         await window.Auth.request('/lecturer/courses', {
           method: 'POST',
           body: JSON.stringify({
-            courseCode: document.getElementById('courseCode').value,
-            courseTitle: document.getElementById('courseTitle').value,
-            level: document.getElementById('level').value,
+            courseCode: selectedCourse.courseCode,
+            courseTitle: selectedCourse.courseTitle,
+            level: selectedCourse.level,
             day: document.getElementById('day').value,
             startTime: document.getElementById('startTime').value,
             endTime: document.getElementById('endTime').value,

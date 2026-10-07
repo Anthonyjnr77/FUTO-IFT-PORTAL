@@ -7,6 +7,7 @@ import { AsyncLocalStorage } from 'node:async_hooks';
 import { fileURLToPath } from 'node:url';
 import nodemailer from 'nodemailer';
 import pg from 'pg';
+import { COURSE_CATALOG } from './curriculum.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const BACKEND_ROOT = path.resolve(__dirname, '../../..');
@@ -18,6 +19,10 @@ const DATA_DIR = ENV.PORTAL_DATA_DIR || path.join(BACKEND_ROOT, 'data');
 const DATA_FILE = path.join(DATA_DIR, 'db.json');
 const RESET_MARKER_FILE = path.join(DATA_DIR, '.reset-complete');
 const CLIENT_URL = ENV.CLIENT_URL || 'http://localhost:3000';
+const CLIENT_ORIGINS = new Set([
+  CLIENT_URL,
+  ...(ENV.ADDITIONAL_CLIENT_URLS || '').split(',').map(origin => origin.trim()).filter(Boolean)
+]);
 const DATABASE_URL = ENV.DATABASE_URL || '';
 const SUPABASE_URL = (ENV.SUPABASE_URL || '').replace(/\/+$/, '');
 const SUPABASE_SERVICE_ROLE_KEY = ENV.SUPABASE_SERVICE_ROLE_KEY || '';
@@ -81,6 +86,42 @@ function createEmptyDatabase() {
   return { users: [], quizResults: [] };
 }
 
+function ensureCourseCatalog(database) {
+  let changed = false;
+  COURSE_CATALOG.forEach(entry => {
+    const id = `curriculum-${entry.level}-${entry.semester.toLowerCase()}-${entry.courseCode.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`;
+    const course = database.taughtCourses.find(candidate =>
+      candidate.id === id ||
+      (candidate.courseCode === entry.courseCode && candidate.level === entry.level &&
+        (!candidate.semester || candidate.semester === entry.semester))
+    );
+    const catalogFields = {
+      ...entry,
+      catalogManaged: true,
+      lecturerId: course ? course.lecturerId || null : null
+    };
+    if (course) {
+      if (course.id !== id && !course.semester) catalogFields.id = course.id;
+      if (Object.keys(catalogFields).some(key => course[key] !== catalogFields[key])) {
+        Object.assign(course, catalogFields);
+        changed = true;
+      }
+      return;
+    }
+    database.taughtCourses.push({
+      ...catalogFields,
+      id,
+      day: '',
+      startTime: '',
+      endTime: '',
+      room: '',
+      createdAt: new Date().toISOString()
+    });
+    changed = true;
+  });
+  return changed;
+}
+
 function normalizeDatabase(database) {
   if (!database || typeof database !== 'object' || Array.isArray(database)) {
     throw new Error('Database state has an invalid format.');
@@ -97,6 +138,7 @@ function normalizeDatabase(database) {
       changed = true;
     }
   }
+  changed = ensureCourseCatalog(database) || changed;
   return changed;
 }
 
@@ -224,20 +266,31 @@ async function initializeSupabaseDatabase() {
     console.error('Unexpected Supabase PostgreSQL pool error:', error.message);
   });
 
-  const result = await databasePool.query('SELECT state FROM public.portal_state WHERE id = 1');
-  const database = result.rows[0]?.state || createEmptyDatabase();
-  const stateChanged = normalizeDatabase(database);
-  const adminCreated = ensureBootstrapAdmin(database);
-  if (!database.users.some(user => user.role === 'admin' && user.isActive !== false)) {
-    throw new Error('Configure ADMIN_USERNAME and ADMIN_PASSWORD to provision an active administrator.');
-  }
-  if (result.rowCount === 0 || stateChanged || adminCreated) {
-    await databasePool.query(
-      `INSERT INTO public.portal_state (id, state, updated_at)
-       VALUES (1, $1::jsonb, now())
-       ON CONFLICT (id) DO UPDATE SET state = EXCLUDED.state, updated_at = EXCLUDED.updated_at`,
-      [JSON.stringify(database)]
-    );
+  const client = await databasePool.connect();
+  try {
+    await client.query('BEGIN');
+    await client.query('SELECT pg_advisory_xact_lock(731942816)');
+    const result = await client.query('SELECT state FROM public.portal_state WHERE id = 1 FOR UPDATE');
+    const database = result.rows[0]?.state || createEmptyDatabase();
+    const stateChanged = normalizeDatabase(database);
+    const adminCreated = ensureBootstrapAdmin(database);
+    if (!database.users.some(user => user.role === 'admin' && user.isActive !== false)) {
+      throw new Error('Configure ADMIN_USERNAME and ADMIN_PASSWORD to provision an active administrator.');
+    }
+    if (result.rowCount === 0 || stateChanged || adminCreated) {
+      await client.query(
+        `INSERT INTO public.portal_state (id, state, updated_at)
+         VALUES (1, $1::jsonb, now())
+         ON CONFLICT (id) DO UPDATE SET state = EXCLUDED.state, updated_at = EXCLUDED.updated_at`,
+        [JSON.stringify(database)]
+      );
+    }
+    await client.query('COMMIT');
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
+  } finally {
+    client.release();
   }
 }
 
@@ -270,7 +323,13 @@ async function handleSupabaseRequest(request, response) {
   const bufferedResponse = createBufferedResponse(response);
   try {
     client = await databasePool.connect();
-    context = { client, database: null, dirty: false, committed: false };
+    context = {
+      client,
+      database: null,
+      dirty: false,
+      committed: false,
+      origin: request.headers.origin || ''
+    };
     await client.query('BEGIN');
     const isWriteRequest = request.method !== 'GET' && request.method !== 'HEAD';
     if (isWriteRequest) await client.query('SELECT pg_advisory_xact_lock(731942816)');
@@ -310,7 +369,8 @@ async function handleSupabaseRequest(request, response) {
 }
 
 function sendJson(response, statusCode, body) {
-  const allowedOrigin = ENV.CLIENT_URL || '*';
+  const requestOrigin = requestContext.getStore()?.origin || '';
+  const allowedOrigin = CLIENT_ORIGINS.has(requestOrigin) ? requestOrigin : CLIENT_URL;
   response.writeHead(statusCode, {
     'Content-Type': 'application/json; charset=utf-8',
     'Access-Control-Allow-Origin': allowedOrigin,
@@ -636,6 +696,29 @@ async function handleRequest(request, response) {
     return sendJson(response, 200, { courses });
   }
 
+  if (request.method === 'GET' && pathname === '/api/curriculum') {
+    const user = authenticatedUser(request, database);
+    if (!user) return sendJson(response, 401, { error: 'Authentication required.' });
+    const courses = database.taughtCourses
+      .filter(course => course.catalogManaged)
+      .map(course => ({
+        id: course.id,
+        courseCode: course.courseCode,
+        courseTitle: course.courseTitle,
+        level: course.level,
+        semester: course.semester,
+        units: course.units,
+        electiveGroup: course.electiveGroup || null,
+        enrolled: user.role === 'student' && studentEnrolled(database, user.id, course.id)
+      }))
+      .sort((a, b) =>
+        Number(a.level) - Number(b.level) ||
+        a.semester.localeCompare(b.semester) ||
+        a.courseCode.localeCompare(b.courseCode)
+      );
+    return sendJson(response, 200, { courses });
+  }
+
   if (request.method === 'GET' && pathname === '/api/courses') {
     const user = authenticatedUser(request, database);
     if (!user || user.role !== 'student') return sendJson(response, 401, { error: 'Student authentication required.' });
@@ -644,10 +727,10 @@ async function handleRequest(request, response) {
       .filter(course => course.level === String(user.level || ''))
       .map(course => ({
         ...course,
-        lecturerName: (lecturersById.get(course.lecturerId) || {}).name || 'Lecturer',
+        lecturerName: (lecturersById.get(course.lecturerId) || {}).name || 'Unassigned',
         enrolled: studentEnrolled(database, user.id, course.id)
       }))
-      .sort((a, b) => a.courseCode.localeCompare(b.courseCode));
+      .sort((a, b) => a.semester?.localeCompare(b.semester || '') || a.courseCode.localeCompare(b.courseCode));
     return sendJson(response, 200, { courses });
   }
 
@@ -657,6 +740,15 @@ async function handleRequest(request, response) {
     if (!user || user.role !== 'student') return sendJson(response, 401, { error: 'Student authentication required.' });
     const course = database.taughtCourses.find(item => item.id === enrollmentPath[1]);
     if (!course || course.level !== String(user.level || '')) return sendJson(response, 404, { error: 'This course is not available for your registered level.' });
+    if (course.electiveGroup) {
+      const existingElective = database.taughtCourses.find(candidate =>
+        candidate.electiveGroup === course.electiveGroup &&
+        studentEnrolled(database, user.id, candidate.id)
+      );
+      if (existingElective && existingElective.id !== course.id) {
+        return sendJson(response, 409, { error: `You have already registered for ${existingElective.courseCode}. Choose only one course in this elective group.` });
+      }
+    }
     if (!studentEnrolled(database, user.id, course.id)) {
       database.courseEnrollments.push({ studentId: user.id, courseId: course.id, enrolledAt: new Date().toISOString() });
       await writeDatabase(database);
@@ -761,6 +853,23 @@ async function handleRequest(request, response) {
     const timeToMinutes = value => /^([01]\d|2[0-3]):[0-5]\d$/.test(value) ? Number(value.slice(0, 2)) * 60 + Number(value.slice(3)) : -1;
     if (!courseCode || courseCode.length > 20 || courseTitle.length < 3 || courseTitle.length > 120 || !['100', '200', '300', '400', '500'].includes(level) || !validDays.includes(day) || timeToMinutes(startTime) < 0 || timeToMinutes(endTime) <= timeToMinutes(startTime) || room.length > 80) {
       return sendJson(response, 400, { error: 'Provide a valid course, level, day, time range, and room.' });
+    }
+    const catalogCourse = database.taughtCourses.find(course =>
+      course.catalogManaged && course.courseCode === courseCode && course.level === level
+    );
+    if (catalogCourse) {
+      if (catalogCourse.lecturerId && catalogCourse.lecturerId !== user.id) {
+        return sendJson(response, 409, { error: 'This catalog course is already assigned to another lecturer.' });
+      }
+      Object.assign(catalogCourse, {
+        lecturerId: user.id,
+        day,
+        startTime,
+        endTime,
+        room
+      });
+      await writeDatabase(database);
+      return sendJson(response, 201, { course: catalogCourse });
     }
     const course = {
       id: crypto.randomUUID(), lecturerId: user.id, courseCode, courseTitle, level,

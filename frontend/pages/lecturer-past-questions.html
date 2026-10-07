@@ -5,11 +5,15 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Past Questions | LearnIT</title>
   <link rel="stylesheet" href="/assets/css/styles.css">
+  <script src="/assets/js/theme.js"></script>
   <style>
     :root{--navy:#0b1c3a;--teal:#0d9488;--line:#dce5ee;--muted:#64748b}
     *{box-sizing:border-box}body{margin:0;background:#f3f7fb;color:#10213b;font-family:Inter,system-ui,sans-serif}
-    header{display:flex;justify-content:space-between;align-items:center;gap:16px;padding:14px max(20px,calc((100% - 1100px)/2));background:var(--navy);color:#fff}
-    header a{color:#d5fff8;text-decoration:none;font-weight:800}.logout{border:1px solid #ffffff55;border-radius:8px;background:transparent;color:white;padding:9px 13px;cursor:pointer}
+    .navbar{position:sticky;top:0;z-index:30;display:flex;align-items:center;gap:16px;min-height:58px;padding:10px max(20px,calc((100% - 1100px)/2));background:var(--navy);color:#fff}
+    .nav-links{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-right:auto}
+    .nav-links a{padding:8px 10px;border-radius:8px;color:rgba(255,255,255,.78);text-decoration:none;font-size:13px;font-weight:600}
+    .nav-links a:hover,.nav-links a.active{background:rgba(20,184,166,.16);color:#fff}
+    .logout{border:1px solid #ffffff55;border-radius:8px;background:transparent;color:white;padding:9px 13px;cursor:pointer;white-space:nowrap}
     main{width:min(1100px,calc(100% - 32px));margin:28px auto 56px}h1{margin:0 0 7px;color:var(--navy)}
     .intro,.help{color:var(--muted);line-height:1.55}.layout{display:grid;grid-template-columns:minmax(280px,.8fr) minmax(0,1.2fr);gap:18px;margin-top:20px}
     .panel{padding:20px;background:#fff;border:1px solid var(--line);border-radius:13px;box-shadow:0 4px 16px #10213b08}
@@ -23,11 +27,21 @@
     .question-head{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}.question strong{color:var(--navy)}
     .meta{margin:5px 0;color:var(--muted);font-size:12px}.question p{margin:8px 0 0;white-space:pre-wrap;line-height:1.5;font-size:13px}
     .delete{flex:none;background:#fee2e2;color:#991b1b}.empty{padding:14px;border:1px dashed #cbd5e1;border-radius:9px;color:var(--muted);font-size:13px}
-    @media(max-width:720px){header{padding:13px 16px}.layout{grid-template-columns:1fr}.panel{padding:16px}}
+    @media(max-width:720px){.navbar{padding:10px 16px;flex-wrap:wrap}.nav-links{width:100%}.layout{grid-template-columns:1fr}.panel{padding:16px}}
   </style>
 </head>
 <body>
-  <header><a id="homeLink" href="lecturer-dashboard.html">LearnIT · Past questions</a><button class="logout" type="button" onclick="window.Auth.logout()">Sign out</button></header>
+  <nav class="navbar">
+    <div class="nav-links">
+      <a href="lecturer-dashboard.html">Dashboard</a>
+      <a href="lecturer-rosters.html">Course rosters</a>
+      <a href="lecturer-quizzes.html">Quizzes</a>
+      <a href="lecturer-timetable.html">Timetable</a>
+      <a href="lecturer-assignments.html">Assignments</a>
+      <a href="lecturer-past-questions.html" class="active">Past questions</a>
+    </div>
+    <button class="logout" type="button" onclick="window.Auth.logout()">Sign out</button>
+  </nav>
   <main>
     <h1>Past exam question bank</h1>
     <p class="intro">Add course questions with their exam year and topic. LearnIT uses these entries to rank revision topics for enrolled students.</p>

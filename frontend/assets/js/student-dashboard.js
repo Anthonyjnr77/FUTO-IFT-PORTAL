@@ -104,7 +104,9 @@
       link.append(
         node('strong', '', course.courseCode),
         node('span', '', course.courseTitle),
-        node('small', '', course.day + ' · ' + formatTime(course.startTime) + (course.room ? ' · ' + course.room : ''))
+        node('small', '', course.day && course.startTime && course.endTime
+          ? course.day + ' · ' + formatTime(course.startTime) + ' – ' + formatTime(course.endTime) + (course.room ? ' · ' + course.room : '')
+          : course.semester + ' Semester · Schedule not published')
       );
       list.appendChild(link);
     });
@@ -330,11 +332,17 @@
       var quizHistory = results[5].results || [];
       var unreadCount = Number(results[3].unreadCount) || 0;
       var pendingCount = assignments.filter(function(assignment) { return !assignment.submission; }).length;
+      var quizScores = quizHistory.map(function(result) { return Number(result.score); })
+        .filter(function(score) { return Number.isFinite(score); });
 
       document.getElementById('overviewCourseCount').textContent = courses.length;
       document.getElementById('overviewAssignmentCount').textContent = pendingCount;
       document.getElementById('overviewQuizCount').textContent = quizzes.length;
       document.getElementById('overviewUnreadCount').textContent = unreadCount;
+      document.getElementById('statQuizCount').textContent = quizHistory.length;
+      document.getElementById('statAvgScore').textContent = quizScores.length
+        ? Math.round(quizScores.reduce(function(total, score) { return total + score; }, 0) / quizScores.length) + '%'
+        : '0%';
       renderAttention(assignments, quizzes, unreadCount);
       renderClasses(courses);
       renderCourses(courses);

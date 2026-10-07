@@ -12,7 +12,7 @@ The API runs on `http://localhost:3000`.
 
 ## Hosting architecture
 
-The browser frontend is hosted on Netlify. The Supabase Edge Function is the target for the API, while the Node server remains for local development and tests. Supabase Postgres stores portal state and a private Supabase Storage bucket stores course files. `SUPABASE_SERVICE_ROLE_KEY` and `DATABASE_URL` are backend-only secrets; never place them in frontend code or commit them.
+The browser frontend is hosted on Vercel. The Supabase Edge Function is the target for the API, while the Node server remains for local development and tests. Supabase Postgres stores portal state and a private Supabase Storage bucket stores course files. `SUPABASE_SERVICE_ROLE_KEY` and `DATABASE_URL` are backend-only secrets; never place them in frontend code or commit them.
 
 Frontend pages live in `frontend/pages/`, and shared assets live in `frontend/assets/`. The `frontend/assets/js/api-config.js` setting loads before `auth-utils.js` on the pages.
 
@@ -21,13 +21,16 @@ Frontend pages live in `frontend/pages/`, and shared assets live in `frontend/as
 <script src="/assets/js/auth-utils.js"></script>
 ```
 
-## Supabase Edge deployment (Render replacement)
+## Supabase Edge deployment
 
-The production API is being moved to `backend/supabase/functions/api/`. It adapts the existing API request handler to Supabase Edge Functions and keeps portal state, course files, and transactions in Supabase. The Node server remains available for local development and regression tests; it is not the production runtime after the Edge Function cutover.
+The production API runs from `backend/supabase/functions/api/`. It adapts the existing API request handler to Supabase Edge Functions and keeps portal state, course files, and transactions in Supabase. The Node server remains available for local development and regression tests; it is not the production runtime.
+
+The department curriculum is synchronized into portal state when the backend initializes. Students see the courses for their registered level and can enroll from My Courses; authenticated users can browse the complete catalog through `GET /api/curriculum`. The API enforces the 100-level language elective rule so a student can enroll in only one of IGB or FRN for each semester. Catalog courses can be enrolled before a lecturer is assigned; when a lecturer adds a matching course code and level to their timetable, the existing catalog course is assigned rather than duplicated, preserving enrollments.
 
 The function reads the project's injected database URL and server key when available. Its adapter passes configuration to the existing handler without mutating `process.env`, which is read-only in Supabase Edge Functions. Configure these Edge Function secrets in the Supabase Dashboard before deploying:
 
-- `CLIENT_URL`: the exact HTTPS origin of the Netlify site
+- `CLIENT_URL`: the exact HTTPS origin of the Vercel production site
+- `ADDITIONAL_CLIENT_URLS`: optional comma-separated HTTPS origins that should remain allowed for browser requests, such as an older Vercel deployment alias
 - `ADMIN_USERNAME` and `ADMIN_PASSWORD`: bootstrap administrator credentials, only needed if the portal-state row has not been imported yet
 - `ADMIN_EMAIL`: a valid recovery address for the bootstrap administrator
 - `SMTP_HOST`, `SMTP_USER`, `SMTP_PASS`, `SMTP_PORT=465`, and `SMTP_SECURE=true`: Edge Functions cannot send SMTP on port 587. Use an SMTP provider that supports implicit TLS on port 465. `MAIL_FROM` is optional and defaults to the SMTP username.
@@ -43,7 +46,7 @@ After configuring secrets, deploy the function from the repository root using th
 
 `supabase/config.toml` disables the gateway JWT check for this function because the legacy API authenticates its own bearer tokens. Route-level authorization remains in the API handler. Do not expose `SUPABASE_SECRET_KEYS`, the service-role key, or the database URL in frontend code.
 
-The function endpoint and production `FUTO_API_BASE` are `https://atwcwcvvysygaevkdppi.supabase.co/functions/v1/api`. The Edge adapter maps the function-root routes to the legacy `/api/*` routes, so do not append another `/api` to this base URL. Verify login, admin/lecturer/student access, materials, assignments, quizzes, and email recovery from Netlify before removing the old Render service.
+The function endpoint and production `FUTO_API_BASE` are `https://atwcwcvvysygaevkdppi.supabase.co/functions/v1/api`. The Edge adapter maps the function-root routes to the legacy `/api/*` routes, so do not append another `/api` to this base URL. Verify login, admin/lecturer/student access, materials, assignments, quizzes, and email recovery from the Vercel production site before removing the old Render service.
 
 ### Legacy Node deployment
 
@@ -84,6 +87,7 @@ Run the isolated Node API integration tests with `npm test` from `backend/`. The
 - `GET /api/lecturer/courses` and `POST /api/lecturer/courses` with a lecturer token
 - `GET /api/lecturer/courses/:id/students`, `POST /api/lecturer/courses/:id/students`, and `DELETE /api/lecturer/courses/:id/students/:studentId` with the owning lecturer token
 - `GET /api/courses` and `POST /api/courses/:id/enroll` with a student token
+- `GET /api/curriculum` with an authenticated token for the full course catalog
 - `GET /api/announcements` with an authenticated token and `POST /api/lecturer/announcements` with a lecturer token
 - `GET /api/materials` with an authenticated token, `POST /api/lecturer/materials` with a lecturer token, and `GET /api/materials/:id/download` with enrollment or ownership access
 - `GET /api/lecturer/quizzes` and `POST /api/lecturer/quizzes` with a lecturer token

@@ -7,6 +7,7 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <link rel="stylesheet" href="/assets/css/styles.css">
+  <script src="/assets/js/theme.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -61,6 +62,8 @@
     .published-empty { grid-column: 1 / -1; color: #64748b; background: #fff; border: 1px dashed #cbd5e1; border-radius: 8px; padding: 14px; font-size: 13px; }
     .course-card { background: #fff; border-radius: 14px; padding: 18px; border: 2px solid #f1f5f9; cursor: pointer; transition: all .25s; box-shadow: 0 1px 6px rgba(0,0,0,.06); }
     .course-card:hover { border-color: #0d9488; transform: translateY(-3px); box-shadow: 0 10px 28px rgba(0,0,0,.1); }
+    .course-card.catalog-course-card { cursor: default; }
+    .course-card.catalog-course-card:hover { border-color: #f1f5f9; transform: none; box-shadow: 0 1px 6px rgba(0,0,0,.06); }
     .course-card.selected { border-color: #0d9488; background: linear-gradient(135deg,#f0fdf9,#fff); box-shadow: 0 0 0 4px rgba(13,148,136,.1); }
     .course-card-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
     .course-code { font-size: 12px; font-weight: 700; color: #0d9488; letter-spacing: .5px; }
@@ -224,8 +227,8 @@
     <!-- ===== SCREEN 1: COURSE SELECT ===== -->
     <div class="screen active rise" id="screenSelect">
       <div class="select-header">
-        <h1>Select Your Level and Course</h1>
-        <p>Choose a level from 100L to 500L, select a course, set your preferences, and start your quiz.</p>
+        <h1>Course Quiz Availability</h1>
+        <p>Browse the official curriculum by level. Practice quizzes appear here when a lecturer publishes them for a course.</p>
       </div>
 
       <div class="quiz-level-tabs" id="quizLevelTabs" role="group" aria-label="Filter quizzes by level">
@@ -385,125 +388,9 @@
   <script src="/assets/js/auth-utils.js"></script>
   <script>
     /* ===== QUESTION BANK ===== */
-    var QUESTION_BANK = {
-      'IFT 101': [
-        { q: 'What does IT stand for?', opts: ['Information Technology', 'Internet Technology', 'Integrated Technology', 'Internal Technology'], ans: 0, exp: 'IT stands for Information Technology, which covers the use of computers and software to manage information.' },
-        { q: 'Which of the following is an input device?', opts: ['Monitor', 'Printer', 'Keyboard', 'Speaker'], ans: 2, exp: 'A keyboard is an input device used to enter data into a computer.' },
-        { q: 'What is the brain of a computer called?', opts: ['RAM', 'CPU', 'GPU', 'ROM'], ans: 1, exp: 'The CPU (Central Processing Unit) is called the brain of the computer as it executes instructions.' },
-        { q: 'Which storage type is volatile?', opts: ['Hard Disk', 'SSD', 'RAM', 'ROM'], ans: 2, exp: 'RAM (Random Access Memory) is volatile, meaning it loses its data when power is removed.' },
-        { q: 'What does URL stand for?', opts: ['Uniform Resource Locator', 'Universal Resource Link', 'Unique Resource Locator', 'Uniform Record Link'], ans: 0, exp: 'URL stands for Uniform Resource Locator, the address used to access resources on the internet.' },
-        { q: 'Which company created the Windows operating system?', opts: ['Apple', 'Google', 'Microsoft', 'IBM'], ans: 2, exp: 'Microsoft created and developed the Windows operating system, first released in 1985.' },
-        { q: 'What is 1 Gigabyte equal to?', opts: ['1000 MB', '1024 MB', '512 MB', '2048 MB'], ans: 1, exp: '1 Gigabyte is equal to 1024 Megabytes in binary (computing) measurement.' },
-        { q: 'What does HTTP stand for?', opts: ['HyperText Transfer Protocol', 'High Transfer Text Protocol', 'HyperText Transport Process', 'Hyper Transfer Text Protocol'], ans: 0, exp: 'HTTP stands for HyperText Transfer Protocol, used for transmitting web pages over the internet.' },
-        { q: 'Which of these is NOT an operating system?', opts: ['Ubuntu', 'macOS', 'Oracle', 'Windows'], ans: 2, exp: 'Oracle is a database management system, not an operating system.' },
-        { q: 'What is the function of a modem?', opts: ['Print documents', 'Convert digital to analog signals and vice versa', 'Store files', 'Process data'], ans: 1, exp: 'A modem converts digital signals from computers to analog signals for transmission and vice versa.' },
-        { q: 'Which is the smallest unit of data in a computer?', opts: ['Byte', 'Kilobyte', 'Bit', 'Nibble'], ans: 2, exp: 'A bit (binary digit) is the smallest unit of data in computing, representing either 0 or 1.' },
-        { q: 'What does GUI stand for?', opts: ['Graphical User Interface', 'General User Input', 'Graphical Unix Interface', 'General Unix Interface'], ans: 0, exp: 'GUI stands for Graphical User Interface, allowing users to interact with devices using visual icons.' },
-        { q: 'Which of the following is a system software?', opts: ['Microsoft Word', 'Google Chrome', 'Windows 11', 'VLC Media Player'], ans: 2, exp: 'Windows 11 is system software (an operating system) that manages computer hardware and software resources.' },
-        { q: 'What type of network covers a small geographic area like an office?', opts: ['WAN', 'MAN', 'LAN', 'PAN'], ans: 2, exp: 'LAN (Local Area Network) covers a small geographic area such as a single office or building.' },
-        { q: 'Which device converts sound waves into digital signals?', opts: ['Speaker', 'Microphone', 'Monitor', 'Scanner'], ans: 1, exp: 'A microphone converts sound waves (analog) into electrical signals that are then digitized by a computer.' }
-      ],
-      'IFT 201': [
-        { q: 'What does CPU stand for?', opts: ['Central Processing Unit', 'Central Program Unit', 'Core Processing Unit', 'Computer Processing Unit'], ans: 0, exp: 'CPU stands for Central Processing Unit, the primary component that executes instructions in a computer.' },
-        { q: 'Which component stores data temporarily while the CPU processes it?', opts: ['Hard Drive', 'ROM', 'RAM', 'Cache'], ans: 2, exp: 'RAM (Random Access Memory) temporarily stores data and instructions that the CPU is actively using.' },
-        { q: 'What is the function of the ALU?', opts: ['Store data', 'Perform arithmetic and logical operations', 'Control data flow', 'Manage memory'], ans: 1, exp: 'The ALU (Arithmetic Logic Unit) performs all arithmetic operations and logical comparisons.' },
-        { q: 'Which bus carries data between CPU and memory?', opts: ['Address bus', 'Control bus', 'Data bus', 'System bus'], ans: 2, exp: 'The data bus carries actual data between the CPU, memory, and other components.' },
-        { q: 'What is cache memory?', opts: ['Slow external memory', 'Fast memory close to CPU', 'Virtual memory on disk', 'Read-only memory'], ans: 1, exp: 'Cache memory is a small, very fast memory located close to the CPU that stores frequently accessed data.' },
-        { q: 'What does RISC stand for?', opts: ['Rapid Instruction Set Computing', 'Reduced Instruction Set Computing', 'Real Instruction Set Computing', 'Runtime Instruction Set Computing'], ans: 1, exp: 'RISC stands for Reduced Instruction Set Computing, an architecture using simple, fast instructions.' },
-        { q: 'Which registers holds the address of the next instruction?', opts: ['Accumulator', 'Program Counter', 'Stack Pointer', 'Instruction Register'], ans: 1, exp: 'The Program Counter (PC) holds the memory address of the next instruction to be fetched and executed.' },
-        { q: 'What is pipelining in CPU design?', opts: ['Sequential instruction execution', 'Overlapping instruction execution stages', 'Parallel core processing', 'Memory partitioning'], ans: 1, exp: 'Pipelining overlaps the execution of multiple instructions to improve CPU throughput.' },
-        { q: 'What is the purpose of the memory address register?', opts: ['Store data to write', 'Hold address of current memory location', 'Count instructions', 'Hold fetched instruction'], ans: 1, exp: 'The Memory Address Register (MAR) holds the address of the memory location to be accessed.' },
-        { q: 'Which memory is non-volatile and read-only by nature?', opts: ['RAM', 'Cache', 'ROM', 'DRAM'], ans: 2, exp: 'ROM (Read-Only Memory) is non-volatile, meaning it retains data even when power is removed.' },
-        { q: 'What is the clock speed of a CPU measured in?', opts: ['Bytes', 'Watts', 'Hertz', 'Volts'], ans: 2, exp: 'CPU clock speed is measured in Hertz (Hz), typically gigahertz (GHz) for modern processors.' },
-        { q: 'What does DMA stand for in computer architecture?', opts: ['Direct Memory Access', 'Data Memory Address', 'Dynamic Memory Allocation', 'Direct Module Architecture'], ans: 0, exp: 'DMA (Direct Memory Access) allows peripherals to transfer data directly to/from memory without CPU intervention.' },
-        { q: 'Which type of RAM loses data when refreshed slowly?', opts: ['SRAM', 'DRAM', 'ROM', 'EPROM'], ans: 1, exp: 'DRAM (Dynamic RAM) must be constantly refreshed to retain data, unlike SRAM which is static.' },
-        { q: 'What is the fetch-decode-execute cycle?', opts: ['Power management cycle', 'Basic instruction processing cycle', 'Memory refresh cycle', 'Cache update cycle'], ans: 1, exp: 'The fetch-decode-execute cycle is the basic operational process of a CPU: fetch instruction, decode it, execute it.' },
-        { q: 'Which architecture uses separate instruction and data caches?', opts: ['Von Neumann', 'Harvard', 'CISC', 'RISC'], ans: 1, exp: 'Harvard architecture uses separate memory storage for instructions and data, unlike Von Neumann architecture.' }
-      ],
-      'IFT 204': [
-        { q: 'Which data structure uses LIFO principle?', opts: ['Queue', 'Stack', 'Array', 'Linked List'], ans: 1, exp: 'A Stack uses LIFO (Last In, First Out) - the last element added is the first one removed.' },
-        { q: 'What is the time complexity of Binary Search?', opts: ['O(n)', 'O(n2)', 'O(log n)', 'O(1)'], ans: 2, exp: 'Binary Search has O(log n) time complexity as it halves the search space with each comparison.' },
-        { q: 'Which data structure is used to implement BFS?', opts: ['Stack', 'Queue', 'Tree', 'Heap'], ans: 1, exp: 'BFS (Breadth-First Search) uses a Queue to explore nodes level by level.' },
-        { q: 'What is the worst case time complexity of QuickSort?', opts: ['O(n log n)', 'O(n)', 'O(n2)', 'O(log n)'], ans: 2, exp: 'QuickSort has O(n2) worst case when the pivot is always the smallest or largest element.' },
-        { q: 'In a BST, where is the smallest element located?', opts: ['Root node', 'Rightmost node', 'Leftmost node', 'Any leaf node'], ans: 2, exp: 'In a Binary Search Tree, the smallest element is always at the leftmost node.' },
-        { q: 'Which sorting algorithm is the most efficient on average?', opts: ['Bubble Sort', 'Selection Sort', 'Merge Sort', 'Insertion Sort'], ans: 2, exp: 'Merge Sort has O(n log n) average and worst case performance, making it very efficient.' },
-        { q: 'What does a hash function do?', opts: ['Sort elements', 'Map keys to array indices', 'Search elements', 'Delete elements'], ans: 1, exp: 'A hash function maps input keys to array indices in a hash table for fast lookup.' },
-        { q: 'Which data structure is NOT linear?', opts: ['Array', 'Queue', 'Tree', 'Stack'], ans: 2, exp: 'A Tree is a non-linear hierarchical data structure, unlike arrays, queues, and stacks which are linear.' },
-        { q: 'What is a doubly linked list?', opts: ['A list with two data fields', 'Each node points to both next and previous nodes', 'A list with two head pointers', 'A sorted linked list'], ans: 1, exp: 'In a doubly linked list, each node contains pointers to both the next and previous nodes.' },
-        { q: 'What is O(1) space complexity?', opts: ['Exponential space', 'Constant space regardless of input', 'Linear space', 'Logarithmic space'], ans: 1, exp: 'O(1) space complexity means the algorithm uses a constant amount of memory regardless of input size.' },
-        { q: 'Which traversal visits left, root, then right in a BST?', opts: ['Pre-order', 'In-order', 'Post-order', 'Level-order'], ans: 1, exp: 'In-order traversal (Left, Root, Right) on a BST produces nodes in ascending sorted order.' },
-        { q: 'What is a priority queue?', opts: ['Queue sorted by insertion time', 'Queue where each element has a priority', 'Circular queue', 'Double-ended queue'], ans: 1, exp: 'A priority queue is an abstract data type where each element has a priority and higher priority elements are served first.' },
-        { q: 'What is the advantage of a linked list over an array?', opts: ['Faster access by index', 'Dynamic size and efficient insertion/deletion', 'Less memory usage', 'Better cache performance'], ans: 1, exp: 'Linked lists allow dynamic resizing and O(1) insertion/deletion at known positions, unlike arrays with fixed size.' },
-        { q: 'Which algorithm finds the shortest path in an unweighted graph?', opts: ['DFS', 'BFS', 'Dijkstra', 'Bellman-Ford'], ans: 1, exp: 'BFS (Breadth-First Search) finds the shortest path in an unweighted graph as it explores level by level.' },
-        { q: 'What is the space complexity of Merge Sort?', opts: ['O(1)', 'O(log n)', 'O(n)', 'O(n2)'], ans: 2, exp: 'Merge Sort requires O(n) extra space for the temporary arrays used during the merge process.' }
-      ],
-      'IFT 302': [
-        { q: 'What does SQL stand for?', opts: ['Structured Query Language', 'Simple Query Language', 'Standard Query Language', 'Sequential Query Language'], ans: 0, exp: 'SQL stands for Structured Query Language, used to manage and manipulate relational databases.' },
-        { q: 'Which SQL command is used to retrieve data?', opts: ['INSERT', 'UPDATE', 'SELECT', 'DELETE'], ans: 2, exp: 'SELECT is used to retrieve data from one or more tables in a database.' },
-        { q: 'What is a primary key?', opts: ['A key used for encryption', 'A unique identifier for each record', 'A foreign reference', 'An index key'], ans: 1, exp: 'A primary key uniquely identifies each record in a table and cannot contain NULL values.' },
-        { q: 'What type of JOIN returns only matching rows from both tables?', opts: ['LEFT JOIN', 'RIGHT JOIN', 'FULL OUTER JOIN', 'INNER JOIN'], ans: 3, exp: 'INNER JOIN returns only rows where there is a match in both tables based on the join condition.' },
-        { q: 'What does normalization in databases mean?', opts: ['Adding more tables', 'Organizing data to reduce redundancy', 'Encrypting database', 'Indexing all columns'], ans: 1, exp: 'Normalization organizes database tables to reduce data redundancy and improve data integrity.' },
-        { q: 'What is a foreign key?', opts: ['A key from another country', 'A column referencing a primary key in another table', 'An encrypted key', 'A composite key'], ans: 1, exp: 'A foreign key is a column or group of columns that references the primary key of another table.' },
-        { q: 'Which normal form eliminates partial dependencies?', opts: ['1NF', '2NF', '3NF', 'BCNF'], ans: 1, exp: 'Second Normal Form (2NF) eliminates partial dependencies where non-key attributes depend on only part of a composite key.' },
-        { q: 'What does ACID stand for in database transactions?', opts: ['Atomicity Consistency Isolation Durability', 'Atomicity Computation Integrity Data', 'Access Control Isolation Durability', 'Atomic Consistent Integrated Durable'], ans: 0, exp: 'ACID stands for Atomicity, Consistency, Isolation, Durability - properties ensuring reliable database transactions.' },
-        { q: 'Which SQL clause filters rows after grouping?', opts: ['WHERE', 'HAVING', 'GROUP BY', 'ORDER BY'], ans: 1, exp: 'HAVING clause filters groups created by GROUP BY, similar to WHERE but applied after aggregation.' },
-        { q: 'What is a view in SQL?', opts: ['A physical table copy', 'A virtual table based on a query', 'An index structure', 'A stored procedure'], ans: 1, exp: 'A view is a virtual table derived from a SELECT query, showing data from one or more tables.' },
-        { q: 'What is a stored procedure?', opts: ['A backup procedure', 'A precompiled set of SQL statements', 'A view with parameters', 'An index type'], ans: 1, exp: 'A stored procedure is a precompiled set of SQL statements stored in the database that can be executed on demand.' },
-        { q: 'Which aggregate function counts all rows including NULLs?', opts: ['COUNT(column)', 'COUNT(*)', 'SUM(*)', 'TOTAL(*)'], ans: 1, exp: 'COUNT(*) counts all rows in a table including those with NULL values, unlike COUNT(column) which ignores NULLs.' },
-        { q: 'What is an entity in an ER diagram?', opts: ['A relationship between tables', 'A real-world object represented in the database', 'A database column', 'A SQL constraint'], ans: 1, exp: 'An entity represents a real-world object or concept (like Student, Course) that has data stored about it.' },
-        { q: 'Which SQL statement is used to add new records?', opts: ['ADD', 'INSERT INTO', 'CREATE', 'APPEND'], ans: 1, exp: 'INSERT INTO is used to add new records (rows) into a database table.' },
-        { q: 'What is indexing in databases used for?', opts: ['Encrypting data', 'Speeding up data retrieval', 'Normalizing tables', 'Creating backups'], ans: 1, exp: 'Indexing creates a data structure that allows the database to find rows faster without scanning the entire table.' }
-      ],
-      'IFT 401': [
-        { q: 'How many layers does the OSI model have?', opts: ['4', '5', '6', '7'], ans: 3, exp: 'The OSI (Open Systems Interconnection) model has 7 layers: Physical, Data Link, Network, Transport, Session, Presentation, and Application.' },
-        { q: 'Which layer of OSI model handles IP addressing?', opts: ['Data Link', 'Network', 'Transport', 'Session'], ans: 1, exp: 'The Network layer (Layer 3) handles logical addressing (IP addresses) and routing of packets.' },
-        { q: 'What does TCP stand for?', opts: ['Transfer Control Protocol', 'Transmission Control Protocol', 'Transport Connection Protocol', 'Total Communication Protocol'], ans: 1, exp: 'TCP stands for Transmission Control Protocol, a connection-oriented protocol ensuring reliable data delivery.' },
-        { q: 'What is the difference between TCP and UDP?', opts: ['TCP is faster', 'TCP is reliable, UDP is faster but unreliable', 'UDP guarantees delivery', 'They are the same'], ans: 1, exp: 'TCP provides reliable, ordered delivery with error checking. UDP is faster but does not guarantee delivery.' },
-        { q: 'What is the purpose of the DNS?', opts: ['Assign IP addresses', 'Translate domain names to IP addresses', 'Route packets', 'Encrypt data'], ans: 1, exp: 'DNS (Domain Name System) translates human-readable domain names like google.com into IP addresses.' },
-        { q: 'Which protocol is used to send email?', opts: ['HTTP', 'FTP', 'SMTP', 'POP3'], ans: 2, exp: 'SMTP (Simple Mail Transfer Protocol) is used to send emails between mail servers.' },
-        { q: 'What is a subnet mask used for?', opts: ['Encrypt network traffic', 'Divide IP addresses into network and host portions', 'Assign MAC addresses', 'Route packets between networks'], ans: 1, exp: 'A subnet mask divides an IP address into the network portion and the host portion for routing purposes.' },
-        { q: 'Which device operates at the Network layer?', opts: ['Switch', 'Hub', 'Router', 'Bridge'], ans: 2, exp: 'A Router operates at Layer 3 (Network layer) and routes packets between different networks using IP addresses.' },
-        { q: 'What is a MAC address?', opts: ['Software-assigned address', 'Physical hardware address of a network interface', 'IP address alias', 'DNS record'], ans: 1, exp: 'A MAC (Media Access Control) address is a unique physical identifier assigned to a network interface card.' },
-        { q: 'What does DHCP do?', opts: ['Resolves domain names', 'Automatically assigns IP addresses to devices', 'Routes packets', 'Encrypts traffic'], ans: 1, exp: 'DHCP (Dynamic Host Configuration Protocol) automatically assigns IP addresses and network settings to devices.' },
-        { q: 'What is a firewall?', opts: ['A physical barrier', 'Security system that monitors and controls network traffic', 'A type of router', 'A caching server'], ans: 1, exp: 'A firewall monitors and controls incoming and outgoing network traffic based on predetermined security rules.' },
-        { q: 'Which port number does HTTP use?', opts: ['21', '22', '80', '443'], ans: 2, exp: 'HTTP uses port 80 by default. HTTPS uses port 443, FTP uses 21, and SSH uses 22.' },
-        { q: 'What is bandwidth in networking?', opts: ['Signal strength', 'Maximum data transfer rate of a connection', 'Number of connected devices', 'Network delay'], ans: 1, exp: 'Bandwidth refers to the maximum amount of data that can be transmitted over a network connection per unit of time.' },
-        { q: 'What is latency in a network?', opts: ['Data transfer speed', 'Time delay for data to travel from source to destination', 'Packet size', 'Connection type'], ans: 1, exp: 'Latency (or ping) is the time delay experienced when data travels from one point to another in a network.' },
-        { q: 'What does VPN stand for?', opts: ['Virtual Private Network', 'Virtual Public Network', 'Verified Private Node', 'Variable Protocol Network'], ans: 0, exp: 'VPN (Virtual Private Network) creates a secure, encrypted connection over a public network like the internet.' }
-      ],
-      'IFT 501': [
-        { q: 'What is Artificial Intelligence?', opts: ['Robots only', 'Simulation of human intelligence in machines', 'Only machine learning', 'Computer graphics'], ans: 1, exp: 'AI is the simulation of human intelligence processes by computer systems, including learning, reasoning, and problem-solving.' },
-        { q: 'What is supervised learning?', opts: ['Learning without data', 'Learning from labeled training data', 'Learning by rewards', 'Unsupervised clustering'], ans: 1, exp: 'Supervised learning trains a model on labeled data where inputs are mapped to known outputs.' },
-        { q: 'What is a neural network?', opts: ['A computer network', 'A computing system inspired by biological neural networks', 'An internet protocol', 'A sorting algorithm'], ans: 1, exp: 'A neural network is a computational model inspired by biological brain neurons, used for pattern recognition and learning.' },
-        { q: 'What does NLP stand for?', opts: ['Natural Language Processing', 'Neural Learning Protocol', 'Natural Logic Programming', 'Network Language Protocol'], ans: 0, exp: 'NLP (Natural Language Processing) is a branch of AI enabling computers to understand and generate human language.' },
-        { q: 'What is overfitting in machine learning?', opts: ['Model performs well on all data', 'Model memorizes training data but fails on new data', 'Model is too simple', 'Training takes too long'], ans: 1, exp: 'Overfitting occurs when a model learns training data too well, including noise, causing poor performance on new data.' },
-        { q: 'What is the purpose of a training dataset?', opts: ['Test the model', 'Validate hyperparameters', 'Train the model parameters', 'Deploy the model'], ans: 2, exp: 'The training dataset is used to fit model parameters during the learning process.' },
-        { q: 'What is reinforcement learning?', opts: ['Learning from labeled data', 'Learning through trial and error with rewards', 'Clustering similar data', 'Deep learning only'], ans: 1, exp: 'Reinforcement learning trains agents through trial and error, receiving rewards for correct actions and penalties for wrong ones.' },
-        { q: 'What is a decision tree?', opts: ['A type of neural network', 'A tree-like model of decisions and outcomes', 'A database structure', 'A sorting method'], ans: 1, exp: 'A decision tree is a flowchart-like model where each node represents a feature, branches represent decisions, and leaves represent outcomes.' },
-        { q: 'Which evaluation metric measures the ratio of true positives to all actual positives?', opts: ['Precision', 'Recall', 'F1 Score', 'Accuracy'], ans: 1, exp: 'Recall (Sensitivity) measures how many actual positive cases were correctly identified: TP / (TP + FN).' },
-        { q: 'What is the purpose of a confusion matrix?', opts: ['Confuse the model', 'Evaluate classification model performance', 'Visualize neural networks', 'Optimize hyperparameters'], ans: 1, exp: 'A confusion matrix summarizes classification results, showing true positives, false positives, true negatives, and false negatives.' },
-        { q: 'What is unsupervised learning?', opts: ['Learning from labeled data', 'Learning patterns from unlabeled data', 'Learning by human feedback', 'Supervised clustering'], ans: 1, exp: 'Unsupervised learning finds hidden patterns in unlabeled data without predefined correct answers.' },
-        { q: 'What is gradient descent used for?', opts: ['Data preprocessing', 'Minimizing loss function in model training', 'Feature selection', 'Model deployment'], ans: 1, exp: 'Gradient descent is an optimization algorithm that minimizes the loss function by iteratively adjusting model parameters.' },
-        { q: 'What is transfer learning?', opts: ['Moving data between servers', 'Applying knowledge from one task to a different task', 'Compressing neural networks', 'Data augmentation'], ans: 1, exp: 'Transfer learning uses a pre-trained model on a new but related task, reducing training time and data requirements.' },
-        { q: 'What does CNN stand for in deep learning?', opts: ['Connected Neural Network', 'Convolutional Neural Network', 'Cascaded Neural Network', 'Computed Neural Network'], ans: 1, exp: 'CNN (Convolutional Neural Network) is a deep learning architecture especially effective for image recognition tasks.' },
-        { q: 'What is the role of an activation function in a neural network?', opts: ['Initialize weights', 'Introduce non-linearity to the network', 'Normalize inputs', 'Prevent overfitting'], ans: 1, exp: 'Activation functions introduce non-linearity, enabling neural networks to learn complex patterns beyond simple linear relationships.' }
-      ]
-    };
+    var QUESTION_BANK = Object.create(null);
 
-    /* Add remaining courses with shared questions */
-    var OTHER_COURSES = ['IFT 102', 'IFT 103', 'IFT 104', 'IFT 202', 'IFT 205', 'IFT 301', 'IFT 303', 'IFT 305', 'IFT 402', 'IFT 403', 'IFT 405', 'IFT 502', 'IFT 503', 'IFT 504'];
-    OTHER_COURSES.forEach(function(c) { QUESTION_BANK[c] = QUESTION_BANK['IFT 101']; });
-
-    var COURSES = [
-      { code: 'IFT 101', title: 'Intro to Information Technology',  level: '100', questions: 15 },
-      { code: 'IFT 201', title: 'Computer Architecture',             level: '200', questions: 15 },
-      { code: 'IFT 204', title: 'Data Structures and Algorithms',    level: '200', questions: 15 },
-      { code: 'IFT 302', title: 'Database Management Systems',       level: '300', questions: 15 },
-      { code: 'IFT 303', title: 'Web Technologies',                  level: '300', questions: 15 },
-      { code: 'IFT 401', title: 'Computer Networks',                 level: '400', questions: 15 },
-      { code: 'IFT 402', title: 'Information Security',              level: '400', questions: 15 },
-      { code: 'IFT 501', title: 'Artificial Intelligence',           level: '500', questions: 15 }
-    ];
+    var COURSES = [];
 
     var LEVEL_COLORS = {
       '100': { bg: '#e1f5ee', text: '#0f6e56' },
@@ -517,6 +404,8 @@
     var selectedCourse = null;
     var selectedQuizLevel = 'all';
     var publishedQuizzes = [];
+    var publishedQuizzesLoaded = false;
+    var publishedQuizzesLoadError = '';
     var questions = [];
     var userAnswers = [];
     var currentIndex = 0;
@@ -541,27 +430,42 @@
       }
       visibleCourses.forEach(function(c) {
         var lc = LEVEL_COLORS[c.level] || { bg: '#f1f5f9', text: '#475569' };
+        var availableQuizzes = publishedQuizzes.filter(function(quiz) {
+          return quiz.courseId === c.id || quiz.courseCode === c.courseCode;
+        });
         var card = document.createElement('div');
-        card.className = 'course-card';
-        card.id = 'card_' + c.code.replace(' ', '_');
-        if (c.code === selectedCourse) card.classList.add('selected');
-        card.innerHTML =
-          '<div class="course-card-top">' +
-            '<span class="course-code">' + c.code + '</span>' +
-            '<div style="display:flex;align-items:center;gap:8px">' +
-              '<span class="course-level" style="background:' + lc.bg + ';color:' + lc.text + '">' + c.level + 'L</span>' +
-              '<div class="course-check" id="check_' + c.code.replace(' ', '_') + '"><i class="fas fa-check"></i></div>' +
-            '</div>' +
-          '</div>' +
-          '<div class="course-title">' + c.title + '</div>' +
-          '<div class="course-meta"><i class="fas fa-question-circle" style="font-size:10px"></i> ' + c.questions + ' questions available</div>';
-        card.onclick = function() { selectCourse(c.code); };
+        card.className = 'course-card catalog-course-card';
+        var top = document.createElement('div');
+        top.className = 'course-card-top';
+        var code = document.createElement('span');
+        code.className = 'course-code';
+        code.textContent = c.courseCode;
+        var level = document.createElement('span');
+        level.className = 'course-level';
+        level.style.background = lc.bg;
+        level.style.color = lc.text;
+        level.textContent = c.level + 'L';
+        top.append(code, level);
+        var title = document.createElement('div');
+        title.className = 'course-title';
+        title.textContent = c.courseTitle;
+        var meta = document.createElement('div');
+        meta.className = 'course-meta';
+        meta.textContent = c.semester + ' Semester · ' + c.units + ' units · ' +
+          (publishedQuizzesLoadError
+            ? 'Quiz availability unavailable'
+            : !publishedQuizzesLoaded
+              ? 'Loading quiz availability...'
+            : availableQuizzes.length
+            ? availableQuizzes.length + ' lecturer quiz' + (availableQuizzes.length === 1 ? '' : 'zes')
+            : 'No quiz published yet');
+        card.append(top, title, meta);
         grid.appendChild(card);
       });
       if (!visibleCourses.length) {
         var empty = document.createElement('div');
         empty.className = 'published-empty';
-        empty.textContent = 'No practice courses are available for this level yet.';
+        empty.textContent = 'No curriculum courses are available for this level.';
         grid.appendChild(empty);
       }
     }
@@ -613,7 +517,7 @@
         var result = await window.Auth.request('/quizzes');
         publishedQuizzes = result.quizzes || [];
         if (publishedQuizzes.some(function(quiz) { return !quiz.level && quiz.courseId; })) {
-          var courseResult = await window.Auth.request('/courses');
+          var courseResult = await window.Auth.request('/curriculum');
           var levelsByCourseId = new Map((courseResult.courses || []).map(function(course) {
             return [course.id, course.level];
           }));
@@ -621,9 +525,14 @@
             return { ...quiz, level: quiz.level || levelsByCourseId.get(quiz.courseId) || '' };
           });
         }
+        publishedQuizzesLoaded = true;
+        renderCourseGrid();
         renderPublishedQuizzes();
       } catch (error) {
         publishedQuizzes = [];
+        publishedQuizzesLoaded = true;
+        publishedQuizzesLoadError = error.message || 'Lecturer quizzes could not be loaded.';
+        renderCourseGrid();
         list.replaceChildren();
         var empty = document.createElement('div');
         empty.className = 'published-empty';
@@ -655,6 +564,10 @@
       timeLeft  = time;
 
       var bank = QUESTION_BANK[selectedCourse] || [];
+      if (!bank.length) {
+        window.alert('No verified practice questions are available for this course yet.');
+        return;
+      }
       var shuffled = bank.slice().sort(function() { return Math.random() - .5; });
       questions = shuffled.slice(0, Math.min(count, shuffled.length));
       userAnswers = new Array(questions.length).fill(null);
@@ -873,6 +786,19 @@
       document.getElementById('quizLevelTabs').addEventListener('click', function(event) {
         var button = event.target.closest('.quiz-level-tab');
         if (button) setQuizLevel(button.dataset.level);
+      });
+      document.querySelector('.quiz-settings').hidden = true;
+      document.getElementById('btnStart').hidden = true;
+      window.Auth.request('/curriculum').then(function(result) {
+        COURSES = result.courses || [];
+        renderCourseGrid();
+      }).catch(function(error) {
+        var grid = document.getElementById('courseGrid');
+        grid.replaceChildren();
+        var unavailable = document.createElement('div');
+        unavailable.className = 'published-empty';
+        unavailable.textContent = 'The curriculum could not be loaded: ' + error.message;
+        grid.appendChild(unavailable);
       });
       loadPublishedQuizzes();
     });

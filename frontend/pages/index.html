@@ -7,6 +7,7 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <link rel="stylesheet" href="/assets/css/styles.css">
+  <script src="/assets/js/theme.js"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     html { scroll-behavior: smooth; }
@@ -24,7 +25,8 @@
 
     /* LOADER */
     #futo-loader { position: fixed; inset: 0; background: #070f1f; z-index: 9999; display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 16px; transition: opacity 0.6s, visibility 0.6s; }
-    .loader-logo { width: 56px; height: 56px; background: linear-gradient(135deg,#0d9488,#14b8a6); border-radius: 16px; display: flex; align-items: center; justify-content: center; font-size: 24px; animation: lPulse 1.2s ease-in-out infinite; }
+    .loader-logo { width: 56px; height: 56px; padding: 4px; background: #fff; border-radius: 16px; display: flex; align-items: center; justify-content: center; animation: lPulse 1.2s ease-in-out infinite; }
+    .loader-logo img { width: 100%; height: 100%; object-fit: contain; border-radius: 12px; }
     @keyframes lPulse { 0%,100%{transform:scale(1);box-shadow:0 0 0 0 rgba(20,184,166,.4)} 50%{transform:scale(1.05);box-shadow:0 0 0 16px rgba(20,184,166,0)} }
     .loader-bar { width: 160px; height: 3px; background: rgba(255,255,255,.08); border-radius: 4px; overflow: hidden; }
     .loader-bar-fill { height: 100%; width: 0; background: linear-gradient(90deg,#0d9488,#14b8a6); border-radius: 4px; animation: lFill 1s ease forwards .2s; }
@@ -38,8 +40,9 @@
 
     /* LOGO */
     .logo-area { text-align: center; margin-bottom: 28px; }
-    .logo-icon { width: 68px; height: 68px; background: linear-gradient(135deg,#0d9488,#14b8a6); border-radius: 20px; display: flex; align-items: center; justify-content: center; margin: 0 auto 14px; font-size: 28px; box-shadow: 0 0 0 1px rgba(255,255,255,.08), 0 20px 50px rgba(13,148,136,.4); transition: transform .3s; cursor: default; }
-    .logo-icon:hover { transform: rotate(8deg) scale(1.06); }
+    .logo-icon { width: 88px; height: 88px; padding: 4px; background: #fff; border: 2px solid rgba(20,184,166,.7); border-radius: 22px; display: flex; align-items: center; justify-content: center; margin: 0 auto 14px; box-shadow: 0 0 0 1px rgba(255,255,255,.08), 0 20px 50px rgba(13,148,136,.4); transition: transform .3s; cursor: default; overflow: hidden; }
+    .logo-icon img { width: 100%; height: 100%; object-fit: contain; }
+    .logo-icon:hover { transform: scale(1.06); }
     .logo-title { font-size: 22px; font-weight: 800; color: #fff; letter-spacing: 2px; text-transform: uppercase; }
     .logo-sub { font-size: 12px; color: rgba(255,255,255,.35); margin-top: 4px; }
     .dept-badge { display: inline-block; margin-top: 8px; background: rgba(13,148,136,.15); border: 1px solid rgba(20,184,166,.3); color: #14b8a6; font-size: 11px; font-weight: 600; padding: 4px 14px; border-radius: 20px; letter-spacing: 1px; }
@@ -162,7 +165,7 @@
 <body>
 
   <div id="futo-loader">
-    <div class="loader-logo">🎓</div>
+    <div class="loader-logo"><img src="/assets/images/naits-futo-logo.jpg" alt="" /></div>
     <div class="loader-bar"><div class="loader-bar-fill"></div></div>
     <div class="loader-text">Securing Connection</div>
   </div>
@@ -176,7 +179,7 @@
     <div class="container">
 
       <div class="logo-area">
-        <div class="logo-icon">🎓</div>
+        <div class="logo-icon"><img src="/assets/images/naits-futo-logo.jpg" alt="N.A.I.T.S. FUTO Chapter logo" /></div>
         <div class="logo-title">LearnIT</div>
         <div class="logo-sub">Federal University of Technology, Owerri</div>
         <div class="dept-badge">Dept. of Information Technology</div>
@@ -667,7 +670,7 @@
     var AI_KB = {
       password:  'To reset your password, click "Forgot password?" on the login form. A reset link will be sent to your FUTO registered email address.',
       matric:    'Your matric number must be exactly 11 digits and start with 202. Example: 20234567890. Only IFT department students can access this portal.',
-      courses:   'IFT courses include: IFT 101 (Intro to IT), IFT 201 (Computer Architecture), IFT 204 (Data Structures), IFT 302 (Database Management), IFT 401 (Computer Networks), IFT 501 (Artificial Intelligence). Log in to browse all materials.',
+      courses:   'The official IFT curriculum covers 100L through 500L, with Harmattan and Rain semester courses. Sign in and open My Courses to browse the catalog and register.',
       register:  'Click the Register tab above. Fill in your full name, 11-digit matric number starting with 202, select your level, and create a password of at least 6 characters.',
       dept:      'This portal is exclusively for students in the Department of Information Technology (IFT) at FUTO. Other departments have separate portals.',
       def:       'I can help with login issues, matric number format, course information, and registration. Try asking something more specific!'

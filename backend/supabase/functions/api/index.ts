@@ -8,12 +8,28 @@ const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
   ?? '';
 const clientUrl = Deno.env.get('CLIENT_URL') ?? '';
 const clientOrigin = new URL(clientUrl);
+const additionalClientUrls = (Deno.env.get('ADDITIONAL_CLIENT_URLS') ?? '')
+  .split(',')
+  .map(origin => origin.trim())
+  .filter(Boolean);
+const allowedClientOrigins = new Set([clientUrl, ...additionalClientUrls]);
 
 if (!apiUrl || !databaseUrl || !serviceRoleKey) {
   throw new Error('Supabase URL, database URL, and server key must be available to the API function.');
 }
 if (!clientUrl || clientOrigin.protocol !== 'https:' || clientOrigin.origin !== clientUrl.replace(/\/+$/, '')) {
   throw new Error('CLIENT_URL must be the HTTPS origin of the deployed frontend.');
+}
+for (const origin of additionalClientUrls) {
+  let parsedOrigin: URL;
+  try {
+    parsedOrigin = new URL(origin);
+  } catch {
+    throw new Error('ADDITIONAL_CLIENT_URLS must contain comma-separated HTTPS origins.');
+  }
+  if (parsedOrigin.protocol !== 'https:' || parsedOrigin.origin !== origin.replace(/\/+$/, '')) {
+    throw new Error('ADDITIONAL_CLIENT_URLS must contain comma-separated HTTPS origins.');
+  }
 }
 if (!Deno.env.get('SMTP_HOST') || !Deno.env.get('SMTP_USER') || !Deno.env.get('SMTP_PASS')) {
   throw new Error('Configure SMTP_HOST, SMTP_USER, and SMTP_PASS in Supabase Function secrets.');
@@ -36,7 +52,8 @@ const backendEnv: Record<string, string> = {
   SUPABASE_URL: apiUrl,
   DATABASE_URL: databaseUrl,
   SUPABASE_SERVICE_ROLE_KEY: serviceRoleKey,
-  CLIENT_URL: clientUrl
+  CLIENT_URL: clientUrl,
+  ADDITIONAL_CLIENT_URLS: additionalClientUrls.join(',')
 };
 for (const name of [
   'SMTP_HOST', 'SMTP_PORT', 'SMTP_SECURE', 'SMTP_USER', 'SMTP_PASS', 'MAIL_FROM',
@@ -67,8 +84,12 @@ type LegacyResponse = {
 await initializeSupabaseDatabase();
 
 Deno.serve(async request => {
-  const origin = clientUrl;
+  const requestOrigin = request.headers.get('origin') ?? '';
+  const origin = allowedClientOrigins.has(requestOrigin) ? requestOrigin : clientUrl;
   if (request.method === 'OPTIONS') {
+    if (requestOrigin && !allowedClientOrigins.has(requestOrigin)) {
+      return new Response(null, { status: 403 });
+    }
     return new Response(null, {
       status: 204,
       headers: {
@@ -93,7 +114,7 @@ Deno.serve(async request => {
         return new Response(JSON.stringify({ error: 'Request body exceeds the 6 MB limit.' }), {
           status: 413,
           headers: {
-            'Access-Control-Allow-Origin': clientUrl,
+            'Access-Control-Allow-Origin': origin,
             'Content-Type': 'application/json; charset=utf-8',
             Vary: 'Origin'
           }

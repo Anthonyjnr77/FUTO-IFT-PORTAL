@@ -6,6 +6,7 @@
   <title>My Courses | LearnIT</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
   <link rel="stylesheet" href="/assets/css/styles.css" />
+  <script src="/assets/js/theme.js"></script>
   <style>
     :root { --ink:#0b1c3a; --teal:#0d9488; --paper:#f0f4f8; --muted:#64748b; --line:#e2e8f0; }
     body { margin:0;background:var(--paper);color:#1e293b;font-family:Inter,system-ui,sans-serif; }
@@ -52,8 +53,13 @@
     .course-search { display:flex;align-items:center;gap:9px;width:min(100%,300px);padding:0 13px;border:1px solid #e2e8f0;border-radius:12px;background:#fff;color:#94a3b8;box-shadow:0 3px 12px rgba(31,56,92,.04); }
     .course-search:focus-within { border-color:#80d3c4;box-shadow:0 0 0 4px rgba(13,148,136,.09); }
     .course-search input { width:100%;min-width:0;padding:10px 0;border:0;outline:0;background:transparent;color:#1e293b;font:inherit;font-size:12px; }
+    .course-semester-filter { min-height:38px;padding:0 12px;border:1px solid #e2e8f0;border-radius:12px;background:#fff;color:#52627a;font:inherit;font-size:11px;font-weight:700; }
+    .sr-only { position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0; }
     .course-results { margin:0 0 10px 2px;color:#8290a4;font-size:11px; }
     .course-grid { grid-template-columns:repeat(auto-fill,minmax(275px,1fr));gap:15px; }
+    .semester-section { margin-top:28px; }
+    .semester-heading { display:flex;align-items:center;gap:10px;margin:0 0 12px;color:var(--ink);font-size:20px; }
+    .semester-count { padding:4px 9px;border-radius:999px;background:#e5f7f2;color:#0b766e;font-size:11px;font-weight:800; }
     .course { position:relative;overflow:hidden;min-height:205px;padding:18px;border:1px solid rgba(226,232,240,.9);border-radius:16px;box-shadow:0 5px 17px rgba(31,56,92,.05);transition:transform .2s ease,box-shadow .2s ease,border-color .2s ease; }
     .course:hover { transform:translateY(-4px);border-color:#a9ded4;box-shadow:0 14px 28px rgba(31,56,92,.1); }
     .course-top { display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px; }
@@ -109,7 +115,7 @@
       <div class="course-hero-copy">
         <div class="course-hero-kicker">📚 Your learning lineup</div>
         <h1>My Courses</h1>
-        <p class="intro">Pick a course, meet your next big idea, and keep all your class resources in one place.</p>
+        <p class="intro">Browse the department curriculum for your registered level and enroll by semester. Course materials appear when a lecturer is assigned.</p>
       </div>
       <div class="course-hero-stats" aria-label="Course totals">
         <div class="hero-stat"><strong id="enrolledCount">—</strong><span>In your lineup</span></div>
@@ -124,23 +130,40 @@
           <button class="course-filter" type="button" data-course-filter="enrolled" aria-pressed="false">My courses <span class="course-filter-count" id="enrolledFilterCount">0</span></button>
           <button class="course-filter" type="button" data-course-filter="available" aria-pressed="false">Available <span class="course-filter-count" id="availableFilterCount">0</span></button>
         </div>
+        <label>
+          <span class="sr-only">Filter by semester</span>
+          <select class="course-semester-filter" id="semesterFilter" aria-label="Filter by semester">
+            <option value="all">All semesters</option>
+            <option value="Harmattan">Harmattan</option>
+            <option value="Rain">Rain</option>
+          </select>
+        </label>
         <label class="course-search">
           <i class="fas fa-search" aria-hidden="true"></i>
-          <input id="courseSearch" type="search" autocomplete="off" placeholder="Search courses or lecturers..." aria-label="Search courses or lecturers">
+          <input id="courseSearch" type="search" autocomplete="off" placeholder="Search course code or title..." aria-label="Search course code or title">
         </label>
       </div>
       <p class="course-results" id="courseResults" aria-live="polite">Loading your courses...</p>
     </section>
-    <section id="courseGrid" class="course-grid" aria-live="polite"></section>
+    <section class="semester-section" id="harmattanSection" aria-labelledby="harmattanHeading">
+      <h2 class="semester-heading" id="harmattanHeading">Harmattan Semester <span class="semester-count" id="harmattanCount">0</span></h2>
+      <div id="harmattanCourseGrid" class="course-grid" aria-live="polite"></div>
+    </section>
+    <section class="semester-section" id="rainSection" aria-labelledby="rainHeading">
+      <h2 class="semester-heading" id="rainHeading">Rain Semester <span class="semester-count" id="rainCount">0</span></h2>
+      <div id="rainCourseGrid" class="course-grid" aria-live="polite"></div>
+    </section>
   </main>
   <script src="/assets/js/api-config.js"></script>
   <script src="/assets/js/auth-utils.js"></script>
   <script>
     var user = window.Auth.protect();
-    var courseGrid = document.getElementById('courseGrid');
+    var harmattanCourseGrid = document.getElementById('harmattanCourseGrid');
+    var rainCourseGrid = document.getElementById('rainCourseGrid');
     var notice = document.getElementById('notice');
     var allCourses = [];
     var activeFilter = 'all';
+    var activeSemester = 'all';
     if (user && user.role === 'lecturer') window.location.href = 'lecturer-dashboard.html';
     else if (user && user.role === 'student') loadCourses();
 
@@ -161,7 +184,11 @@
       return date.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
     }
     async function loadCourses() {
-      courseGrid.replaceChildren(node('div', 'course-empty', 'Loading your course lineup...'));
+      var loadingMessage = function() {
+        return node('div', 'course-empty', 'Loading your course lineup...');
+      };
+      harmattanCourseGrid.replaceChildren(loadingMessage());
+      rainCourseGrid.replaceChildren(loadingMessage());
       try {
         var result = await window.Auth.request('/courses');
         allCourses = result.courses || [];
@@ -172,36 +199,72 @@
         document.getElementById('availableFilterCount').textContent = allCourses.filter(function(course) { return !course.enrolled; }).length;
         renderCourses();
       } catch (error) {
-        courseGrid.replaceChildren(node('div', 'course-empty', 'Courses could not be loaded. Please try again.'));
+        harmattanCourseGrid.replaceChildren(node('div', 'course-empty', 'Courses could not be loaded. Please try again.'));
+        rainCourseGrid.replaceChildren();
         showNotice(error.message, 'error');
       }
     }
     function renderCourses() {
-      courseGrid.replaceChildren();
+      harmattanCourseGrid.replaceChildren();
+      rainCourseGrid.replaceChildren();
       var query = document.getElementById('courseSearch').value.trim().toLowerCase();
       var courses = allCourses.filter(function(course) {
         var matchesFilter = activeFilter === 'all' || (activeFilter === 'enrolled' ? course.enrolled : !course.enrolled);
-        var searchable = [course.courseCode, course.courseTitle, course.lecturerName, course.day, course.room].join(' ').toLowerCase();
-        return matchesFilter && searchable.indexOf(query) !== -1;
+        var matchesSemester = activeSemester === 'all' || course.semester === activeSemester;
+        var searchable = [course.courseCode, course.courseTitle, course.lecturerName, course.day, course.room, course.semester].join(' ').toLowerCase();
+        return matchesFilter && matchesSemester && searchable.indexOf(query) !== -1;
       });
       document.getElementById('courseResults').textContent = 'Showing ' + courses.length + ' of ' + allCourses.length + ' course' + (allCourses.length === 1 ? '' : 's');
+      var harmattanCourses = courses.filter(function(course) { return course.semester === 'Harmattan'; });
+      var rainCourses = courses.filter(function(course) { return course.semester === 'Rain'; });
+      document.getElementById('harmattanCount').textContent = harmattanCourses.length;
+      document.getElementById('rainCount').textContent = rainCourses.length;
+      document.getElementById('harmattanSection').hidden = activeSemester === 'Rain';
+      document.getElementById('rainSection').hidden = activeSemester === 'Harmattan';
       if (!courses.length) {
         var emptyMessage = allCourses.length
           ? 'No courses match that search and filter. Try another keyword or switch to All.'
-          : 'No courses are available for your registered level yet. Your lecturer needs to add courses to their teaching timetable first.';
-        courseGrid.appendChild(node('div', 'course-empty', emptyMessage));
+          : 'No curriculum courses are available for your registered level. Check your profile or contact the department administrator.';
+        var emptyTarget = activeSemester === 'Rain' ? rainCourseGrid
+          : activeSemester === 'Harmattan' ? harmattanCourseGrid : harmattanCourseGrid;
+        emptyTarget.appendChild(node('div', 'course-empty', emptyMessage));
         return;
       }
-      courses.forEach(function(course) {
+      harmattanCourses.forEach(function(course) {
+        renderCourse(course, harmattanCourseGrid);
+      });
+      rainCourses.forEach(function(course) {
+        renderCourse(course, rainCourseGrid);
+      });
+    }
+    function renderCourse(course, courseGrid) {
         var card = node('article', 'course');
         var top = node('div', 'course-top');
         top.appendChild(node('div', 'course-icon', '🎓'));
-        top.appendChild(node('span', 'course-state' + (course.enrolled ? ' enrolled' : ''), course.enrolled ? 'In your lineup' : 'Ready to join'));
+        var selectedElective = course.electiveGroup && allCourses.find(function(candidate) {
+          return candidate.electiveGroup === course.electiveGroup && candidate.enrolled;
+        });
+        var electiveBlocked = selectedElective && selectedElective.id !== course.id;
+        var courseState = course.enrolled ? 'In your lineup' : electiveBlocked ? 'Elective already chosen' : 'Ready to join';
+        top.appendChild(node('span', 'course-state' + (course.enrolled ? ' enrolled' : ''), courseState));
         card.appendChild(top);
         card.appendChild(node('div', 'course-code', course.courseCode + ' · ' + course.level + ' Level'));
         card.appendChild(node('h2', '', course.courseTitle));
-        var meeting = (course.day || 'Schedule coming soon') + (course.startTime && course.endTime ? ' · ' + formatTime(course.startTime) + ' - ' + formatTime(course.endTime) : '') + (course.room ? ' · ' + course.room : '');
-        card.appendChild(node('div', 'course-meta', meeting));
+        var unitLabel = Number.isFinite(Number(course.units)) && Number(course.units) > 0
+          ? course.units + ' ' + (Number(course.units) === 1 ? 'unit' : 'units')
+          : 'Units not specified';
+        var details = (course.semester ? course.semester + ' Semester' : 'Semester not specified') + ' · ' + unitLabel;
+        card.appendChild(node('div', 'course-meta', details));
+        if (course.electiveGroup) {
+          var electiveNote = electiveBlocked
+            ? 'Elective — choose one. You registered for ' + selectedElective.courseCode + '.'
+            : 'Elective — choose one course in this group.';
+          card.appendChild(node('div', 'course-meta', electiveNote));
+        }
+        var schedule = course.day
+          ? course.day + (course.startTime && course.endTime ? ' · ' + formatTime(course.startTime) + ' - ' + formatTime(course.endTime) : '') + (course.room ? ' · ' + course.room : '')
+          : (course.lecturerName === 'Unassigned' ? 'No lecturer assigned yet' : 'Schedule coming soon');
+        card.appendChild(node('div', 'course-meta', schedule));
         var footer = node('div', 'course-footer');
         footer.appendChild(node('span', 'instructor', course.lecturerName));
         var actions = node('div', 'course-actions');
@@ -210,26 +273,20 @@
           openLink.href = 'course.html?id=' + encodeURIComponent(course.id);
           actions.appendChild(openLink);
         }
-        var button = node('button', 'enroll-button', course.enrolled ? 'Enrolled' : 'Enroll');
+        var button = node('button', 'enroll-button', course.enrolled ? 'Enrolled' : electiveBlocked ? 'Elective selected' : 'Enroll');
         button.type = 'button';
-        button.disabled = course.enrolled;
+        button.disabled = course.enrolled || Boolean(electiveBlocked);
         if (!course.enrolled) button.addEventListener('click', async function() {
           button.disabled = true;
           try {
             await window.Auth.request('/courses/' + encodeURIComponent(course.id) + '/enroll', { method: 'POST', body: JSON.stringify({}) });
             course.enrolled = true;
-            button.textContent = 'Enrolled';
-            button.disabled = true;
-            card.querySelector('.course-state').textContent = 'In your lineup';
-            card.querySelector('.course-state').classList.add('enrolled');
-            var openLink = node('a', 'open-course', 'Open course');
-            openLink.href = 'course.html?id=' + encodeURIComponent(course.id);
-            actions.prepend(openLink);
             document.getElementById('enrolledCount').textContent = Number(document.getElementById('enrolledCount').textContent) + 1;
             document.getElementById('availableCount').textContent = Number(document.getElementById('availableCount').textContent) - 1;
             document.getElementById('enrolledFilterCount').textContent = Number(document.getElementById('enrolledFilterCount').textContent) + 1;
             document.getElementById('availableFilterCount').textContent = Number(document.getElementById('availableFilterCount').textContent) - 1;
             showNotice('You are enrolled in ' + course.courseCode + '.', 'success');
+            renderCourses();
           } catch (error) {
             button.disabled = false;
             showNotice(error.message, 'error');
@@ -239,9 +296,12 @@
         footer.appendChild(actions);
         card.appendChild(footer);
         courseGrid.appendChild(card);
-      });
     }
     document.getElementById('courseSearch').addEventListener('input', renderCourses);
+    document.getElementById('semesterFilter').addEventListener('change', function() {
+      activeSemester = this.value;
+      renderCourses();
+    });
     document.querySelectorAll('[data-course-filter]').forEach(function(button) {
       button.addEventListener('click', function() {
         activeFilter = button.dataset.courseFilter;

@@ -237,9 +237,10 @@
         node('span', '', 'Lecturer: ' + (course.lecturerName || 'Lecturer')),
         node('span', '', 'Course home')
       );
-      document.getElementById('scheduleInfo').textContent =
-        course.day + ' · ' + formatTime(course.startTime) + ' – ' + formatTime(course.endTime) +
-        (course.room ? ' · ' + course.room : '');
+      document.getElementById('scheduleInfo').textContent = course.day && course.startTime && course.endTime
+        ? course.day + ' · ' + formatTime(course.startTime) + ' – ' + formatTime(course.endTime) +
+          (course.room ? ' · ' + course.room : '')
+        : 'No class schedule has been published for this course.';
 
       renderAnnouncements((results[4].announcements || []).filter(function(item) { return item.courseId === courseId; }));
       document.getElementById('examPredictionLink').href = 'past-questions.html?courseId=' + encodeURIComponent(courseId);

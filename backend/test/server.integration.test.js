@@ -33,6 +33,31 @@ function requestJson(baseUrl, route, { method = 'GET', token, body } = {}) {
   }));
 }
 
+function makeTextPdf(text) {
+  const escapedText = text.replace(/([\\()])/g, '\\$1');
+  const stream = `BT /F1 12 Tf 40 700 Td (${escapedText}) Tj ET`;
+  const objects = [
+    '<< /Type /Catalog /Pages 2 0 R >>',
+    '<< /Type /Pages /Kids [3 0 R] /Count 1 >>',
+    '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 5 0 R >> >> /Contents 4 0 R >>',
+    `<< /Length ${Buffer.byteLength(stream)} >>\nstream\n${stream}\nendstream`,
+    '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>'
+  ];
+  let pdf = '%PDF-1.4\n';
+  const offsets = [0];
+  objects.forEach((object, index) => {
+    offsets.push(Buffer.byteLength(pdf));
+    pdf += `${index + 1} 0 obj\n${object}\nendobj\n`;
+  });
+  const xrefOffset = Buffer.byteLength(pdf);
+  pdf += `xref\n0 ${objects.length + 1}\n0000000000 65535 f \n`;
+  offsets.slice(1).forEach(offset => {
+    pdf += `${String(offset).padStart(10, '0')} 00000 n \n`;
+  });
+  pdf += `trailer\n<< /Size ${objects.length + 1} /Root 1 0 R >>\nstartxref\n${xrefOffset}\n%%EOF`;
+  return Buffer.from(pdf).toString('base64');
+}
+
 test('admin can create lecturer accounts without granting students lecturer access', async t => {
   const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'futo-ift-api-test-'));
   const port = await availablePort();
@@ -73,14 +98,13 @@ test('admin can create lecturer accounts without granting students lecturer acce
     return serverProcess;
   };
   const waitForHealth = async serverProcess => {
-    for (let attempt = 0; attempt < 50; attempt++) {
+    for (let attempt = 0; attempt < 150; attempt++) {
       if (serverProcess.exitCode !== null) return false;
       try {
         const response = await fetch(`${baseUrl}/api/health`);
         if (response.ok) return true;
-      } catch {
-        await new Promise(resolve => setTimeout(resolve, 100));
-      }
+      } catch {}
+      await new Promise(resolve => setTimeout(resolve, 100));
     }
     return false;
   };
@@ -141,6 +165,11 @@ test('admin can create lecturer accounts without granting students lecturer acce
   });
   assert.equal(lecturerLogin.status, 200);
   assert.equal(lecturerLogin.body.user.role, 'lecturer');
+  const lecturerCurriculum = await requestJson(baseUrl, '/api/curriculum', {
+    token: lecturerLogin.body.token
+  });
+  assert.equal(lecturerCurriculum.status, 200);
+  assert.equal(lecturerCurriculum.body.courses.length, 81);
 
   const createdCourse = await requestJson(baseUrl, '/api/lecturer/courses', {
     method: 'POST',
@@ -169,11 +198,140 @@ test('admin can create lecturer accounts without granting students lecturer acce
   });
   assert.equal(studentRegistration.status, 201);
 
+  const availableCourses = await requestJson(baseUrl, '/api/courses', {
+    token: studentRegistration.body.token
+  });
+  assert.equal(availableCourses.status, 200);
+  assert.equal(availableCourses.body.courses.filter(course => course.catalogManaged).length, 25);
+  const fullCurriculum = await requestJson(baseUrl, '/api/curriculum', {
+    token: studentRegistration.body.token
+  });
+  assert.equal(fullCurriculum.status, 200);
+  assert.equal(fullCurriculum.body.courses.length, 81);
+  assert.deepEqual(
+    fullCurriculum.body.courses.reduce((counts, course) => {
+      counts[course.level] = (counts[course.level] || 0) + 1;
+      return counts;
+    }, {}),
+    { '100': 25, '200': 17, '300': 16, '400': 9, '500': 14 }
+  );
+  assert.ok(fullCurriculum.body.courses.every(course =>
+    course.semester === 'Harmattan' || course.semester === 'Rain'
+  ));
+  assert.equal('lecturerId' in fullCurriculum.body.courses[0], false);
+  const unauthenticatedCurriculum = await requestJson(baseUrl, '/api/curriculum');
+  assert.equal(unauthenticatedCurriculum.status, 401);
+  const elementaryMathematics = availableCourses.body.courses.find(course => course.courseCode === 'MTH 101');
+  assert.equal(elementaryMathematics.courseTitle, 'Elementary Mathematics I');
+  assert.equal(elementaryMathematics.units, 4);
+  assert.equal(elementaryMathematics.semester, 'Harmattan');
+  assert.equal(elementaryMathematics.lecturerName, 'Unassigned');
+  const harmattanIgbo = availableCourses.body.courses.find(course => course.courseCode === 'IGB 101');
+  const harmattanFrench = availableCourses.body.courses.find(course => course.courseCode === 'FRN 101');
+  assert.equal(harmattanIgbo.electiveGroup, harmattanFrench.electiveGroup);
+
+  const courseCountsByLevel = { '200': 17, '300': 16, '400': 9, '500': 14 };
+  for (const [level, expectedCount] of Object.entries(courseCountsByLevel)) {
+    const otherStudent = await requestJson(baseUrl, '/api/auth/register', {
+      method: 'POST',
+      body: {
+        name: `Catalog Student ${level}`,
+        email: `catalog-student-${level}-${randomBytes(4).toString('hex')}@example.test`,
+        matric: `202${(randomBytes(4).readUInt32BE(0) % 100000000).toString().padStart(8, '0')}`,
+        level,
+        password: randomBytes(24).toString('hex')
+      }
+    });
+    assert.equal(otherStudent.status, 201);
+    const levelCourses = await requestJson(baseUrl, '/api/courses', { token: otherStudent.body.token });
+    assert.equal(levelCourses.body.courses.length, expectedCount);
+    assert.ok(levelCourses.body.courses.every(course => course.level === level));
+  }
+
+  const enrolledCatalogCourse = await requestJson(baseUrl, `/api/courses/${elementaryMathematics.id}/enroll`, {
+    method: 'POST',
+    token: studentRegistration.body.token
+  });
+  assert.equal(enrolledCatalogCourse.status, 200);
+  assert.equal(enrolledCatalogCourse.body.enrolled, true);
+  const electedIgbo = await requestJson(baseUrl, `/api/courses/${harmattanIgbo.id}/enroll`, {
+    method: 'POST',
+    token: studentRegistration.body.token
+  });
+  assert.equal(electedIgbo.status, 200);
+  const rejectedSecondElective = await requestJson(baseUrl, `/api/courses/${harmattanFrench.id}/enroll`, {
+    method: 'POST',
+    token: studentRegistration.body.token
+  });
+  assert.equal(rejectedSecondElective.status, 409);
+  const rainFrench = availableCourses.body.courses.find(course => course.courseCode === 'FRN 102');
+  const enrolledRainElective = await requestJson(baseUrl, `/api/courses/${rainFrench.id}/enroll`, {
+    method: 'POST',
+    token: studentRegistration.body.token
+  });
+  assert.equal(enrolledRainElective.status, 200);
+
+  const assignedCatalogCourse = await requestJson(baseUrl, '/api/lecturer/courses', {
+    method: 'POST',
+    token: lecturerLogin.body.token,
+    body: {
+      courseCode: 'MTH 101',
+      courseTitle: 'Elementary Mathematics I',
+      level: '100',
+      day: 'Tuesday',
+      startTime: '10:00',
+      endTime: '11:00',
+      room: 'Room B'
+    }
+  });
+  assert.equal(assignedCatalogCourse.status, 201);
+  assert.equal(assignedCatalogCourse.body.course.id, elementaryMathematics.id);
+  assert.equal(assignedCatalogCourse.body.course.units, 4);
+  const courseListAfterAssignment = await requestJson(baseUrl, '/api/courses', {
+    token: studentRegistration.body.token
+  });
+  assert.equal(courseListAfterAssignment.body.courses.filter(course => course.id === elementaryMathematics.id).length, 1);
+  assert.equal(courseListAfterAssignment.body.courses.find(course => course.id === elementaryMathematics.id).enrolled, true);
+
   const enrolled = await requestJson(baseUrl, `/api/courses/${createdCourse.body.course.id}/enroll`, {
     method: 'POST',
     token: studentRegistration.body.token
   });
   assert.equal(enrolled.status, 200);
+
+  const deniedAdminPdfUpload = await requestJson(baseUrl, '/api/admin/materials', {
+    method: 'POST',
+    token: lecturerLogin.body.token,
+    body: {
+      courseId: createdCourse.body.course.id,
+      title: 'Searching algorithms',
+      topicTag: 'Binary search',
+      fileName: 'binary-search.pdf',
+      contentBase64: makeTextPdf('Binary search repeatedly divides a sorted search interval in half to locate a value.')
+    }
+  });
+  assert.equal(deniedAdminPdfUpload.status, 401);
+
+  const uploadedStudentPdf = await requestJson(baseUrl, '/api/admin/materials', {
+    method: 'POST',
+    token: adminLogin.body.token,
+    body: {
+      courseId: createdCourse.body.course.id,
+      title: 'Searching algorithms',
+      topicTag: 'Binary search',
+      fileName: 'binary-search.pdf',
+      contentBase64: makeTextPdf('Binary search repeatedly divides a sorted search interval in half to locate a value.')
+    }
+  });
+  assert.equal(uploadedStudentPdf.status, 201);
+  assert.equal(uploadedStudentPdf.body.material.fileName, 'binary-search.pdf');
+
+  const listedStudentPdfs = await requestJson(baseUrl, '/api/materials', {
+    token: studentRegistration.body.token
+  });
+  const listedPdf = listedStudentPdfs.body.materials.find(material => material.id === uploadedStudentPdf.body.material.id);
+  assert.ok(listedPdf);
+  assert.equal(listedPdf.searchText, undefined);
 
   const courseMaterial = await requestJson(baseUrl, '/api/lecturer/materials', {
     method: 'POST',
@@ -197,6 +355,16 @@ test('admin can create lecturer accounts without granting students lecturer acce
   assert.equal(courseChatResult.body.resource.title, 'Introduction to computing');
   assert.equal(courseChatResult.body.resource.courseId, createdCourse.body.course.id);
   assert.match(courseChatResult.body.resource.courseUrl, /#material-/);
+
+  const pdfGroundedChat = await requestJson(baseUrl, '/api/student/chat', {
+    method: 'POST',
+    token: studentRegistration.body.token,
+    body: { query: 'How does binary search work?' }
+  });
+  assert.equal(pdfGroundedChat.status, 200);
+  assert.equal(pdfGroundedChat.body.resource.id, uploadedStudentPdf.body.material.id);
+  assert.match(pdfGroundedChat.body.answer, /divides a sorted search interval in half/i);
+  assert.match(pdfGroundedChat.body.answer, /page 1/i);
 
   const unmatchedCourseChat = await requestJson(baseUrl, '/api/student/chat', {
     method: 'POST',
