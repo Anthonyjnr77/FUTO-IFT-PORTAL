@@ -487,7 +487,7 @@ function topicMatchScore(query, material) {
   const stopWords = new Set(['about', 'after', 'again', 'also', 'and', 'are', 'can', 'could', 'explain', 'find', 'for', 'from', 'help', 'how', 'into', 'please', 'show', 'the', 'this', 'what', 'with']);
   const queryTerms = [...new Set(topicTokens(query).filter(token => token.length > 2 && !stopWords.has(token)))];
   if (!queryTerms.length) return 0;
-  const resourceTerms = new Set(topicTokens([material.topicTag, material.title, material.fileName].join(' ')));
+  const resourceTerms = new Set(topicTokens([material.topicTag, material.title, material.fileName, material.searchText || ''].join(' ')));
   const matchingTerms = queryTerms.filter(token => resourceTerms.has(token));
   return matchingTerms.length / queryTerms.length;
 }
@@ -968,11 +968,43 @@ async function handleRequest(request, response) {
     const materials = database.courseMaterials
       .filter(item => user.role === 'lecturer' ? item.lecturerId === user.id : studentEnrolled(database, user.id, item.courseId))
       .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
-      .map(({ storageName, ...item }) => ({
+      .map(({ storageName, searchText, ...item }) => ({
         ...item,
         ...(item.resourceType === 'video' ? {} : { downloadUrl: '/api/materials/' + item.id + '/download' })
       }));
     return sendJson(response, 200, { materials });
+  }
+
+  async function extractPdfText(buffer) {
+    try {
+      const pdfjs = await import('pdfjs-dist/legacy/build/pdf.js');
+      const loadingTask = pdfjs.getDocument({ data: new Uint8Array(buffer) });
+      const pdf = await loadingTask.promise;
+      let fullText = '';
+      for (let p = 1; p <= pdf.numPages; p++) {
+        const page = await pdf.getPage(p);
+        const content = await page.getTextContent();
+        const pageText = content.items.map(item => item.str || '').join(' ');
+        fullText += `\n[page ${p}]\n` + pageText;
+      }
+      if (fullText.trim()) return fullText;
+    } catch (e) {
+      console.error('PDF extraction failed:', e && e.message ? e.message : e);
+    }
+    // Fallback: attempt to recover literal text tokens from the raw PDF bytes (works for simple generated PDFs)
+    try {
+      const raw = Buffer.from(buffer).toString('utf8');
+      const matches = [];
+      const re = /\(([^)\n]{10,}?)\)/g;
+      let m;
+      while ((m = re.exec(raw)) !== null) {
+        matches.push(m[1].replace(/\s+/g, ' ').trim());
+      }
+      if (matches.length) return '[page 1]\n' + matches.join(' ');
+    } catch (e) {
+      // ignore fallback errors
+    }
+    return '';
   }
 
   if (request.method === 'POST' && pathname === '/api/lecturer/materials') {
@@ -1025,6 +1057,11 @@ async function handleRequest(request, response) {
         : { fileName, contentType: contentTypes[extension], sizeBytes: fileBuffer.length, storageName }),
       createdAt: new Date().toISOString()
     };
+
+    if (resourceType === 'file' && extension === '.pdf' && fileBuffer) {
+      material.searchText = await extractPdfText(fileBuffer);
+    }
+
     database.courseMaterials.unshift(material);
     notifyEnrolledStudents(database, course.id, {
       title: 'New course material: ' + title,
@@ -1033,7 +1070,77 @@ async function handleRequest(request, response) {
       referenceId: material.id
     });
     await writeDatabase(database);
-    const { storageName: storedName, ...publicMaterial } = material;
+    const { storageName: storedName, searchText, ...publicMaterial } = material;
+    return sendJson(response, 201, { material: publicMaterial });
+  }
+
+  if (request.method === 'POST' && pathname === '/api/admin/materials') {
+    const user = authenticatedUser(request, database);
+    if (!user || user.role !== 'admin') return sendJson(response, 401, { error: 'Administrator authentication required.' });
+    const payload = await readBody(request);
+    const course = database.taughtCourses.find(item => item.id === payload.courseId);
+    const title = typeof payload.title === 'string' ? payload.title.trim() : '';
+    const topicTag = typeof payload.topicTag === 'string' ? payload.topicTag.trim() : '';
+    const resourceType = payload.resourceType === 'video' ? 'video' : 'file';
+    const fileName = typeof payload.fileName === 'string' ? path.basename(payload.fileName.replace(/\\/g, '/')).replace(/[\r\n"]/g, '') : '';
+    const extension = path.extname(fileName).toLowerCase();
+    const contentTypes = { '.pdf': 'application/pdf', '.doc': 'application/msword', '.docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', '.txt': 'text/plain' };
+    const encoded = typeof payload.contentBase64 === 'string' ? payload.contentBase64.replace(/^data:[^,]*;base64,/, '') : '';
+    let resourceUrl = '';
+    if (resourceType === 'video') {
+      try {
+        const parsedUrl = new URL(typeof payload.resourceUrl === 'string' ? payload.resourceUrl.trim() : '');
+        if (parsedUrl.protocol !== 'https:' || parsedUrl.username || parsedUrl.password) throw new Error('Invalid video URL.');
+        resourceUrl = parsedUrl.toString();
+      } catch {
+        return sendJson(response, 400, { error: 'Provide a valid HTTPS link to the video resource.' });
+      }
+    } else if (!fileName || !contentTypes[extension] || !encoded || !/^[A-Za-z0-9+/]*={0,2}$/.test(encoded)) {
+      return sendJson(response, 400, { error: 'Upload a PDF, DOC, DOCX, or TXT file.' });
+    }
+    if (!course || title.length < 3 || title.length > 160 || topicTag.length < 2 || topicTag.length > 100) {
+      return sendJson(response, 400, { error: 'Choose a course and provide a title and topic tag.' });
+    }
+    const id = crypto.randomUUID();
+    let storageName;
+    let fileBuffer;
+    if (resourceType === 'file') {
+      fileBuffer = Buffer.from(encoded, 'base64');
+      if (!fileBuffer.length || fileBuffer.length > 4 * 1024 * 1024) return sendJson(response, 413, { error: 'Files must be smaller than 4 MB.' });
+      storageName = databasePool ? `${course.id}/${id}${extension}` : id + extension;
+      if (databasePool) {
+        await uploadStorageObject(storageName, fileBuffer, contentTypes[extension]);
+      } else {
+        fs.writeFileSync(path.join(DATA_DIR, 'uploads', storageName), fileBuffer, { flag: 'wx' });
+      }
+    }
+    const linkedLecturer = typeof payload.lecturerId === 'string' ? database.users.find(u => u.id === payload.lecturerId && u.role === 'lecturer') : null;
+    const material = {
+      id,
+      lecturerId: linkedLecturer ? linkedLecturer.id : null,
+      lecturerName: linkedLecturer ? linkedLecturer.name : user.name,
+      courseId: course.id, courseCode: course.courseCode,
+      courseTitle: course.courseTitle, level: course.level,
+      title, topicTag, resourceType,
+      ...(resourceType === 'video'
+        ? { resourceUrl }
+        : { fileName, contentType: contentTypes[extension], sizeBytes: fileBuffer.length, storageName }),
+      createdAt: new Date().toISOString()
+    };
+
+    if (resourceType === 'file' && extension === '.pdf' && fileBuffer) {
+      material.searchText = await extractPdfText(fileBuffer);
+    }
+
+    database.courseMaterials.unshift(material);
+    notifyEnrolledStudents(database, course.id, {
+      title: 'New course material: ' + title,
+      body: course.courseCode + ' · ' + title,
+      type: 'material',
+      referenceId: material.id
+    });
+    await writeDatabase(database);
+    const { storageName: storedName, searchText, ...publicMaterial } = material;
     return sendJson(response, 201, { material: publicMaterial });
   }
 
@@ -1382,8 +1489,11 @@ async function handleRequest(request, response) {
       return sendJson(response, 403, { error: 'Enroll in this course before viewing its reading plan.' });
     }
     const readings = database.courseMaterials
+      // Only include materials for courses the student is enrolled in. Exclude admin-created materials
+      // (they have no lecturerId) from the student's reading plan so the plan reflects lecturer-provided
+      // course materials only.
       .filter(material => studentEnrolled(database, user.id, material.courseId) &&
-        (!requestedCourseId || material.courseId === requestedCourseId))
+        (!requestedCourseId || material.courseId === requestedCourseId) && Boolean(material.lecturerId))
       .map(material => {
         const { storageName, ...publicMaterial } = material;
         const saved = database.readingProgress.find(item =>
@@ -1573,8 +1683,34 @@ async function handleRequest(request, response) {
       });
     }
     const material = match.material;
+    let answerText;
+    if (intentMatch) {
+      answerText = intentMatch.intent.explanation;
+    } else {
+      // Try to produce a short grounded excerpt from the material's extracted text when available.
+      let snippet = '';
+      if (material.searchText) {
+        const textLower = material.searchText.toLowerCase();
+        const tokens = topicTokens(query).filter(t => t.length > 2);
+        let idx = -1;
+        for (const t of tokens) {
+          idx = textLower.indexOf(t);
+          if (idx >= 0) break;
+        }
+        if (idx >= 0) {
+          const start = Math.max(0, idx - 120);
+          const end = Math.min(material.searchText.length, idx + 240);
+          snippet = material.searchText.slice(start, end).replace(/\s+/g, ' ').trim();
+          if (start > 0) snippet = '...' + snippet;
+          if (end < material.searchText.length) snippet = snippet + '...';
+        }
+      }
+      answerText = snippet
+        ? 'This course resource looks relevant to your question: ' + material.title + '. Excerpt: "' + snippet + '"'
+        : 'This course resource looks relevant to your question: ' + material.title + '.';
+    }
     return sendJson(response, 200, {
-      answer: intentMatch ? intentMatch.intent.explanation : 'This course resource looks relevant to your question: ' + material.title + '.',
+      answer: answerText,
       confidence: Math.round(match.confidence * 100),
       resource: {
         id: material.id, courseId: material.courseId, courseCode: material.courseCode,

@@ -37,6 +37,20 @@
     <h1>Staff account management</h1>
     <p class="intro">Create lecturer accounts and manage lecturer or administrator access. Student registration remains on the student portal.</p>
     <section class="panel">
+      <h2>Upload course PDF</h2>
+      <p class="notice">Share a PDF with students enrolled in the selected course. Uploaded PDFs are indexed so the course chatbot can search their text. Maximum file size: 4 MB.</p>
+      <form id="materialForm">
+        <div class="form-grid">
+          <div><label for="materialCourse">Course</label><select class="field" id="materialCourse" required><option value="">Loading courses…</option></select></div>
+          <div><label for="materialTitle">Resource title</label><input class="field" id="materialTitle" required minlength="3" maxlength="160" placeholder="e.g. IFT 201 - Introduction to IT"></div>
+          <div><label for="materialTopic">Topic tag</label><input class="field" id="materialTopic" required minlength="2" maxlength="100" placeholder="e.g. Computer fundamentals"></div>
+          <div><label for="materialFile">PDF file</label><input class="field" id="materialFile" type="file" accept=".pdf,application/pdf" required></div>
+        </div>
+        <button class="primary" id="materialUploadButton" type="submit">Upload course PDF</button>
+        <div id="materialUploadStatus" class="status" role="status" aria-live="polite"></div>
+      </form>
+    </section>
+    <section class="panel">
       <h2>Create lecturer account</h2>
       <p class="notice">Use a temporary password of at least 12 characters and share it with the account holder through a separate secure channel.</p>
       <form id="createForm">
@@ -240,6 +254,68 @@
         setStatus('intentStatus', error.message, true);
       }
     }
+    async function loadMaterialCourses() {
+      var select = document.getElementById('materialCourse');
+      try {
+        var result = await window.Auth.request('/curriculum');
+        select.replaceChildren(node('option', result.courses.length ? 'Choose a course' : 'No courses available'));
+        select.firstChild.value = '';
+        result.courses.forEach(function(course) {
+          var option = node('option', course.courseCode + ' · ' + course.courseTitle + ' (' + course.level + ' Level, ' + course.semester + ')');
+          option.value = course.id;
+          select.appendChild(option);
+        });
+        select.disabled = result.courses.length === 0;
+      } catch (error) {
+        select.replaceChildren(node('option', 'Courses could not be loaded'));
+        select.disabled = true;
+        setStatus('materialUploadStatus', error.message, true);
+      }
+    }
+    document.getElementById('materialForm').addEventListener('submit', async function(event) {
+      event.preventDefault();
+      var button = document.getElementById('materialUploadButton');
+      var file = document.getElementById('materialFile').files[0];
+      if (!file) return;
+      if (file.size > 4 * 1024 * 1024) {
+        setStatus('materialUploadStatus', 'Choose a PDF smaller than 4 MB.', true);
+        return;
+      }
+      if (file.type !== 'application/pdf' && !file.name.toLowerCase().endsWith('.pdf')) {
+        setStatus('materialUploadStatus', 'Choose a PDF file.', true);
+        return;
+      }
+      button.disabled = true;
+      setStatus('materialUploadStatus', 'Uploading and indexing PDF…', false);
+      try {
+        var contentBase64 = await new Promise(function(resolve, reject) {
+          var reader = new FileReader();
+          reader.onload = function() {
+            var result = String(reader.result || '');
+            resolve(result.slice(result.indexOf(',') + 1));
+          };
+          reader.onerror = function() { reject(new Error('The selected PDF could not be read.')); };
+          reader.readAsDataURL(file);
+        });
+        await window.Auth.request('/admin/materials', {
+          method: 'POST',
+          body: JSON.stringify({
+            courseId: document.getElementById('materialCourse').value,
+            title: document.getElementById('materialTitle').value.trim(),
+            topicTag: document.getElementById('materialTopic').value.trim(),
+            fileName: file.name,
+            contentBase64: contentBase64
+          })
+        });
+        this.reset();
+        setStatus('materialUploadStatus', 'PDF uploaded. Enrolled students can now view it and the chatbot can search its text.', false);
+        await loadIntents();
+      } catch (error) {
+        setStatus('materialUploadStatus', error.message, true);
+      } finally {
+        button.disabled = false;
+      }
+    });
     document.getElementById('createForm').addEventListener('submit', async function(event) {
       event.preventDefault();
       var button = document.getElementById('createButton');
@@ -293,6 +369,7 @@
     if (currentAdmin) {
       loadUsers();
       loadIntents();
+      loadMaterialCourses();
     }
   </script>
 </body>
