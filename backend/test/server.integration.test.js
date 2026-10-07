@@ -364,7 +364,40 @@ test('admin can create lecturer accounts without granting students lecturer acce
   assert.equal(pdfGroundedChat.status, 200);
   assert.equal(pdfGroundedChat.body.resource.id, uploadedStudentPdf.body.material.id);
   assert.match(pdfGroundedChat.body.answer, /divides a sorted search interval in half/i);
-  assert.match(pdfGroundedChat.body.answer, /page 1/i);
+  assert.match(pdfGroundedChat.body.answer, /\[p\. 1\]/i);
+
+  const coursePdfOverview = await requestJson(baseUrl, '/api/student/chat', {
+    method: 'POST',
+    token: studentRegistration.body.token,
+    body: { query: 'On IFT 101, what is this?' }
+  });
+  assert.equal(coursePdfOverview.status, 200);
+  assert.equal(coursePdfOverview.body.resource.id, uploadedStudentPdf.body.material.id);
+  assert.match(coursePdfOverview.body.answer, /brief summary/i);
+  assert.match(coursePdfOverview.body.answer, /divides a sorted search interval in half/i);
+
+  const coursePdfSummary = await requestJson(baseUrl, '/api/student/chat', {
+    method: 'POST',
+    token: studentRegistration.body.token,
+    body: { query: 'Summarize binary search for IFT 101' }
+  });
+  assert.equal(coursePdfSummary.status, 200);
+  assert.equal(coursePdfSummary.body.resource.id, uploadedStudentPdf.body.material.id);
+  assert.match(coursePdfSummary.body.answer, /brief summary/i);
+  assert.match(coursePdfSummary.body.answer, /divides a sorted search interval in half/i);
+  assert.match(coursePdfSummary.body.answer, /\[p\. 1\]/i);
+
+  const followUpPdfQuestion = await requestJson(baseUrl, '/api/student/chat', {
+    method: 'POST',
+    token: studentRegistration.body.token,
+    body: {
+      query: 'I have a question on this',
+      materialId: uploadedStudentPdf.body.material.id
+    }
+  });
+  assert.equal(followUpPdfQuestion.status, 200);
+  assert.equal(followUpPdfQuestion.body.resource.id, uploadedStudentPdf.body.material.id);
+  assert.match(followUpPdfQuestion.body.answer, /ask your question about the PDF/i);
 
   const unmatchedCourseChat = await requestJson(baseUrl, '/api/student/chat', {
     method: 'POST',

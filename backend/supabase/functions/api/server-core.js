@@ -484,12 +484,105 @@ function topicTokens(value) {
 }
 
 function topicMatchScore(query, material) {
-  const stopWords = new Set(['about', 'after', 'again', 'also', 'and', 'are', 'can', 'could', 'explain', 'find', 'for', 'from', 'help', 'how', 'into', 'please', 'show', 'the', 'this', 'what', 'with']);
+  const stopWords = new Set([
+    'about', 'after', 'again', 'also', 'and', 'are', 'can', 'could', 'does', 'explain',
+    'find', 'for', 'from', 'help', 'how', 'into', 'is', 'me', 'on', 'please', 'show',
+    'summarise', 'summarize', 'summary', 'tell', 'the', 'this', 'what', 'with'
+  ]);
   const queryTerms = [...new Set(topicTokens(query).filter(token => token.length > 2 && !stopWords.has(token)))];
   if (!queryTerms.length) return 0;
-  const resourceTerms = new Set(topicTokens([material.topicTag, material.title, material.fileName, material.searchText || ''].join(' ')));
+  const resourceTerms = new Set(topicTokens([
+    material.courseCode, material.courseTitle, material.topicTag, material.title,
+    material.fileName, material.searchText || ''
+  ].join(' ')));
   const matchingTerms = queryTerms.filter(token => resourceTerms.has(token));
   return matchingTerms.length / queryTerms.length;
+}
+
+function normalizedCourseCode(value) {
+  return String(value || '').replace(/\s+/g, '').toUpperCase();
+}
+
+function requestedCourseCode(query) {
+  const match = String(query || '').match(/\b([a-z]{2,5})\s*(\d{3})\b/i);
+  return match ? normalizedCourseCode(match[1] + match[2]) : '';
+}
+
+function isSummaryQuery(query) {
+  return /\b(summar(?:y|ize|ise)|overview|give me the gist|key points|what is this|what's this|tell me about)\b/i.test(query);
+}
+
+function isDocumentHelpQuery(query) {
+  return /\b(i have a question|i've got a question|question on this|ask a question|help me with this|about this)\b/i.test(query);
+}
+
+function pdfTextPages(searchText) {
+  const pages = [];
+  const pagePattern = /\[page\s+(\d+)\]\s*([\s\S]*?)(?=\[page\s+\d+\]|$)/gi;
+  let match;
+  while ((match = pagePattern.exec(String(searchText || ''))) !== null) {
+    const text = match[2].trim();
+    if (text) pages.push({ number: Number(match[1]), text });
+  }
+  if (!pages.length && String(searchText || '').trim()) {
+    pages.push({ number: 1, text: String(searchText).trim() });
+  }
+  return pages;
+}
+
+function pdfSentences(searchText) {
+  return pdfTextPages(searchText).flatMap(page => {
+    const sentences = page.text.match(/[^.!?]+[.!?]?/g) || [];
+    return sentences
+      .map(text => text.replace(/\s+/g, ' ').trim())
+      .filter(text => text.length >= 20)
+      .map(text => ({ text, page: page.number }));
+  });
+}
+
+function rankPdfSentences(query, sentences) {
+  const stopWords = new Set([
+    'about', 'after', 'again', 'also', 'and', 'are', 'can', 'could', 'does', 'explain',
+    'find', 'for', 'from', 'help', 'how', 'into', 'is', 'me', 'on', 'please', 'show',
+    'summarise', 'summarize', 'summary', 'tell', 'the', 'this', 'what', 'with'
+  ]);
+  const queryTerms = [...new Set(topicTokens(query).filter(token => token.length > 2 && !stopWords.has(token)))];
+  if (!queryTerms.length) return [];
+  return sentences.map((sentence, index) => {
+    const sentenceTerms = new Set(topicTokens(sentence.text));
+    const matches = queryTerms.filter(term => sentenceTerms.has(term));
+    return {
+      ...sentence,
+      index,
+      score: matches.length / queryTerms.length
+    };
+  }).filter(sentence => sentence.score > 0)
+    .sort((a, b) => b.score - a.score || a.index - b.index);
+}
+
+function summarizePdf(searchText) {
+  const sentences = pdfSentences(searchText);
+  if (!sentences.length) return '';
+  const termCounts = new Map();
+  sentences.forEach(sentence => {
+    new Set(topicTokens(sentence.text).filter(term => term.length > 3)).forEach(term => {
+      termCounts.set(term, (termCounts.get(term) || 0) + 1);
+    });
+  });
+  const ranked = sentences.map((sentence, index) => {
+    const terms = topicTokens(sentence.text).filter(term => term.length > 3);
+    const score = terms.reduce((sum, term) => sum + 1 / (termCounts.get(term) || 1), 0) /
+      Math.max(terms.length, 1);
+    return { ...sentence, index, score };
+  }).sort((a, b) => b.score - a.score || a.index - b.index);
+  const selected = [];
+  for (const sentence of ranked) {
+    if (selected.every(item => item.text !== sentence.text)) selected.push(sentence);
+    if (selected.length === 4) break;
+  }
+  return selected.sort((a, b) => a.index - b.index)
+    .map(sentence => `${sentence.text} [p. ${sentence.page}]`)
+    .join(' ');
 }
 
 function chatIntentScore(query, intent) {
@@ -1653,20 +1746,45 @@ async function handleRequest(request, response) {
     if (requestedCourseId && !studentEnrolled(database, user.id, requestedCourseId)) {
       return sendJson(response, 403, { error: 'Enroll in this course before searching its resources.' });
     }
+    const requestedCode = requestedCourseCode(query);
+    const requestedMaterialId = requestedCode
+      ? ''
+      : (typeof payload.materialId === 'string' ? payload.materialId : '');
+    if (requestedMaterialId) {
+      const requestedMaterial = database.courseMaterials.find(material => material.id === requestedMaterialId);
+      if (!requestedMaterial || !studentEnrolled(database, user.id, requestedMaterial.courseId) ||
+          (requestedCourseId && requestedMaterial.courseId !== requestedCourseId)) {
+        return sendJson(response, 403, { error: 'That course resource is not available to your account.' });
+      }
+    }
     const materials = database.courseMaterials.filter(material =>
       studentEnrolled(database, user.id, material.courseId) &&
-      (!requestedCourseId || material.courseId === requestedCourseId)
+      (!requestedCourseId || material.courseId === requestedCourseId) &&
+      (!requestedMaterialId || material.id === requestedMaterialId) &&
+      (!requestedCode || normalizedCourseCode(material.courseCode) === requestedCode)
     );
     const ranked = materials.map(material => ({ material, confidence: topicMatchScore(query, material) }))
-      .sort((a, b) => b.confidence - a.confidence);
+      .sort((a, b) =>
+        b.confidence - a.confidence ||
+        Number(path.extname(b.material.fileName || '').toLowerCase() === '.pdf') -
+          Number(path.extname(a.material.fileName || '').toLowerCase() === '.pdf')
+      );
     const materialById = new Map(materials.map(material => [material.id, material]));
     const rankedIntents = database.chatIntents
       .filter(intent => materialById.has(intent.linkedMaterialId))
       .map(intent => ({ intent, material: materialById.get(intent.linkedMaterialId), confidence: chatIntentScore(query, intent) }))
       .sort((a, b) => b.confidence - a.confidence);
-    const intentMatch = rankedIntents[0] && rankedIntents[0].confidence >= 0.34 ? rankedIntents[0] : null;
-    const materialMatch = ranked[0] && ranked[0].confidence >= 0.34 ? ranked[0] : null;
-    const match = intentMatch || materialMatch;
+    const targetedDocumentQuery = Boolean(requestedCode || requestedMaterialId || isSummaryQuery(query) || isDocumentHelpQuery(query));
+    const intentMatch = !targetedDocumentQuery && rankedIntents[0] && rankedIntents[0].confidence >= 0.34
+      ? rankedIntents[0]
+      : null;
+    const materialMatch = ranked[0] && (
+      ranked[0].confidence >= 0.34 ||
+      requestedCode ||
+      requestedMaterialId ||
+      ((isSummaryQuery(query) || isDocumentHelpQuery(query)) && materials.length === 1)
+    ) ? ranked[0] : null;
+    const match = targetedDocumentQuery ? materialMatch : intentMatch || materialMatch;
     database.chatLogs.unshift({
       id: crypto.randomUUID(), userId: user.id, query,
       courseId: requestedCourseId || (match ? match.material.courseId : null),
@@ -1693,30 +1811,24 @@ async function handleRequest(request, response) {
     }
     const material = match.material;
     let answerText;
-    if (intentMatch) {
+    if (!targetedDocumentQuery && intentMatch) {
       answerText = intentMatch.intent.explanation;
+    } else if (isDocumentHelpQuery(query)) {
+      answerText = `I found "${material.title}" for ${material.courseCode || 'this course'}. Ask your question about the PDF and I’ll look for the answer in its text.`;
+    } else if (!material.searchText || !pdfSentences(material.searchText).length) {
+      answerText = `I found "${material.title}", but it has no searchable text available. The PDF may be scanned or image-only; open the resource to read it.`;
+    } else if (isSummaryQuery(query)) {
+      const summary = summarizePdf(material.searchText);
+      answerText = summary
+        ? `Brief summary of "${material.title}": ${summary}`
+        : `I found "${material.title}", but could not extract enough readable text to summarize it.`;
     } else {
-      // Try to produce a short grounded excerpt from the material's extracted text when available.
-      let snippet = '';
-      if (material.searchText) {
-        const textLower = material.searchText.toLowerCase();
-        const tokens = topicTokens(query).filter(t => t.length > 2);
-        let idx = -1;
-        for (const t of tokens) {
-          idx = textLower.indexOf(t);
-          if (idx >= 0) break;
-        }
-        if (idx >= 0) {
-          const start = Math.max(0, idx - 120);
-          const end = Math.min(material.searchText.length, idx + 240);
-          snippet = material.searchText.slice(start, end).replace(/\s+/g, ' ').trim();
-          if (start > 0) snippet = '...' + snippet;
-          if (end < material.searchText.length) snippet = snippet + '...';
-        }
-      }
-      answerText = snippet
-        ? 'This course resource looks relevant to your question: ' + material.title + '. Excerpt: "' + snippet + '"'
-        : 'This course resource looks relevant to your question: ' + material.title + '.';
+      const relevantSentences = rankPdfSentences(query, pdfSentences(material.searchText))
+        .filter(sentence => sentence.score >= 0.2)
+        .slice(0, 3);
+      answerText = relevantSentences.length
+        ? `From "${material.title}": ${relevantSentences.map(sentence => `${sentence.text} [p. ${sentence.page}]`).join(' ')}`
+        : `I found "${material.title}", but could not find an answer to that question in its extracted text. Try another term or open the PDF to browse it.`;
     }
     return sendJson(response, 200, {
       answer: answerText,

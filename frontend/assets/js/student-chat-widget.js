@@ -49,8 +49,9 @@
   log.setAttribute('aria-live', 'polite');
   var welcome = document.createElement('p');
   welcome.className = 'student-chat-message';
-  welcome.textContent = 'Ask about a course topic and I’ll look through resources you’re enrolled to access.';
+  welcome.textContent = 'Ask a question about your course PDFs, request a summary, or include a course code such as IFT 512.';
   log.appendChild(welcome);
+  var lastMaterialId = '';
 
   var form = document.createElement('form');
   form.className = 'student-chat-form';
@@ -59,8 +60,8 @@
   input.type = 'text';
   input.maxLength = 500;
   input.required = true;
-  input.placeholder = 'What topic do you need help with?';
-  input.setAttribute('aria-label', 'Ask about a course topic');
+  input.placeholder = 'Ask a course question or request a summary';
+  input.setAttribute('aria-label', 'Ask a course question or request a summary');
   var send = document.createElement('button');
   send.className = 'student-chat-send';
   send.type = 'submit';
@@ -110,8 +111,13 @@
         : '';
       var result = await window.Auth.request('/student/chat', {
         method: 'POST',
-        body: JSON.stringify({ query: query, ...(courseId ? { courseId: courseId } : {}) })
+        body: JSON.stringify({
+          query: query,
+          ...(courseId ? { courseId: courseId } : {}),
+          ...(lastMaterialId ? { materialId: lastMaterialId } : {})
+        })
       });
+      if (result.resource && result.resource.id) lastMaterialId = result.resource.id;
       addMessage(result.answer, '', result.resource);
     } catch (error) {
       addMessage('Resource search failed: ' + error.message, 'error');
