@@ -975,6 +975,14 @@ async function handleRequest(request, response) {
     return sendJson(response, 200, { materials });
   }
 
+  function sanitizePdfSearchText(text) {
+    return String(text)
+      .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim()
+      .slice(0, 100000);
+  }
+
   async function extractPdfText(buffer) {
     try {
       const pdfjs = await import('pdfjs-dist/legacy/build/pdf.js');
@@ -986,8 +994,9 @@ async function handleRequest(request, response) {
         const content = await page.getTextContent();
         const pageText = content.items.map(item => item.str || '').join(' ');
         fullText += `\n[page ${p}]\n` + pageText;
+        if (fullText.length >= 100000) break;
       }
-      if (fullText.trim()) return fullText;
+      if (fullText.trim()) return sanitizePdfSearchText(fullText);
     } catch (e) {
       console.error('PDF extraction failed:', e && e.message ? e.message : e);
     }
@@ -1000,7 +1009,7 @@ async function handleRequest(request, response) {
       while ((m = re.exec(raw)) !== null) {
         matches.push(m[1].replace(/\s+/g, ' ').trim());
       }
-      if (matches.length) return '[page 1]\n' + matches.join(' ');
+      if (matches.length) return sanitizePdfSearchText('[page 1]\n' + matches.join(' '));
     } catch (e) {
       // ignore fallback errors
     }

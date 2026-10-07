@@ -307,7 +307,7 @@ test('admin can create lecturer accounts without granting students lecturer acce
       title: 'Searching algorithms',
       topicTag: 'Binary search',
       fileName: 'binary-search.pdf',
-      contentBase64: makeTextPdf('Binary search repeatedly divides a sorted search interval in half to locate a value.')
+      contentBase64: makeTextPdf('Binary search\u0000 repeatedly divides a sorted search interval in half to locate a value.')
     }
   });
   assert.equal(deniedAdminPdfUpload.status, 401);
@@ -320,7 +320,7 @@ test('admin can create lecturer accounts without granting students lecturer acce
       title: 'Searching algorithms',
       topicTag: 'Binary search',
       fileName: 'binary-search.pdf',
-      contentBase64: makeTextPdf('Binary search repeatedly divides a sorted search interval in half to locate a value.')
+      contentBase64: makeTextPdf('Binary search\u0000 repeatedly divides a sorted search interval in half to locate a value.')
     }
   });
   assert.equal(uploadedStudentPdf.status, 201);
