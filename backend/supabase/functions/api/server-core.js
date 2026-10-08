@@ -1591,11 +1591,8 @@ async function handleRequest(request, response) {
       return sendJson(response, 403, { error: 'Enroll in this course before viewing its reading plan.' });
     }
     const readings = database.courseMaterials
-      // Only include materials for courses the student is enrolled in. Exclude admin-created materials
-      // (they have no lecturerId) from the student's reading plan so the plan reflects lecturer-provided
-      // course materials only.
       .filter(material => studentEnrolled(database, user.id, material.courseId) &&
-        (!requestedCourseId || material.courseId === requestedCourseId) && Boolean(material.lecturerId))
+        (!requestedCourseId || material.courseId === requestedCourseId))
       .map(material => {
         const { storageName, ...publicMaterial } = material;
         const saved = database.readingProgress.find(item =>

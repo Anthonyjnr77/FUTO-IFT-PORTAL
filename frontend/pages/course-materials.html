@@ -94,6 +94,23 @@
     .mat-action:hover { color: #0f766e; }
     .mat-action-icon { width: 28px; height: 28px; border-radius: 8px; background: rgba(13,148,136,.1); display: flex; align-items: center; justify-content: center; font-size: 12px; color: #0d9488; transition: background .2s; }
     .mat-action:hover .mat-action-icon { background: rgba(13,148,136,.2); }
+    .material-actions { display:flex;align-items:center;gap:12px; }
+    .reading-plan-status { margin-top:8px;color:#64748b;font-size:10px;font-weight:700; }
+    .reading-plan-status[data-status="in_progress"] { color:#b45309; }
+    .reading-plan-status[data-status="completed"] { color:#0f766e; }
+    .pdf-reader { width:min(1000px,96vw);height:min(92dvh,900px);max-width:none;max-height:none;padding:0;border:0;border-radius:14px;background:#f8fafc;box-shadow:0 24px 80px rgba(0,0,0,.4); }
+    .pdf-reader::backdrop { background:rgba(3,10,25,.76);backdrop-filter:blur(3px); }
+    .pdf-reader-header { display:flex;align-items:center;gap:14px;padding:12px 16px;background:#0b1c3a;color:#fff; }
+    .pdf-reader-title { min-width:0;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:14px;font-weight:700; }
+    .pdf-reader-close { width:38px;height:38px;border:1px solid rgba(255,255,255,.2);border-radius:9px;background:rgba(255,255,255,.1);color:#fff;font-size:23px;cursor:pointer; }
+    .pdf-reader-status { min-height:28px;padding:7px 14px;background:#fff;color:#475569;font-size:12px; }
+    .pdf-reader-status:empty { display:none; }
+    .pdf-reader-frame { display:block;width:100%;height:calc(100% - 62px);border:0;background:#dfe5ec; }
+    @media(max-width:600px) {
+      .material-actions { flex-wrap:wrap;justify-content:flex-end;gap:8px; }
+      .pdf-reader { width:100%;height:100dvh;border-radius:0; }
+      .pdf-reader-header { padding:10px 12px; }
+    }
 
     /* EMPTY STATE */
     .empty-state { text-align: center; padding: 60px 20px; display: none; }
@@ -227,6 +244,15 @@
 
   </main>
 
+  <dialog class="pdf-reader" id="pdfReader" aria-labelledby="pdfReaderTitle">
+    <div class="pdf-reader-header">
+      <strong class="pdf-reader-title" id="pdfReaderTitle">PDF reader</strong>
+      <button class="pdf-reader-close" id="closePdfReader" type="button" aria-label="Close PDF reader">&times;</button>
+    </div>
+    <div class="pdf-reader-status" id="pdfReaderStatus" role="status" aria-live="polite"></div>
+    <iframe class="pdf-reader-frame" id="pdfReaderFrame" title="Course PDF reader"></iframe>
+  </dialog>
+
   <script src="/assets/js/api-config.js"></script>
   <script src="/assets/js/auth-utils.js"></script>
   <script>
@@ -241,6 +267,8 @@
 
     var CURRICULUM_COURSES = [];
     var SHARED_MATERIALS = [];
+    var READING_PROGRESS = new Map();
+    var currentPdfObjectUrl = '';
     var materialsLoadError = '';
     var curriculumLoadError = '';
     var currentLevel  = 'all';
@@ -346,6 +374,8 @@
           var course = courseByCode.get(material.courseCode);
           return {
             id: -index - 1,
+            materialId: material.id,
+            courseId: material.courseId,
             code: material.courseCode,
             title: material.title,
             topic: (material.topicTag || 'Course resource') + ' · Shared by ' + material.lecturerName,
@@ -372,6 +402,20 @@
         CURRICULUM_COURSES = result.courses || [];
       } catch (error) {
         curriculumLoadError = error.message || 'The course catalog could not be loaded.';
+      }
+    }
+
+    async function loadReadingProgress() {
+      var currentUser = window.Auth && window.Auth.get();
+      if (!currentUser || currentUser.role !== 'student') return;
+      try {
+        var result = await window.Auth.request('/student/reading-progress');
+        READING_PROGRESS = new Map((result.readings || []).map(function(reading) {
+          return [reading.material.id, reading];
+        }));
+      } catch (error) {
+        materialsLoadError = [materialsLoadError, error.message || 'Reading progress could not be loaded.']
+          .filter(Boolean).join(' ');
       }
     }
 
@@ -437,11 +481,28 @@
               '<i class="fas fa-hdd" style="font-size:9px"></i> ' + escapeHTML(m.size) +
               ' &bull; <i class="fas fa-download" style="font-size:9px"></i> ' + m.downloads +
             '</div>' +
-            '<button class="mat-action" onclick="handleActionById(' + m.id + ')">' +
-              '<span>' + actionLabel + '</span>' +
-              '<div class="mat-action-icon"><i class="fas ' + (m.type === 'video' ? 'fa-play' : 'fa-download') + '"></i></div>' +
-            '</button>' +
+          (m.type === 'pdf' && m.shared
+            ? '<div class="material-actions">' +
+                '<button class="mat-action" onclick="handleActionById(' + m.id + ', \'read\')">' +
+                  '<span>Read PDF</span><span class="mat-action-icon"><i class="fas fa-book-open"></i></span>' +
+                '</button>' +
+                '<button class="mat-action" onclick="handleActionById(' + m.id + ', \'download\')">' +
+                  '<span>Download</span><span class="mat-action-icon"><i class="fas fa-download"></i></span>' +
+                '</button>' +
+              '</div>'
+            : '<button class="mat-action" onclick="handleActionById(' + m.id + ')">' +
+                '<span>' + actionLabel + '</span>' +
+                '<div class="mat-action-icon"><i class="fas ' + (m.type === 'video' ? 'fa-play' : 'fa-download') + '"></i></div>' +
+              '</button>') +
           '</div>';
+        var savedReading = READING_PROGRESS.get(m.materialId);
+        if (m.type === 'pdf' && m.shared && savedReading) {
+          var readingStatus = document.createElement('div');
+          readingStatus.className = 'reading-plan-status';
+          readingStatus.dataset.status = savedReading.status;
+          readingStatus.textContent = 'Reading plan: ' + savedReading.status.replace('_', ' ');
+          card.querySelector('.mat-card-body').appendChild(readingStatus);
+        }
         grid.appendChild(card);
       });
     }
@@ -486,7 +547,7 @@
       render();
     }
 
-    function handleActionById(id) {
+    function handleActionById(id, action) {
       var m = SHARED_MATERIALS.filter(function(x){ return x.id === id; })[0];
       if (!m) return;
       if (m.shared) {
@@ -494,7 +555,11 @@
           window.open(m.url, '_blank', 'noopener,noreferrer');
           return;
         }
-        downloadSharedMaterial(m);
+        if (action === 'read' && m.type === 'pdf') {
+          openSharedPdf(m);
+        } else {
+          downloadSharedMaterial(m);
+        }
         return;
       }
       if (!m.url) return;
@@ -507,23 +572,86 @@
       a.remove();
     }
 
+    function getAuthToken() {
+      return localStorage.getItem('futo_token') || sessionStorage.getItem('futo_token') || '';
+    }
+
+    function getMaterialApiUrl(material) {
+      return window.Auth.apiBase.replace(/\/$/, '') + '/materials/' +
+        encodeURIComponent(material.materialId) + '/download';
+    }
+
+    async function getSharedMaterialBlob(material) {
+      var response = await fetch(getMaterialApiUrl(material), {
+        headers: { Authorization: 'Bearer ' + getAuthToken() }
+      });
+      if (!response.ok) {
+        var responseText = await response.text();
+        var message = 'The material could not be downloaded (HTTP ' + response.status + ').';
+        try {
+          var errorBody = JSON.parse(responseText);
+          message = errorBody.error || message;
+        } catch (parseError) {
+          // The API may return a non-JSON error page; keep the user-facing error readable.
+        }
+        throw new Error(message);
+      }
+      return response.blob();
+    }
+
+    async function openSharedPdf(material) {
+      var reader = document.getElementById('pdfReader');
+      var status = document.getElementById('pdfReaderStatus');
+      status.textContent = 'Loading PDF…';
+      try {
+        var blob = await getSharedMaterialBlob(material);
+        if (blob.type && blob.type !== 'application/pdf' && blob.type !== 'application/octet-stream') {
+          throw new Error('The server did not return a PDF file.');
+        }
+        currentPdfObjectUrl = URL.createObjectURL(blob);
+        document.getElementById('pdfReaderTitle').textContent = material.title;
+        document.getElementById('pdfReaderFrame').src = currentPdfObjectUrl;
+        status.textContent = '';
+        reader.showModal();
+        updateReadingProgress(material).catch(function(error) {
+          status.textContent = 'PDF opened, but reading progress could not be saved: ' + error.message;
+        });
+      } catch (error) {
+        status.textContent = '';
+        window.alert(error.message || 'The PDF could not be opened.');
+      }
+    }
+
+    async function updateReadingProgress(material) {
+      var saved = READING_PROGRESS.get(material.materialId);
+      if (saved && (saved.status === 'completed' || saved.status === 'in_progress')) return;
+      var result = await window.Auth.request('/student/reading-progress', {
+        method: 'POST',
+        body: JSON.stringify({
+          materialId: material.materialId,
+          status: 'in_progress',
+          targetDate: saved ? saved.targetDate : null
+        })
+      });
+      READING_PROGRESS.set(material.materialId, result.reading);
+      render();
+    }
+
+    function closePdfReader() {
+      var reader = document.getElementById('pdfReader');
+      if (reader.open) reader.close();
+    }
+
     async function downloadSharedMaterial(material) {
       try {
-        var response = await fetch(material.url, {
-          headers: { Authorization: 'Bearer ' + (localStorage.getItem('futo_token') || '') }
-        });
-        if (!response.ok) {
-          var error = await response.json();
-          throw new Error(error.error || 'The material could not be downloaded.');
-        }
-        var objectUrl = URL.createObjectURL(await response.blob());
+        var objectUrl = URL.createObjectURL(await getSharedMaterialBlob(material));
         var link = document.createElement('a');
         link.href = objectUrl;
         link.download = material.fileName;
         document.body.appendChild(link);
         link.click();
         link.remove();
-        URL.revokeObjectURL(objectUrl);
+        setTimeout(function() { URL.revokeObjectURL(objectUrl); }, 1000);
       } catch (error) {
         window.alert(error.message);
       }
@@ -535,7 +663,7 @@
       if (!currentUser) return;
       if (currentUser.role === 'lecturer') { window.location.href = 'lecturer-dashboard.html'; return; }
 
-      loadCurriculum().then(loadSharedMaterials).then(function() {
+      loadCurriculum().then(loadSharedMaterials).then(loadReadingProgress).then(function() {
         var error = document.getElementById('materialsError');
         var messages = [curriculumLoadError, materialsLoadError].filter(Boolean);
         error.hidden = messages.length === 0;
@@ -555,6 +683,14 @@
       document.getElementById('semFilter').addEventListener('change', function() {
         currentSem = this.value;
         render();
+      });
+      document.getElementById('closePdfReader').addEventListener('click', closePdfReader);
+      document.getElementById('pdfReader').addEventListener('close', function() {
+        var frame = document.getElementById('pdfReaderFrame');
+        frame.src = 'about:blank';
+        if (currentPdfObjectUrl) URL.revokeObjectURL(currentPdfObjectUrl);
+        currentPdfObjectUrl = '';
+        document.getElementById('pdfReaderStatus').textContent = '';
       });
     });
 

@@ -469,8 +469,24 @@ test('admin can create lecturer accounts without granting students lecturer acce
     token: studentRegistration.body.token
   });
   assert.equal(initialReadingProgress.status, 200);
-  assert.equal(initialReadingProgress.body.readings.length, 1);
-  assert.equal(initialReadingProgress.body.readings[0].status, 'not_started');
+  assert.equal(initialReadingProgress.body.readings.length, 2);
+  const adminPdfReading = initialReadingProgress.body.readings.find(reading =>
+    reading.material.id === uploadedStudentPdf.body.material.id
+  );
+  assert.ok(adminPdfReading);
+  assert.equal(adminPdfReading.status, 'not_started');
+
+  const openedAdminPdf = await requestJson(baseUrl, '/api/student/reading-progress', {
+    method: 'POST',
+    token: studentRegistration.body.token,
+    body: {
+      materialId: uploadedStudentPdf.body.material.id,
+      status: 'in_progress',
+      targetDate: null
+    }
+  });
+  assert.equal(openedAdminPdf.status, 200);
+  assert.equal(openedAdminPdf.body.reading.status, 'in_progress');
 
   const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
   const updatedReadingProgress = await requestJson(baseUrl, '/api/student/reading-progress', {
