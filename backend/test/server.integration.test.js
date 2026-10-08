@@ -6,6 +6,7 @@ const os = require('node:os');
 const path = require('node:path');
 const { once } = require('node:events');
 const { createHash, randomBytes } = require('node:crypto');
+const { deflateSync } = require('node:zlib');
 const test = require('node:test');
 
 function availablePort() {
@@ -36,26 +37,42 @@ function requestJson(baseUrl, route, { method = 'GET', token, body } = {}) {
 function makeTextPdf(text) {
   const escapedText = text.replace(/([\\()])/g, '\\$1');
   const stream = `BT /F1 12 Tf 40 700 Td (${escapedText}) Tj ET`;
+  const compressedStream = deflateSync(Buffer.from(stream));
   const objects = [
     '<< /Type /Catalog /Pages 2 0 R >>',
     '<< /Type /Pages /Kids [3 0 R] /Count 1 >>',
     '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 5 0 R >> >> /Contents 4 0 R >>',
-    `<< /Length ${Buffer.byteLength(stream)} >>\nstream\n${stream}\nendstream`,
+    Buffer.concat([
+      Buffer.from(`<< /Length ${compressedStream.length} /Filter /FlateDecode >>\nstream\n`),
+      compressedStream,
+      Buffer.from('\nendstream')
+    ]),
     '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>'
   ];
-  let pdf = '%PDF-1.4\n';
+  let pdf = Buffer.from('%PDF-1.4\n');
   const offsets = [0];
   objects.forEach((object, index) => {
-    offsets.push(Buffer.byteLength(pdf));
-    pdf += `${index + 1} 0 obj\n${object}\nendobj\n`;
+    offsets.push(pdf.length);
+    pdf = Buffer.concat([
+      pdf,
+      Buffer.from(`${index + 1} 0 obj\n`),
+      Buffer.isBuffer(object) ? object : Buffer.from(object),
+      Buffer.from('\nendobj\n')
+    ]);
   });
-  const xrefOffset = Buffer.byteLength(pdf);
-  pdf += `xref\n0 ${objects.length + 1}\n0000000000 65535 f \n`;
+  const xrefOffset = pdf.length;
+  pdf = Buffer.concat([
+    pdf,
+    Buffer.from(`xref\n0 ${objects.length + 1}\n0000000000 65535 f \n`)
+  ]);
   offsets.slice(1).forEach(offset => {
-    pdf += `${String(offset).padStart(10, '0')} 00000 n \n`;
+    pdf = Buffer.concat([pdf, Buffer.from(`${String(offset).padStart(10, '0')} 00000 n \n`)]);
   });
-  pdf += `trailer\n<< /Size ${objects.length + 1} /Root 1 0 R >>\nstartxref\n${xrefOffset}\n%%EOF`;
-  return Buffer.from(pdf).toString('base64');
+  pdf = Buffer.concat([
+    pdf,
+    Buffer.from(`trailer\n<< /Size ${objects.length + 1} /Root 1 0 R >>\nstartxref\n${xrefOffset}\n%%EOF`)
+  ]);
+  return pdf.toString('base64');
 }
 
 test('admin can create lecturer accounts without granting students lecturer access', async t => {
@@ -336,6 +353,30 @@ test('admin can create lecturer accounts without granting students lecturer acce
   });
   assert.equal(uploadedStudentPdf.status, 201);
   assert.equal(uploadedStudentPdf.body.material.fileName, 'binary-search.pdf');
+
+  const deniedPdfReindex = await requestJson(baseUrl, '/api/admin/materials/reindex-pdfs', {
+    method: 'POST',
+    token: studentRegistration.body.token,
+    body: { courseCode: 'IFT 101' }
+  });
+  assert.equal(deniedPdfReindex.status, 401);
+
+  const portalStatePath = path.join(dataDir, 'db.json');
+  const portalState = JSON.parse(fs.readFileSync(portalStatePath, 'utf8'));
+  const storedPdf = portalState.courseMaterials.find(material => material.id === uploadedStudentPdf.body.material.id);
+  storedPdf.searchText = '(garbled compressed PDF stream)';
+  fs.writeFileSync(portalStatePath, JSON.stringify(portalState));
+
+  const reindexedPdf = await requestJson(baseUrl, '/api/admin/materials/reindex-pdfs', {
+    method: 'POST',
+    token: adminLogin.body.token,
+    body: { courseCode: 'IFT 101' }
+  });
+  assert.equal(reindexedPdf.status, 200);
+  assert.equal(reindexedPdf.body.courseCode, 'IFT 101');
+  assert.equal(reindexedPdf.body.processed, 1);
+  assert.equal(reindexedPdf.body.indexed, 1);
+  assert.equal(reindexedPdf.body.noExtractableText, 0);
 
   const listedStudentPdfs = await requestJson(baseUrl, '/api/materials', {
     token: studentRegistration.body.token

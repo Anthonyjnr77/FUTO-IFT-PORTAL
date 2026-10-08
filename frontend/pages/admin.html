@@ -49,6 +49,9 @@
         <button class="primary" id="materialUploadButton" type="submit">Upload course PDF</button>
         <div id="materialUploadStatus" class="status" role="status" aria-live="polite"></div>
       </form>
+      <p class="notice">Use this to rebuild chatbot search text for existing PDFs in the selected course after a parser fix.</p>
+      <button class="primary" id="reindexPdfButton" type="button" disabled>Rebuild PDF search index for selected course</button>
+      <div id="reindexPdfStatus" class="status" role="status" aria-live="polite"></div>
     </section>
     <section class="panel">
       <h2>Create lecturer account</h2>
@@ -263,15 +266,44 @@
         result.courses.forEach(function(course) {
           var option = node('option', course.courseCode + ' · ' + course.courseTitle + ' (' + course.level + ' Level, ' + course.semester + ')');
           option.value = course.id;
+          option.setAttribute('data-course-code', course.courseCode);
           select.appendChild(option);
         });
         select.disabled = result.courses.length === 0;
+        document.getElementById('reindexPdfButton').disabled = result.courses.length === 0;
       } catch (error) {
         select.replaceChildren(node('option', 'Courses could not be loaded'));
         select.disabled = true;
+        document.getElementById('reindexPdfButton').disabled = true;
         setStatus('materialUploadStatus', error.message, true);
       }
     }
+    document.getElementById('reindexPdfButton').addEventListener('click', async function() {
+      var button = this;
+      var courseSelect = document.getElementById('materialCourse');
+      var courseCode = courseSelect.selectedOptions[0].getAttribute('data-course-code');
+      if (!courseCode) {
+        setStatus('reindexPdfStatus', 'Choose a course first.', true);
+        return;
+      }
+      button.disabled = true;
+      setStatus('reindexPdfStatus', 'Rebuilding searchable text from stored course PDFs…', false);
+      try {
+        var result = await window.Auth.request('/admin/materials/reindex-pdfs', {
+          method: 'POST',
+          body: JSON.stringify({ courseCode: courseCode })
+        });
+        var message = 'Re-indexed ' + result.indexed + ' of ' + result.processed + ' PDF(s).';
+        if (result.noExtractableText) {
+          message += ' ' + result.noExtractableText + ' PDF(s) had no extractable text and cannot be searched.';
+        }
+        setStatus('reindexPdfStatus', message, result.noExtractableText > 0);
+      } catch (error) {
+        setStatus('reindexPdfStatus', error.message, true);
+      } finally {
+        button.disabled = false;
+      }
+    });
     document.getElementById('materialForm').addEventListener('submit', async function(event) {
       event.preventDefault();
       var button = document.getElementById('materialUploadButton');

@@ -90,6 +90,7 @@ Run the isolated Node API integration tests with `npm test` from `backend/`. The
 - `GET /api/curriculum` with an authenticated token for the full course catalog
 - `GET /api/announcements` with an authenticated token and `POST /api/lecturer/announcements` with a lecturer token
 - `GET /api/materials` with an authenticated token, `POST /api/lecturer/materials` with a lecturer token, and `GET /api/materials/:id/download` with enrollment or ownership access
+- `POST /api/admin/materials/reindex-pdfs` with an administrator token and `{ "courseCode": "IFT 512" }` to rebuild a course's PDF search text from its private stored files
 - `GET /api/lecturer/quizzes` and `POST /api/lecturer/quizzes` with a lecturer token
 - `GET /api/lecturer/quizzes/:id/results` with the owning lecturer token
 - `GET /api/lecturer/topic-performance` with a lecturer token

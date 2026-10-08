@@ -1095,7 +1095,7 @@ async function handleRequest(request, response) {
 
   async function extractPdfText(buffer) {
     try {
-      const pdfjs = await import('pdfjs-dist/legacy/build/pdf.js');
+      const pdfjs = await import('pdfjs-dist/legacy/build/pdf.mjs');
       const loadingTask = pdfjs.getDocument({ data: new Uint8Array(buffer) });
       const pdf = await loadingTask.promise;
       let fullText = '';
@@ -1109,19 +1109,6 @@ async function handleRequest(request, response) {
       if (fullText.trim()) return sanitizePdfSearchText(fullText);
     } catch (e) {
       console.error('PDF extraction failed:', e && e.message ? e.message : e);
-    }
-    // Fallback: attempt to recover literal text tokens from the raw PDF bytes (works for simple generated PDFs)
-    try {
-      const raw = Buffer.from(buffer).toString('utf8');
-      const matches = [];
-      const re = /\(([^)\n]{10,}?)\)/g;
-      let m;
-      while ((m = re.exec(raw)) !== null) {
-        matches.push(m[1].replace(/\s+/g, ' ').trim());
-      }
-      if (matches.length) return sanitizePdfSearchText('[page 1]\n' + matches.join(' '));
-    } catch (e) {
-      // ignore fallback errors
     }
     return '';
   }
@@ -1261,6 +1248,47 @@ async function handleRequest(request, response) {
     await writeDatabase(database);
     const { storageName: storedName, searchText, ...publicMaterial } = material;
     return sendJson(response, 201, { material: publicMaterial });
+  }
+
+  if (request.method === 'POST' && pathname === '/api/admin/materials/reindex-pdfs') {
+    const user = authenticatedUser(request, database);
+    if (!user || user.role !== 'admin') return sendJson(response, 401, { error: 'Administrator authentication required.' });
+    const payload = await readBody(request);
+    const courseCode = typeof payload.courseCode === 'string' ? payload.courseCode.trim().toUpperCase() : '';
+    if (!courseCode) return sendJson(response, 400, { error: 'Provide a course code to re-index its PDF materials.' });
+    const courseIds = new Set(database.taughtCourses
+      .filter(course => course.courseCode.toUpperCase() === courseCode)
+      .map(course => course.id));
+    if (!courseIds.size) return sendJson(response, 404, { error: 'Course not found.' });
+    const materials = database.courseMaterials.filter(material =>
+      courseIds.has(material.courseId) &&
+      material.resourceType === 'file' &&
+      path.extname(material.fileName || '').toLowerCase() === '.pdf'
+    );
+    if (!materials.length) return sendJson(response, 404, { error: 'No PDF materials were found for this course.' });
+
+    let indexed = 0;
+    let noExtractableText = 0;
+    for (const material of materials) {
+      let fileBuffer;
+      if (databasePool) {
+        fileBuffer = await downloadStorageObject(material.storageName);
+      } else {
+        const filePath = path.join(DATA_DIR, 'uploads', material.storageName);
+        if (fs.existsSync(filePath)) fileBuffer = fs.readFileSync(filePath);
+      }
+      if (!fileBuffer) return sendJson(response, 404, { error: `The stored PDF for material ${material.id} is unavailable.` });
+      material.searchText = await extractPdfText(fileBuffer);
+      if (material.searchText) indexed++;
+      else noExtractableText++;
+    }
+    await writeDatabase(database);
+    return sendJson(response, 200, {
+      courseCode,
+      processed: materials.length,
+      indexed,
+      noExtractableText
+    });
   }
 
   const materialDownloadPath = pathname.match(/^\/api\/materials\/([^/]+)\/download$/);

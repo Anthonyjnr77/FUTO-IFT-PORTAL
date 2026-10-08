@@ -6,6 +6,7 @@
   "imports": {
     "dotenv": "npm:dotenv@^16.6.1",
     "nodemailer": "npm:nodemailer@^10.0.14",
-    "pg": "npm:pg@^8.23.1"
+    "pg": "npm:pg@^8.23.1",
+    "pdfjs-dist/legacy/build/pdf.mjs": "npm:pdfjs-dist@4.10.38/legacy/build/pdf.mjs"
   }
 }
