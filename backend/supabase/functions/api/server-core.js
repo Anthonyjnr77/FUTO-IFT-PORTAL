@@ -28,6 +28,7 @@ const SUPABASE_URL = (ENV.SUPABASE_URL || '').replace(/\/+$/, '');
 const SUPABASE_SERVICE_ROLE_KEY = ENV.SUPABASE_SERVICE_ROLE_KEY || '';
 const SUPABASE_STORAGE_BUCKET = 'course-materials';
 const requestContext = new AsyncLocalStorage();
+const responseOrigins = new WeakMap();
 let databasePool = null;
 
 if (ENV.NODE_ENV === 'production' && !ENV.CLIENT_URL) {
@@ -369,8 +370,10 @@ async function handleSupabaseRequest(request, response) {
 }
 
 function sendJson(response, statusCode, body) {
-  const requestOrigin = requestContext.getStore()?.origin || '';
-  const allowedOrigin = CLIENT_ORIGINS.has(requestOrigin) ? requestOrigin : CLIENT_URL;
+  const requestOrigin = requestContext.getStore()?.origin || responseOrigins.get(response) || '';
+  const allowedOrigin = CLIENT_ORIGINS.has(requestOrigin) || isLocalDevelopmentOrigin(requestOrigin)
+    ? requestOrigin
+    : CLIENT_URL;
   response.writeHead(statusCode, {
     'Content-Type': 'application/json; charset=utf-8',
     'Access-Control-Allow-Origin': allowedOrigin,
@@ -379,6 +382,18 @@ function sendJson(response, statusCode, body) {
     'Access-Control-Allow-Methods': 'GET, POST, DELETE, OPTIONS'
   });
   response.end(JSON.stringify(body));
+}
+
+function isLocalDevelopmentOrigin(origin) {
+  if (ENV.NODE_ENV === 'production' || !origin) return false;
+  try {
+    const parsed = new URL(origin);
+    return parsed.protocol === 'http:' &&
+      (parsed.hostname === 'localhost' || parsed.hostname === '127.0.0.1') &&
+      parsed.origin === origin;
+  } catch {
+    return false;
+  }
 }
 
 function readBody(request) {
@@ -2107,6 +2122,7 @@ async function startServer() {
   }
 
   http.createServer((request, response) => {
+    responseOrigins.set(response, request.headers.origin || '');
     if (databasePool && request.method !== 'OPTIONS' && request.url.startsWith('/api/')) {
       handleSupabaseRequest(request, response).catch(error => {
         console.error('Supabase request failed:', error.message);

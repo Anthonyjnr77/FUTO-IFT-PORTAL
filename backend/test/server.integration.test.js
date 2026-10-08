@@ -124,6 +124,17 @@ test('admin can create lecturer accounts without granting students lecturer acce
 
   assert.equal(await waitForHealth(server), true, `isolated API server should start and pass its health check: ${serverErrors}`);
 
+  const localFrontendPreflight = await fetch(`${baseUrl}/api/health`, {
+    method: 'OPTIONS',
+    headers: {
+      Origin: 'http://localhost:4173',
+      'Access-Control-Request-Method': 'GET',
+      'Access-Control-Request-Headers': 'authorization'
+    }
+  });
+  assert.equal(localFrontendPreflight.status, 204);
+  assert.equal(localFrontendPreflight.headers.get('access-control-allow-origin'), 'http://localhost:4173');
+
   const deniedAdminList = await requestJson(baseUrl, '/api/admin/users');
   assert.equal(deniedAdminList.status, 401);
 
