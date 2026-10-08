@@ -35,8 +35,8 @@ function requestJson(baseUrl, route, { method = 'GET', token, body } = {}) {
 }
 
 function makeTextPdf(text) {
-  const escapedText = text.replace(/([\\()])/g, '\\$1');
-  const stream = `BT /F1 12 Tf 40 700 Td (${escapedText}) Tj ET`;
+  const lines = text.split('\n').map(line => line.replace(/([\\()])/g, '\\$1'));
+  const stream = `BT /F1 12 Tf 14 TL 40 700 Td ${lines.map(line => `(${line}) Tj`).join(' T* ')} ET`;
   const compressedStream = deflateSync(Buffer.from(stream));
   const objects = [
     '<< /Type /Catalog /Pages 2 0 R >>',
@@ -335,7 +335,9 @@ test('admin can create lecturer accounts without granting students lecturer acce
       title: 'Searching algorithms',
       topicTag: 'Binary search',
       fileName: 'binary-search.pdf',
-      contentBase64: makeTextPdf('Binary search\u0000 repeatedly divides a sorted search interval in half to locate a value.')
+      contentBase64: makeTextPdf(
+        'Binary search repeatedly divides a sorted search interval in half to locate a value.\nThe AUC metric is 0.5 when a classifier ranks examples like random guessing.'
+      )
     }
   });
   assert.equal(deniedAdminPdfUpload.status, 401);
@@ -348,7 +350,9 @@ test('admin can create lecturer accounts without granting students lecturer acce
       title: 'Searching algorithms',
       topicTag: 'Binary search',
       fileName: 'binary-search.pdf',
-      contentBase64: makeTextPdf('Binary search\u0000 repeatedly divides a sorted search interval in half to locate a value.')
+      contentBase64: makeTextPdf(
+        'Binary search repeatedly divides a sorted search interval in half to locate a value.\nThe AUC metric is 0.5 when a classifier ranks examples like random guessing.'
+      )
     }
   });
   assert.equal(uploadedStudentPdf.status, 201);
@@ -451,6 +455,14 @@ test('admin can create lecturer accounts without granting students lecturer acce
   assert.match(coursePdfSummary.body.answer, /brief summary/i);
   assert.match(coursePdfSummary.body.answer, /divides a sorted search interval in half/i);
   assert.match(coursePdfSummary.body.answer, /\[p\. 1\]/i);
+
+  const decimalPdfAnswer = await requestJson(baseUrl, '/api/student/chat', {
+    method: 'POST',
+    token: studentRegistration.body.token,
+    body: { query: 'What is the AUC metric in IFT 101?' }
+  });
+  assert.equal(decimalPdfAnswer.status, 200);
+  assert.match(decimalPdfAnswer.body.answer, /0\.5/);
 
   const followUpPdfQuestion = await requestJson(baseUrl, '/api/student/chat', {
     method: 'POST',

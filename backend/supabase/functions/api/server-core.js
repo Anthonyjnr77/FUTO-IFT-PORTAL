@@ -549,7 +549,7 @@ function pdfTextPages(searchText) {
 
 function pdfSentences(searchText) {
   return pdfTextPages(searchText).flatMap(page => {
-    const sentences = page.text.match(/[^.!?]+[.!?]?/g) || [];
+    const sentences = page.text.match(/[^.!?]+(?:\.(?=\d)[^.!?]+)*[.!?]?/g) || [];
     return sentences
       .map(text => text.replace(/\s+/g, ' ').trim())
       .filter(text => text.length >= 20)
