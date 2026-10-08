@@ -558,3 +558,105 @@ html[data-theme="light"] body:has(.brand .brand-mark) .message.error {
 @media (min-width: 769px) {
   .hide-desktop { display: none !important; }
 }
+
+.mobile-nav-panel {
+  display: contents;
+}
+
+.learnit-mobile-menu {
+  display: none;
+}
+
+@media (max-width: 900px) {
+  nav.navbar {
+    align-items: center !important;
+    flex-wrap: wrap !important;
+    gap: 8px 12px !important;
+    min-height: 58px !important;
+    padding: 8px 14px !important;
+  }
+
+  nav.navbar .learnit-brand {
+    order: 1;
+  }
+
+  nav.navbar .learnit-brand img {
+    width: 36px;
+    height: 36px;
+  }
+
+  nav.navbar .learnit-mobile-menu {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    order: 2;
+    width: 40px;
+    height: 40px;
+    margin-left: auto;
+    border: 1px solid rgba(255, 255, 255, 0.22);
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.1);
+    color: #fff;
+    font: 24px/1 system-ui, sans-serif;
+    cursor: pointer;
+  }
+
+  nav.navbar .learnit-mobile-menu:focus-visible {
+    outline: 3px solid #14b8a6;
+    outline-offset: 2px;
+  }
+
+  nav.navbar .mobile-nav-panel {
+    display: none !important;
+    order: 3;
+    flex: 0 0 100%;
+    width: 100%;
+    padding: 8px 0 4px;
+    border-top: 1px solid rgba(255, 255, 255, 0.12);
+  }
+
+  nav.navbar[data-mobile-menu-open="true"] .mobile-nav-panel {
+    display: flex !important;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 4px;
+  }
+
+  nav.navbar .mobile-nav-panel .nav-links {
+    display: flex !important;
+    width: 100% !important;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 3px;
+    margin: 0;
+  }
+
+  nav.navbar .mobile-nav-panel .nav-links a {
+    display: block;
+    width: 100%;
+    padding: 11px 12px;
+    border-radius: 8px;
+  }
+
+  nav.navbar .mobile-nav-panel .nav-spacer,
+  nav.navbar .mobile-nav-panel .nav-welcome,
+  nav.navbar .mobile-nav-panel .nav-badge {
+    display: none !important;
+  }
+
+  nav.navbar .mobile-nav-panel #learnit-theme-toggle,
+  nav.navbar .mobile-nav-panel .nav-logout,
+  nav.navbar .mobile-nav-panel .logout-btn,
+  nav.navbar .mobile-nav-panel .nav-cta,
+  nav.navbar .mobile-nav-panel .logout {
+    align-self: flex-start;
+    min-height: 40px;
+    margin-top: 4px;
+    padding: 8px 12px;
+  }
+
+  nav.navbar .mobile-nav-panel :is(#notificationLink, .nav-icon-btn) {
+    align-self: flex-start;
+    margin: 4px 0;
+  }
+}
