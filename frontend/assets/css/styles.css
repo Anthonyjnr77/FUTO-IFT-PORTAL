@@ -567,7 +567,7 @@ html[data-theme="light"] body:has(.brand .brand-mark) .message.error {
   display: none;
 }
 
-@media (max-width: 900px) {
+@media (max-width: 680px) {
   nav.navbar {
     align-items: center !important;
     flex-wrap: wrap !important;
