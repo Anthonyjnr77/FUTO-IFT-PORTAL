@@ -371,9 +371,7 @@ async function handleSupabaseRequest(request, response) {
 
 function sendJson(response, statusCode, body) {
   const requestOrigin = requestContext.getStore()?.origin || responseOrigins.get(response) || '';
-  const allowedOrigin = CLIENT_ORIGINS.has(requestOrigin) || isLocalDevelopmentOrigin(requestOrigin)
-    ? requestOrigin
-    : CLIENT_URL;
+  const allowedOrigin = getAllowedClientOrigin(requestOrigin);
   response.writeHead(statusCode, {
     'Content-Type': 'application/json; charset=utf-8',
     'Access-Control-Allow-Origin': allowedOrigin,
@@ -382,6 +380,10 @@ function sendJson(response, statusCode, body) {
     'Access-Control-Allow-Methods': 'GET, POST, DELETE, OPTIONS'
   });
   response.end(JSON.stringify(body));
+}
+
+function getAllowedClientOrigin(origin) {
+  return CLIENT_ORIGINS.has(origin) || isLocalDevelopmentOrigin(origin) ? origin : CLIENT_URL;
 }
 
 function isLocalDevelopmentOrigin(origin) {
@@ -1285,7 +1287,11 @@ async function handleRequest(request, response) {
       'Content-Type': material.contentType,
       'Content-Length': fileBuffer.length,
       'Content-Disposition': `attachment; filename*=UTF-8''${encodeURIComponent(material.fileName)}`,
-      'Cache-Control': 'private, no-store'
+      'Cache-Control': 'private, no-store',
+      'Access-Control-Allow-Origin': getAllowedClientOrigin(requestContext.getStore()?.origin || responseOrigins.get(response) || ''),
+      'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+      'Access-Control-Allow-Methods': 'GET, POST, DELETE, OPTIONS',
+      'Vary': 'Origin'
     });
     return response.end(fileBuffer);
   }

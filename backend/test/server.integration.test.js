@@ -344,6 +344,19 @@ test('admin can create lecturer accounts without granting students lecturer acce
   assert.ok(listedPdf);
   assert.equal(listedPdf.searchText, undefined);
 
+  const downloadedAdminPdf = await fetch(
+    `${baseUrl}/api/materials/${encodeURIComponent(uploadedStudentPdf.body.material.id)}/download`,
+    {
+      headers: {
+        Authorization: `Bearer ${studentRegistration.body.token}`,
+        Origin: 'http://localhost:4173'
+      }
+    }
+  );
+  assert.equal(downloadedAdminPdf.status, 200);
+  assert.equal(downloadedAdminPdf.headers.get('access-control-allow-origin'), 'http://localhost:4173');
+  assert.match(Buffer.from(await downloadedAdminPdf.arrayBuffer()).toString('ascii'), /^%PDF-/);
+
   const courseMaterial = await requestJson(baseUrl, '/api/lecturer/materials', {
     method: 'POST',
     token: lecturerLogin.body.token,
