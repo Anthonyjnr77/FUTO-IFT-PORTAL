@@ -20,10 +20,11 @@
     * { box-sizing: border-box; }
     body { margin: 0; min-height: 100vh; font-family: 'Inter', system-ui, sans-serif; background: var(--learn-page-bg); color: var(--learn-page-text); }
     a { text-decoration: none; }
-    .navbar { position: sticky; top: 0; z-index: 50; min-height: 68px; display: flex; align-items: center; flex-wrap: wrap; gap: 12px; padding: 12px 18px; background: rgba(11,28,58,.94); box-shadow: 0 8px 24px rgba(11,28,58,.18); }
+    .navbar { position: sticky; top: 0; z-index: 50; min-height: 68px; display: flex; align-items: center; flex-wrap: wrap; gap: 12px; padding: 12px 18px; background: linear-gradient(110deg, #102750, #123a56 72%, #0d665f); border-bottom: 1px solid rgba(255,255,255,.12); backdrop-filter: blur(12px); box-shadow: 0 8px 24px rgba(11,28,58,.18); }
+    .navbar .learnit-brand { flex-shrink: 0; }
     .nav-links { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin-right: auto; }
-    .nav-links a { padding: 8px 10px; border-radius: 9px; color: rgba(255,255,255,.8); font-size: 13px; font-weight: 600; }
-    .nav-links a:hover, .nav-links a.active { background: rgba(20,184,166,.14); color: #fff; }
+    .nav-links a { padding: 8px 10px; border-radius: 999px; color: rgba(255,255,255,.8); font-size: 13px; font-weight: 600; transition: all .2s ease; }
+    .nav-links a:hover, .nav-links a.active { background: rgba(255,255,255,.13); color: #fff; }
     .nav-spacer { flex: 1; }
     .nav-welcome { color: rgba(255,255,255,.62); font-size: 12px; }
     .nav-welcome strong { color: #fff; }
@@ -71,10 +72,13 @@
     html[data-theme="dark"] .learning-path { box-shadow: none; }
     html[data-theme="dark"] .video-link { background: #123c42; color: #99f6e4; }
     html[data-theme="dark"] .video-link:hover { background: #155e63; }
-    @media (max-width: 760px) {
-      .navbar { padding: 10px 14px; }
-      .nav-links { width: 100%; }
+    @media (max-width: 680px) {
+      .navbar { padding: 8px 14px; }
+    }
+    @media (max-width: 600px) {
       .nav-welcome, .nav-badge { display: none; }
+    }
+    @media (max-width: 760px) {
       .page { padding: 22px 14px 36px; }
       .hero { align-items: flex-start; flex-direction: column; padding: 24px 20px; }
     }
