@@ -52,6 +52,7 @@
     .editor-tab:hover { color: rgba(255,255,255,.7); background: rgba(255,255,255,.03); }
     .editor-tab.active { color: #fff; border-bottom-color: #14b8a6; background: rgba(20,184,166,.05); }
     .editor-tab .tab-dot { width: 7px; height: 7px; border-radius: 50%; }
+    .language-hint { padding: 7px 12px; background: rgba(20,184,166,.08); border-bottom: 1px solid rgba(255,255,255,.06); color: rgba(255,255,255,.56); font-size: 11px; }
 
     /* CODE AREA */
     .code-wrap { flex: 1; position: relative; overflow: hidden; }
@@ -108,6 +109,8 @@
     .preview-frame { width: 100%; height: 100%; border: none; background: #fff; }
     .preview-placeholder { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; background: #fff; color: #94a3b8; font-size: 13px; }
     .preview-placeholder-icon { font-size: 36px; }
+    .preview-placeholder.python-output { display: block; overflow: auto; padding: 20px; color: #172033; font: 13px/1.6 Consolas, 'Courier New', monospace; white-space: pre-wrap; overflow-wrap: anywhere; }
+    .preview-placeholder.python-error { color: #b42318; }
 
     /* TOGGLE PREVIEW BTN */
     .toggle-preview-btn { position: fixed; bottom: 20px; right: 20px; z-index: 20; background: #0b1c3a; border: 1px solid rgba(20,184,166,.3); color: #14b8a6; padding: 9px 16px; border-radius: 20px; font-size: 12px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 7px; box-shadow: 0 4px 16px rgba(0,0,0,.4); transition: all .2s; }
@@ -174,6 +177,9 @@
           <button class="editor-tab" data-panel="jsPanel" onclick="switchTab(this, 'jsPanel')">
             <div class="tab-dot" style="background:#f7df1e"></div> JavaScript
           </button>
+          <button class="editor-tab" data-panel="pythonPanel" onclick="switchTab(this, 'pythonPanel')">
+            <div class="tab-dot" style="background:#3776ab"></div> Python
+          </button>
         </div>
 
         <!-- CODE PANELS -->
@@ -190,13 +196,18 @@
             <div class="line-numbers" id="jsLines"></div>
             <textarea class="code-textarea" id="jsCode" placeholder="// Write your JavaScript here" spellcheck="false"></textarea>
           </div>
+          <div class="code-panel" id="pythonPanel">
+            <div class="line-numbers" id="pythonLines"></div>
+            <textarea class="code-textarea" id="pythonCode" placeholder="# Write your Python here" spellcheck="false"></textarea>
+          </div>
         </div>
 
         <!-- TOOLBAR -->
         <div class="toolbar">
-          <button class="toolbar-btn btn-run" onclick="runCode()">
+          <button class="toolbar-btn btn-run" id="runButton" onclick="runCode()">
             <i class="fas fa-play"></i> Run
           </button>
+          <span class="language-hint" id="languageHint" hidden>Python runs in your browser. First run downloads the Python runtime; your code stays on this device.</span>
           <div class="toolbar-sep"></div>
           <select class="template-select" id="templateSelect" onchange="loadTemplate(this.value)">
             <option value="">Load Template...</option>
@@ -210,7 +221,7 @@
             <option value="calculator">Calculator App</option>
           </select>
           <div class="toolbar-sep"></div>
-          <button class="toolbar-btn btn-format" onclick="formatCode()">
+          <button class="toolbar-btn btn-format" id="btnFormat" onclick="formatCode()">
             <i class="fas fa-magic"></i> Format
           </button>
           <button class="toolbar-btn" id="btnSave" onclick="saveCode()">
@@ -246,7 +257,7 @@
       <div class="preview-panel" id="previewPanel">
         <div class="preview-header">
           <div class="preview-title">
-            <div class="preview-status"></div> Live Preview
+          <div class="preview-status"></div> <span id="previewTitleText">Live Preview</span>
           </div>
           <div class="preview-actions">
             <div class="preview-btn" title="Refresh" onclick="runCode()"><i class="fas fa-sync-alt"></i></div>
@@ -322,6 +333,11 @@
     var saveDraftTimeout = null;
     var previewVisible = true;
     var currentTabPanel = 'htmlPanel';
+    var pythonWorker = null;
+    var pythonRunTimeout = null;
+    var pythonRunId = 0;
+    var pythonOutputReceived = false;
+    var defaultPythonCode = 'print("Hello from Python, LearnIT!")\n';
 
     /* ===== TAB SWITCHING ===== */
     function switchTab(btn, panelId) {
@@ -331,12 +347,27 @@
       document.getElementById(panelId).classList.add('active');
       currentTabPanel = panelId;
       updateLineNumbers(panelId);
+      var isPython = panelId === 'pythonPanel';
+      document.getElementById('languageHint').hidden = !isPython;
+      document.getElementById('runButton').innerHTML = isPython
+        ? '<i class="fas fa-play"></i> Run Python'
+        : '<i class="fas fa-play"></i> Run';
+      document.getElementById('templateSelect').disabled = isPython;
+      document.getElementById('btnFormat').disabled = isPython;
+      document.getElementById('autoRun').disabled = isPython;
+      document.getElementById('previewTitleText').textContent = isPython ? 'Python Output' : 'Live Preview';
+      document.getElementById('previewPlaceholder').classList.toggle('python-output', isPython);
+      document.getElementById('previewPlaceholder').classList.remove('python-error');
+      if (!isPython) {
+        if (document.getElementById('previewFrame').srcdoc) runCode();
+        else resetPreviewPlaceholder();
+      }
     }
 
     /* ===== LINE NUMBERS ===== */
     function updateLineNumbers(panelId) {
-      var textareaMap = { htmlPanel: 'htmlCode', cssPanel: 'cssCode', jsPanel: 'jsCode' };
-      var linesMap    = { htmlPanel: 'htmlLines', cssPanel: 'cssLines', jsPanel: 'jsLines' };
+      var textareaMap = { htmlPanel: 'htmlCode', cssPanel: 'cssCode', jsPanel: 'jsCode', pythonPanel: 'pythonCode' };
+      var linesMap    = { htmlPanel: 'htmlLines', cssPanel: 'cssLines', jsPanel: 'jsLines', pythonPanel: 'pythonLines' };
       var ta = document.getElementById(textareaMap[panelId]);
       var ln = document.getElementById(linesMap[panelId]);
       if (!ta || !ln) return;
@@ -347,8 +378,8 @@
     }
 
     function syncScroll(panelId) {
-      var textareaMap = { htmlPanel: 'htmlCode', cssPanel: 'cssCode', jsPanel: 'jsCode' };
-      var linesMap    = { htmlPanel: 'htmlLines', cssPanel: 'cssLines', jsPanel: 'jsLines' };
+      var textareaMap = { htmlPanel: 'htmlCode', cssPanel: 'cssCode', jsPanel: 'jsCode', pythonPanel: 'pythonCode' };
+      var linesMap    = { htmlPanel: 'htmlLines', cssPanel: 'cssLines', jsPanel: 'jsLines', pythonPanel: 'pythonLines' };
       var ta = document.getElementById(textareaMap[panelId]);
       var ln = document.getElementById(linesMap[panelId]);
       if (ta && ln) ln.scrollTop = ta.scrollTop;
@@ -356,6 +387,10 @@
 
     /* ===== RUN CODE ===== */
     function runCode() {
+      if (currentTabPanel === 'pythonPanel') {
+        runPythonCode();
+        return;
+      }
       var html = document.getElementById('htmlCode').value;
       var css  = document.getElementById('cssCode').value;
       var js   = document.getElementById('jsCode').value;
@@ -393,6 +428,90 @@
       addConsoleLog('Code executed successfully', 'info');
     }
 
+    function setPythonOutput(text, isError, append) {
+      var frame = document.getElementById('previewFrame');
+      var output = document.getElementById('previewPlaceholder');
+      frame.style.display = 'none';
+      output.style.display = 'block';
+      output.classList.add('python-output');
+      output.classList.toggle('python-error', Boolean(isError));
+      if (append) output.textContent += text;
+      else output.textContent = text || 'Python ran successfully with no output.';
+    }
+
+    function resetPreviewPlaceholder() {
+      var output = document.getElementById('previewPlaceholder');
+      output.classList.remove('python-output', 'python-error');
+      output.innerHTML = '<div class="preview-placeholder-icon">🖥️</div><div>Write some code and click <strong>Run</strong> to see the preview</div>';
+    }
+
+    function stopPythonWorker() {
+      if (pythonRunTimeout) clearTimeout(pythonRunTimeout);
+      pythonRunTimeout = null;
+      if (pythonWorker) pythonWorker.terminate();
+      pythonWorker = null;
+      document.getElementById('runButton').disabled = false;
+    }
+
+    function runPythonCode() {
+      stopPythonWorker();
+      clearConsole();
+      pythonOutputReceived = false;
+      setPythonOutput('Starting Python runtime…', false);
+      document.getElementById('runButton').disabled = true;
+      pythonRunId++;
+      var runId = pythonRunId;
+      pythonWorker = new Worker('/assets/js/python-runner.js');
+      pythonWorker.onmessage = function(event) {
+        var result = event.data || {};
+        if (result.runId !== runId) return;
+        if (result.type === 'ready') {
+          if (pythonRunTimeout) clearTimeout(pythonRunTimeout);
+          pythonRunTimeout = null;
+          setPythonOutput('Running Python…', false);
+          pythonRunTimeout = setTimeout(function() {
+            stopPythonWorker();
+            setPythonOutput('Execution stopped after 10 seconds. Check for an infinite loop or long-running operation.', true);
+            addConsoleLog('Python execution timed out after 10 seconds.', 'error');
+          }, 10000);
+          pythonWorker.postMessage({ type: 'run', runId: runId, code: document.getElementById('pythonCode').value });
+          return;
+        }
+        if (result.type === 'output') {
+          if (!pythonOutputReceived) {
+            setPythonOutput(result.text, false);
+            pythonOutputReceived = true;
+          } else {
+            setPythonOutput(result.text, false, true);
+          }
+          addConsoleLog(result.text, 'log');
+          return;
+        }
+        if (result.type === 'error') {
+          setPythonOutput(result.message, true);
+          addConsoleLog(result.message, 'error');
+          stopPythonWorker();
+          return;
+        }
+        if (result.type === 'complete') {
+          if (!pythonOutputReceived) setPythonOutput('', false);
+          stopPythonWorker();
+          addConsoleLog('Python execution completed.', 'info');
+        }
+      };
+      pythonWorker.onerror = function() {
+        setPythonOutput('Python could not start. Check your connection and try again.', true);
+        addConsoleLog('The Python runtime failed to load.', 'error');
+        stopPythonWorker();
+      };
+      pythonWorker.postMessage({ type: 'init', runId: runId });
+      pythonRunTimeout = setTimeout(function() {
+        stopPythonWorker();
+        setPythonOutput('Python took too long to start. Check your connection and try again.', true);
+        addConsoleLog('Python runtime startup timed out.', 'error');
+      }, 60000);
+    }
+
     /* ===== CONSOLE ===== */
     function addConsoleLog(msg, level) {
       var body = document.getElementById('consoleBody');
@@ -402,7 +521,14 @@
       var line = document.createElement('div');
       line.className = 'console-line ' + (level || 'log');
       var prefix = level === 'error' ? '✖' : level === 'warn' ? '⚠' : level === 'info' ? 'ℹ' : '›';
-      line.innerHTML = '<span class="prefix">' + prefix + '</span><span class="text">' + msg + '</span>';
+      var prefixElement = document.createElement('span');
+      prefixElement.className = 'prefix';
+      prefixElement.textContent = prefix;
+      var textElement = document.createElement('span');
+      textElement.className = 'text';
+      textElement.textContent = String(msg);
+      line.appendChild(prefixElement);
+      line.appendChild(textElement);
       body.appendChild(line);
       body.scrollTop = body.scrollHeight;
     }
@@ -456,6 +582,7 @@
         html: document.getElementById('htmlCode').value,
         css:  document.getElementById('cssCode').value,
         js:   document.getElementById('jsCode').value,
+        python: document.getElementById('pythonCode').value,
         updated: new Date().toISOString()
       };
       try {
@@ -475,7 +602,11 @@
         if (p.html) document.getElementById('htmlCode').value = p.html;
         if (p.css)  document.getElementById('cssCode').value  = p.css;
         if (p.js)   document.getElementById('jsCode').value   = p.js;
+        document.getElementById('pythonCode').value = Object.prototype.hasOwnProperty.call(p, 'python')
+          ? (typeof p.python === 'string' ? p.python : defaultPythonCode)
+          : defaultPythonCode;
         updateLineNumbers('htmlPanel'); updateLineNumbers('cssPanel'); updateLineNumbers('jsPanel');
+        updateLineNumbers('pythonPanel');
         addConsoleLog('Loaded saved draft (last updated: ' + (p.updated || '?') + ')', 'info');
         return true;
       } catch(e) { return false; }
@@ -487,14 +618,26 @@
       document.getElementById('htmlCode').value = '';
       document.getElementById('cssCode').value  = '';
       document.getElementById('jsCode').value   = '';
+      document.getElementById('pythonCode').value = '';
       document.getElementById('previewFrame').style.display  = 'none';
-      document.getElementById('previewPlaceholder').style.display = 'block';
+      stopPythonWorker();
+      var output = document.getElementById('previewPlaceholder');
+      output.style.display = 'block';
+      if (currentTabPanel === 'pythonPanel') setPythonOutput('', false);
+      else resetPreviewPlaceholder();
       updateLineNumbers('htmlPanel');
+      updateLineNumbers('cssPanel');
+      updateLineNumbers('jsPanel');
+      updateLineNumbers('pythonPanel');
       clearConsole();
     }
 
     /* ===== OPEN IN NEW TAB ===== */
     function openInNewTab() {
+      if (currentTabPanel === 'pythonPanel') {
+        addConsoleLog('Python output is shown in the Output panel.', 'info');
+        return;
+      }
       var html = document.getElementById('htmlCode').value;
       var css  = document.getElementById('cssCode').value;
       var js   = document.getElementById('jsCode').value;
@@ -611,9 +754,14 @@
       updateLineNumbers('htmlPanel');
       updateLineNumbers('cssPanel');
       updateLineNumbers('jsPanel');
+      updateLineNumbers('pythonPanel');
       // attempt to load a saved draft for the user, otherwise load the default template
       var hadDraft = loadDraft();
-      if (!hadDraft) loadTemplate('hello');
+      if (!hadDraft) {
+        document.getElementById('pythonCode').value = defaultPythonCode;
+        updateLineNumbers('pythonPanel');
+        loadTemplate('hello');
+      }
     });
 
     window.addEventListener('load', function() {
