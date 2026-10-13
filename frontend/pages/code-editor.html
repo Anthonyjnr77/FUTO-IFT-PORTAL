@@ -32,9 +32,10 @@
     .nav-sep { color: rgba(255,255,255,.15); }
     .nav-title { font-size: 13px; font-weight: 700; color: #fff; display: flex; align-items: center; gap: 7px; }
     .nav-spacer { flex: 1; }
-    .navbar > div:first-child { display:flex !important; align-items:center; gap:8px !important; flex-wrap:wrap; margin-right:auto; }
-    .navbar > div:first-child a { color:rgba(255,255,255,.8) !important; padding:8px 10px; border-radius:9px; font-size:13px; font-weight:600; white-space:nowrap; }
-    .navbar > div:first-child a:hover, .navbar > div:first-child a[href="code-editor.html"] { background:rgba(20,184,166,.12); color:#fff !important; }
+    .navbar > .nav-links { display:flex; align-items:center; gap:4px; flex:1 1 auto; flex-wrap:wrap; min-width:0; margin-right:auto; }
+    .navbar > .nav-links a { color:rgba(255,255,255,.8); padding:7px 8px; border-radius:9px; font-size:12px; font-weight:600; text-decoration:none; white-space:nowrap; }
+    .navbar > .nav-links a:hover, .navbar > .nav-links a.active { background:rgba(20,184,166,.12); color:#fff; }
+    .navbar .learnit-brand { flex-shrink:0; }
     .nav-hint { font-size: 11px; color: rgba(255,255,255,.25); }
     .nav-btn { width: 30px; height: 30px; border-radius: 7px; background: rgba(255,255,255,.07); border: 1px solid rgba(255,255,255,.1); color: rgba(255,255,255,.5); display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 12px; transition: all .2s; }
     .nav-btn:hover { background: rgba(255,255,255,.12); color: #fff; }
@@ -142,23 +143,23 @@
 
     <!-- NAVBAR -->
     <nav class="navbar">
-      <div style="display:flex;gap:12px;align-items:center">
-        <a href="dashboard.html" style="color:#fff;text-decoration:none;font-weight:700">Home</a>
-        <a href="my-courses.html" style="color:#fff;text-decoration:none">My Courses</a>
-        <a href="profile.html" style="color:#fff;text-decoration:none">Profile</a>
-        <a href="course-materials.html" style="color:#fff;text-decoration:none">Materials</a>
-        <a href="quiz.html" style="color:#fff;text-decoration:none">Quiz</a>
-        <a href="assignments.html" style="color:#fff;text-decoration:none">Assignments</a>
-        <a href="code-editor.html" style="color:#fff;text-decoration:none">Code Lab</a>
-        <a href="learn-to-code.html" style="color:#fff;text-decoration:none">Learn to Code</a>
-        <a href="timetable.html" style="color:#fff;text-decoration:none">Timetable</a>
-        <a href="notifications.html" style="color:#fff;text-decoration:none">Notifications</a>
-        <a href="leaderboard.html" style="color:#fff;text-decoration:none">Leaderboard</a>
+      <div class="nav-links">
+        <a href="dashboard.html">Home</a>
+        <a href="my-courses.html">My Courses</a>
+        <a href="profile.html">Profile</a>
+        <a href="course-materials.html">Materials</a>
+        <a href="quiz.html">Quiz</a>
+        <a href="assignments.html">Assignments</a>
+        <a href="code-editor.html" class="active" aria-current="page">Code Lab</a>
+        <a href="learn-to-code.html">Learn to Code</a>
+        <a href="timetable.html">Timetable</a>
+        <a href="notifications.html">Notifications</a>
+        <a href="leaderboard.html">Leaderboard</a>
       </div>
       <div class="nav-spacer"></div>
       <span class="nav-hint"><i class="fas fa-keyboard" style="margin-right:4px"></i>Ctrl+Enter to Run</span>
-      <div class="nav-btn" id="btnFullscreen" title="Fullscreen" onclick="toggleFullscreen()"><i class="fas fa-expand"></i></div>
-      <div class="nav-btn" title="Settings" onclick="toggleSettings()"><i class="fas fa-cog"></i></div>
+      <button class="nav-btn" id="btnFullscreen" type="button" title="Fullscreen" aria-label="Toggle fullscreen" onclick="toggleFullscreen()"><i class="fas fa-expand" aria-hidden="true"></i></button>
+      <button class="nav-btn" type="button" title="Settings" aria-label="Open settings" onclick="toggleSettings()"><i class="fas fa-cog" aria-hidden="true"></i></button>
     </nav>
 
     <!-- MAIN -->
