@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Beginner video tutorials for learning HTML, CSS, JavaScript, and Python with LearnIT.">
+  <title>Learn How to Code | LearnIT</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link rel="stylesheet" href="/assets/css/styles.css">
+  <script src="/assets/js/theme.js"></script>
+  <style>
+    :root {
+      --learn-page-bg: #f0f4f8;
+      --learn-page-surface: #fff;
+      --learn-page-text: #1e293b;
+      --learn-page-heading: #0b1c3a;
+      --learn-page-muted: #64748b;
+      --learn-page-border: #e2e8f0;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; min-height: 100vh; font-family: 'Inter', system-ui, sans-serif; background: var(--learn-page-bg); color: var(--learn-page-text); }
+    a { text-decoration: none; }
+    .navbar { position: sticky; top: 0; z-index: 50; min-height: 68px; display: flex; align-items: center; flex-wrap: wrap; gap: 12px; padding: 12px 18px; background: rgba(11,28,58,.94); box-shadow: 0 8px 24px rgba(11,28,58,.18); }
+    .nav-links { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin-right: auto; }
+    .nav-links a { padding: 8px 10px; border-radius: 9px; color: rgba(255,255,255,.8); font-size: 13px; font-weight: 600; }
+    .nav-links a:hover, .nav-links a.active { background: rgba(20,184,166,.14); color: #fff; }
+    .nav-spacer { flex: 1; }
+    .nav-welcome { color: rgba(255,255,255,.62); font-size: 12px; }
+    .nav-welcome strong { color: #fff; }
+    .nav-badge { padding: 4px 12px; border: 1px solid rgba(20,184,166,.3); border-radius: 20px; color: #5eead4; font-size: 11px; }
+    .nav-logout { display: flex; align-items: center; gap: 5px; border: 0; background: none; color: rgba(255,255,255,.7); font-size: 12px; cursor: pointer; }
+    .nav-logout:hover { color: #fff; }
+    .page { width: min(1100px, 100%); margin: 0 auto; padding: 34px 20px 48px; }
+    .hero { display: flex; align-items: center; justify-content: space-between; gap: 24px; padding: 30px; border: 1px solid var(--learn-page-border); border-radius: 20px; background: linear-gradient(125deg, #0b1c3a, #124660); color: #fff; }
+    .hero-copy { max-width: 650px; }
+    .eyebrow { display: inline-flex; align-items: center; gap: 8px; color: #5eead4; font-size: 12px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; }
+    .hero h1 { margin: 12px 0 8px; font-size: clamp(1.8rem, 4vw, 2.7rem); line-height: 1.12; }
+    .hero p { margin: 0; color: rgba(255,255,255,.78); line-height: 1.7; }
+    .hero-action, .video-link { display: inline-flex; align-items: center; justify-content: center; gap: 8px; border-radius: 10px; font-weight: 700; }
+    .hero-action { flex: 0 0 auto; padding: 12px 16px; background: #14b8a6; color: #062a36; }
+    .hero-action:hover { background: #5eead4; }
+    .section-heading { margin: 32px 0 16px; }
+    .section-heading h2 { margin: 0; color: var(--learn-page-heading); font-size: 1.35rem; }
+    .section-heading p { margin: 6px 0 0; color: var(--learn-page-muted); font-size: 14px; }
+    .language-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+    .language-card { display: flex; flex-direction: column; min-height: 230px; padding: 22px; border: 1px solid var(--learn-page-border); border-radius: 16px; background: var(--learn-page-surface); box-shadow: 0 8px 24px rgba(15,23,42,.05); }
+    .language-heading { display: flex; align-items: center; gap: 12px; }
+    .language-icon { display: grid; width: 44px; height: 44px; flex: 0 0 44px; place-items: center; border-radius: 12px; font-size: 22px; }
+    .html-icon { background: #fff0e8; color: #e34c26; }
+    .css-icon { background: #edf1ff; color: #264de4; }
+    .js-icon { background: #fff9db; color: #a87900; }
+    .python-icon { background: #eaf3ff; color: #3776ab; }
+    .language-heading h3 { margin: 0; color: var(--learn-page-heading); font-size: 1.08rem; }
+    .level { display: inline-block; margin-top: 5px; color: var(--learn-page-muted); font-size: 12px; }
+    .language-card p { margin: 16px 0 20px; color: var(--learn-page-muted); font-size: 14px; line-height: 1.6; }
+    .video-link { align-self: flex-start; margin-top: auto; padding: 10px 13px; background: #e7f7f5; color: #08766f; font-size: 13px; }
+    .video-link:hover { background: #c9f1eb; }
+    .watch-note { margin: 16px 0 0; color: var(--learn-page-muted); font-size: 12px; }
+    .learning-path { margin-top: 30px; padding: 22px; border: 1px solid var(--learn-page-border); border-radius: 16px; background: var(--learn-page-surface); }
+    .learning-path h2 { margin: 0 0 8px; color: var(--learn-page-heading); font-size: 1.1rem; }
+    .learning-path p { margin: 0; color: var(--learn-page-muted); font-size: 14px; line-height: 1.7; }
+    html[data-theme="dark"] {
+      --learn-page-bg: #0b1220;
+      --learn-page-surface: #111c2e;
+      --learn-page-text: #e2e8f0;
+      --learn-page-heading: #f1f5f9;
+      --learn-page-muted: #a3b2c7;
+      --learn-page-border: #334155;
+    }
+    html[data-theme="dark"] .language-card,
+    html[data-theme="dark"] .learning-path { box-shadow: none; }
+    html[data-theme="dark"] .video-link { background: #123c42; color: #99f6e4; }
+    html[data-theme="dark"] .video-link:hover { background: #155e63; }
+    @media (max-width: 760px) {
+      .navbar { padding: 10px 14px; }
+      .nav-links { width: 100%; }
+      .nav-welcome, .nav-badge { display: none; }
+      .page { padding: 22px 14px 36px; }
+      .hero { align-items: flex-start; flex-direction: column; padding: 24px 20px; }
+    }
+    @media (max-width: 540px) {
+      .language-grid { grid-template-columns: 1fr; }
+      .language-card { min-height: 0; }
+      .hero-action { width: 100%; }
+    }
+  </style>
+</head>
+<body>
+  <nav class="navbar">
+    <div class="nav-links">
+      <a href="dashboard.html">Home</a>
+      <a href="my-courses.html">My Courses</a>
+      <a href="profile.html">Profile</a>
+      <a href="course-materials.html">Materials</a>
+      <a href="quiz.html">Quiz</a>
+      <a href="assignments.html">Assignments</a>
+      <a href="code-editor.html">Code Lab</a>
+      <a href="learn-to-code.html" class="active" aria-current="page">Learn to Code</a>
+      <a href="timetable.html">Timetable</a>
+      <a href="notifications.html">Notifications</a>
+      <a href="leaderboard.html">Leaderboard</a>
+    </div>
+    <div class="nav-spacer"></div>
+    <span class="nav-welcome">Welcome, <strong id="navName">Student</strong></span>
+    <span class="nav-badge" id="navMatric">MAT/XXXX</span>
+    <button class="nav-logout" type="button" onclick="window.Auth && window.Auth.logout()">
+      <i class="fas fa-sign-out-alt" aria-hidden="true"></i> Logout
+    </button>
+  </nav>
+
+  <main class="page">
+    <section class="hero" aria-labelledby="pageTitle">
+      <div class="hero-copy">
+        <span class="eyebrow"><i class="fas fa-graduation-cap" aria-hidden="true"></i> Beginner learning path</span>
+        <h1 id="pageTitle">Learn how to code</h1>
+        <p>Choose a language to get started. Each guide opens a beginner-friendly video lesson, and you can practise what you learn in the Code Lab.</p>
+      </div>
+      <a class="hero-action" href="code-editor.html"><i class="fas fa-code" aria-hidden="true"></i> Open Code Lab</a>
+    </section>
+
+    <section aria-labelledby="languageHeading">
+      <div class="section-heading">
+        <h2 id="languageHeading">Choose a language</h2>
+        <p>Start with one language, then practise a small example in the Code Lab.</p>
+      </div>
+
+      <div class="language-grid">
+        <article class="language-card">
+          <div class="language-heading">
+            <span class="language-icon html-icon" aria-hidden="true"><i class="fab fa-html5"></i></span>
+            <div><h3>HTML</h3><span class="level">Beginner · Build the page structure</span></div>
+          </div>
+          <p>Learn how headings, links, images, forms, and other elements give a web page its structure.</p>
+          <a class="video-link" href="https://www.youtube.com/watch?v=pQN-pnXPaVg" target="_blank" rel="noopener noreferrer">
+            <i class="fab fa-youtube" aria-hidden="true"></i> Watch HTML full course <i class="fas fa-arrow-up-right-from-square" aria-hidden="true"></i>
+          </a>
+        </article>
+
+        <article class="language-card">
+          <div class="language-heading">
+            <span class="language-icon css-icon" aria-hidden="true"><i class="fab fa-css3-alt"></i></span>
+            <div><h3>CSS</h3><span class="level">Beginner · Style your pages</span></div>
+          </div>
+          <p>Explore selectors, colours, spacing, layouts, and responsive styles to make pages clear and attractive.</p>
+          <a class="video-link" href="https://www.youtube.com/watch?v=OXGznpKZ_sA" target="_blank" rel="noopener noreferrer">
+            <i class="fab fa-youtube" aria-hidden="true"></i> Watch CSS full course <i class="fas fa-arrow-up-right-from-square" aria-hidden="true"></i>
+          </a>
+        </article>
+
+        <article class="language-card">
+          <div class="language-heading">
+            <span class="language-icon js-icon" aria-hidden="true"><i class="fab fa-js"></i></span>
+            <div><h3>JavaScript</h3><span class="level">Beginner · Add interaction</span></div>
+          </div>
+          <p>Learn variables, functions, conditions, and events to make web pages respond to what people do.</p>
+          <a class="video-link" href="https://www.youtube.com/watch?v=PkZNo7MFNFg" target="_blank" rel="noopener noreferrer">
+            <i class="fab fa-youtube" aria-hidden="true"></i> Watch JavaScript full course <i class="fas fa-arrow-up-right-from-square" aria-hidden="true"></i>
+          </a>
+        </article>
+
+        <article class="language-card">
+          <div class="language-heading">
+            <span class="language-icon python-icon" aria-hidden="true"><i class="fab fa-python"></i></span>
+            <div><h3>Python</h3><span class="level">Beginner · Write your first programs</span></div>
+          </div>
+          <p>Start with print statements, variables, data types, conditions, loops, and functions.</p>
+          <a class="video-link" href="https://www.youtube.com/watch?v=rfscVS0vtbw" target="_blank" rel="noopener noreferrer">
+            <i class="fab fa-youtube" aria-hidden="true"></i> Watch Python full course <i class="fas fa-arrow-up-right-from-square" aria-hidden="true"></i>
+          </a>
+        </article>
+      </div>
+      <p class="watch-note">Video lessons are hosted on YouTube and open in a new tab.</p>
+    </section>
+
+    <section class="learning-path" aria-labelledby="practiceHeading">
+      <h2 id="practiceHeading">Learn a little, then practise</h2>
+      <p>For web lessons, try what you learned in the HTML, CSS, and JavaScript tabs. For Python, use the Python tab and press <strong>Run Python</strong> to see your output.</p>
+    </section>
+  </main>
+
+  <script src="/assets/js/api-config.js"></script>
+  <script src="/assets/js/auth-utils.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      var user = window.Auth ? window.Auth.protect() : null;
+      if (!user) return;
+      if (user.role === 'lecturer') {
+        window.location.href = 'lecturer-dashboard.html';
+        return;
+      }
+      if (window.Auth.updateNav) window.Auth.updateNav();
+    });
+  </script>
+</body>
+</html>

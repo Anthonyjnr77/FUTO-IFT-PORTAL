@@ -47,6 +47,10 @@
       "destination": "/pages/leaderboard.html"
     },
     {
+      "source": "/learn-to-code.html",
+      "destination": "/pages/learn-to-code.html"
+    },
+    {
       "source": "/lecturer-assignments.html",
       "destination": "/pages/lecturer-assignments.html"
     },
