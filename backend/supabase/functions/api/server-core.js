@@ -1040,8 +1040,20 @@ async function handleRequest(request, response) {
   if (request.method === 'GET' && pathname === '/api/announcements') {
     const user = authenticatedUser(request, database);
     if (!user) return sendJson(response, 401, { error: 'Authentication required.' });
+    const courseMap = new Map(database.taughtCourses.map(course => [course.id, course]));
     const announcements = database.courseAnnouncements
       .filter(item => user.role === 'lecturer' ? item.lecturerId === user.id : studentEnrolled(database, user.id, item.courseId))
+      .map(item => {
+        const course = courseMap.get(item.courseId) || {};
+        const courseCode = item.courseCode || course.courseCode || 'COURSE';
+        const courseTitle = item.courseTitle || course.courseTitle || 'Course announcement';
+        return {
+          ...item,
+          courseCode,
+          courseTitle,
+          courseLabel: `${courseCode} · ${courseTitle}`
+        };
+      })
       .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
     return sendJson(response, 200, { announcements });
   }
@@ -1058,7 +1070,7 @@ async function handleRequest(request, response) {
     }
     const announcement = {
       id: crypto.randomUUID(), lecturerId: user.id, lecturerName: user.name,
-      courseId: course.id, courseCode: course.courseCode,
+      courseId: course.id, courseCode: course.courseCode, courseTitle: course.courseTitle,
       title, body, createdAt: new Date().toISOString()
     };
     database.courseAnnouncements.unshift(announcement);

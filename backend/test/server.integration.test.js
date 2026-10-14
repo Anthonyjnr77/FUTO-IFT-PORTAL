@@ -361,6 +361,38 @@ test('admin can create lecturer accounts without granting students lecturer acce
   });
   assert.equal(enrolled.status, 200);
 
+  const postedAnnouncement = await requestJson(baseUrl, '/api/lecturer/announcements', {
+    method: 'POST',
+    token: lecturerLogin.body.token,
+    body: {
+      courseId: createdCourse.body.course.id,
+      title: 'Welcome to IFT 101',
+      body: 'The first lecture starts next week.'
+    }
+  });
+  assert.equal(postedAnnouncement.status, 201);
+  assert.equal(postedAnnouncement.body.announcement.courseCode, 'IFT 101');
+  assert.equal(postedAnnouncement.body.announcement.courseTitle, 'Introduction to Information Technology');
+
+  const studentAnnouncements = await requestJson(baseUrl, '/api/announcements', {
+    token: studentRegistration.body.token
+  });
+  const studentAnnouncement = studentAnnouncements.body.announcements.find(item =>
+    item.id === postedAnnouncement.body.announcement.id
+  );
+  assert.equal(studentAnnouncement.courseCode, 'IFT 101');
+  assert.equal(studentAnnouncement.courseTitle, 'Introduction to Information Technology');
+  assert.equal(studentAnnouncement.courseLabel, 'IFT 101 · Introduction to Information Technology');
+
+  const studentNotifications = await requestJson(baseUrl, '/api/notifications', {
+    token: studentRegistration.body.token
+  });
+  const announcementNotification = studentNotifications.body.notifications.find(item =>
+    item.referenceId === postedAnnouncement.body.announcement.id
+  );
+  assert.equal(announcementNotification.type, 'announcement');
+  assert.match(announcementNotification.body, /^IFT 101 · /);
+
   const deniedAdminPdfUpload = await requestJson(baseUrl, '/api/admin/materials', {
     method: 'POST',
     token: lecturerLogin.body.token,

@@ -45,6 +45,7 @@
     .notif-icon { flex-shrink:0; width:40px; height:40px; border-radius:12px; display:flex; align-items:center; justify-content:center; background: linear-gradient(135deg, rgba(13,148,136,.12), rgba(20,184,166,.18)); color: var(--teal); }
     .notif-content { flex:1; }
     .notif-title { font-size:15px; font-weight:700; color: var(--primary); margin-bottom:4px; }
+    .notif-course { color:var(--teal);font-size:11px;font-weight:700;margin-bottom:6px; }
     .notif-body { font-size:13px; color: var(--muted); line-height:1.5; }
     .notif-meta { font-size:11px; color:#94a3b8; margin-top:8px; }
     .notif-item.unread { border-left:3px solid var(--teal); }
@@ -128,7 +129,16 @@
         ]);
         backendNotifications = (results[0].notifications || []).filter(function(item) { return item.type !== 'announcement'; });
         courseAnnouncements = (results[1].announcements || []).map(function(item) {
-          return Object.assign({ source: 'content', type: 'announcement', date: item.createdAt }, item);
+          var courseCode = item.courseCode || item.course?.courseCode || 'COURSE';
+          var courseTitle = item.courseTitle || item.course?.courseTitle || 'Course announcement';
+          return Object.assign({}, item, {
+            source: 'content',
+            type: 'announcement',
+            date: item.createdAt,
+            courseCode: courseCode,
+            courseTitle: courseTitle,
+            courseLabel: courseCode + ' · ' + courseTitle
+          });
         });
       } catch (error) {
         el.appendChild(node('div', 'empty', error.message));
@@ -156,6 +166,8 @@
         iconWrap.appendChild(icon);
         var content = node('div', 'notif-content');
         content.appendChild(node('div', 'notif-title', n.title));
+        var courseLabel = n.courseLabel || [n.courseCode, n.courseTitle].filter(Boolean).join(' · ');
+        if (courseLabel) content.appendChild(node('div', 'notif-course', courseLabel));
         content.appendChild(node('div', 'notif-body', n.body));
         content.appendChild(node('div', 'notif-meta', new Date(n.createdAt || n.date).toLocaleString()));
         var actions = node('div', 'notif-actions');
