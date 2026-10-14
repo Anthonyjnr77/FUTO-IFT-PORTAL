@@ -75,6 +75,7 @@ Run the isolated Node API integration tests with `npm test` from `backend/`. The
 - `GET /api/health`
 - `POST /api/auth/register`
 - `POST /api/auth/login`
+- `PATCH /api/auth/profile` with a student token to update the student's name and level (`100`, `200`, `300`, `400`, or `500`)
 - `GET /api/admin/users`, `POST /api/admin/users`, and `POST /api/admin/users/:id/role|status` with an administrator token
 - `GET /api/admin/chat-intents`, `POST /api/admin/chat-intents`, and `POST|DELETE /api/admin/chat-intents/:id` with an administrator token
 - `GET /api/auth/me` with `Authorization: Bearer <token>`
