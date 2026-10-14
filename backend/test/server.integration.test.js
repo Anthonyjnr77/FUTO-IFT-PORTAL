@@ -627,9 +627,50 @@ test('admin can create lecturer accounts without granting students lecturer acce
     token: studentRegistration.body.token
   });
   assert.equal(prioritizedPredictions.status, 200);
-  assert.equal(prioritizedPredictions.body.recommendations[0].topicTag, 'Computer fundamentals');
-  assert.equal(prioritizedPredictions.body.recommendations[0].questionCount, 2);
-  assert.equal(prioritizedPredictions.body.recommendations[0].priority, true);
+  assert.deepEqual(prioritizedPredictions.body.availableYears, [currentYear, currentYear - 1]);
+  const computerFundamentals = prioritizedPredictions.body.recommendations.find(item => item.topicTag === 'Computer fundamentals');
+  assert.equal(computerFundamentals.questionCount, 2);
+  assert.equal(computerFundamentals.priority, true);
+  assert.equal(computerFundamentals.overdueReadingCount, 1);
+  assert.ok(computerFundamentals.priorityReasons.some(reason => reason.includes('overdue')));
+  assert.equal(computerFundamentals.materials[0].id, courseMaterial.body.material.id);
+  assert.equal(computerFundamentals.materials[0].status, 'in_progress');
+  assert.equal(computerFundamentals.materials[0].targetDate, yesterday);
+
+  const currentYearPredictions = await requestJson(
+    baseUrl,
+    `/api/student/exam-predictions?courseId=${encodeURIComponent(createdCourse.body.course.id)}&examYear=${currentYear}`,
+    { token: studentRegistration.body.token }
+  );
+  assert.equal(currentYearPredictions.status, 200);
+  assert.deepEqual(
+    currentYearPredictions.body.recommendations.map(item => item.topicTag).sort(),
+    ['Computer fundamentals', 'Number systems'].sort()
+  );
+  assert.equal(
+    currentYearPredictions.body.recommendations.find(item => item.topicTag === 'Computer fundamentals').questionCount,
+    2,
+    'frequency must include all years when a year filter is active'
+  );
+  assert.ok(currentYearPredictions.body.recommendations.every(item =>
+    item.questions.every(question => question.examYear === currentYear)
+  ));
+  const previousYearPredictions = await requestJson(
+    baseUrl,
+    `/api/student/exam-predictions?examYear=${currentYear - 1}`,
+    { token: studentRegistration.body.token }
+  );
+  assert.equal(previousYearPredictions.status, 200);
+  assert.deepEqual(previousYearPredictions.body.recommendations.map(item => item.topicTag), ['Computer fundamentals']);
+  assert.equal(previousYearPredictions.body.recommendations[0].questionCount, 2);
+  const invalidExamYear = await requestJson(baseUrl, '/api/student/exam-predictions?examYear=twenty', {
+    token: studentRegistration.body.token
+  });
+  assert.equal(invalidExamYear.status, 400);
+  const futureExamYear = await requestJson(baseUrl, '/api/student/exam-predictions?examYear=9999', {
+    token: studentRegistration.body.token
+  });
+  assert.equal(futureExamYear.status, 400);
 
   const completedReadingProgress = await requestJson(baseUrl, '/api/student/reading-progress', {
     method: 'POST',

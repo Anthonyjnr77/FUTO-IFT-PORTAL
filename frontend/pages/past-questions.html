@@ -15,19 +15,31 @@
     h1{margin:0 0 8px;color:var(--navy)}.intro{margin:0;color:var(--muted);line-height:1.6}
     .guide-note{margin:16px 0;padding:12px 14px;border:1px solid #bae6fd;border-radius:10px;background:#f0f9ff;color:#075985;font-size:13px;line-height:1.5}
     .notice{min-height:20px;margin:12px 0;color:#b42318;font-size:13px}
-    .topic-list{display:grid;gap:14px;margin-top:18px}
+    .filters{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-top:18px;padding:16px;background:#fff;border:1px solid var(--line);border-radius:12px}
+    .filter-field{display:grid;gap:6px}.filter-field label{color:#334155;font-size:12px;font-weight:750}
+    .filter-field select,.filter-field input{width:100%;min-height:42px;padding:9px 11px;border:1px solid #cbd5e1;border-radius:8px;background:#fff;color:#10213b;font:inherit;font-size:13px}
+    .filter-field select:focus,.filter-field input:focus{outline:3px solid #99f6e4;outline-offset:1px;border-color:#0d9488}
+    .filter-help,.result-count{margin:0;color:var(--muted);font-size:12px;line-height:1.5}.filter-help{grid-column:1/-1}
+    .topic-list{display:grid;gap:20px;margin-top:18px}
+    .course-group{display:grid;gap:12px}.course-heading{display:flex;justify-content:space-between;align-items:baseline;gap:10px;padding:0 2px}
+    .course-heading h2{margin:0;color:var(--navy);font-size:17px}.course-heading a,.material-link{color:#0f766e;font-size:12px;font-weight:750;text-decoration:none}
+    .course-heading a:hover,.material-link:hover{text-decoration:underline}
     .topic{padding:18px;background:#fff;border:1px solid var(--line);border-radius:12px;box-shadow:0 3px 12px #10213b08}
-    .topic.priority{border-left:4px solid #ef9f27}
+    .topic.priority{border-left:4px solid #ef9f27}.topic h3{margin:0;color:var(--navy);font-size:16px}
     .topic-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
-    .topic h2{margin:0;color:var(--navy);font-size:17px}.course{margin:5px 0;color:var(--muted);font-size:12px}
-    .frequency{white-space:nowrap;color:#0f766e;font-size:12px;font-weight:800}
+    .topic-title{display:grid;gap:8px}.frequency{white-space:nowrap;color:#0f766e;font-size:12px;font-weight:800}
+    .signals{display:flex;flex-wrap:wrap;gap:6px}.signal{padding:4px 8px;border-radius:999px;background:#f1f5f9;color:#475569;font-size:11px;font-weight:750}
+    .signal.urgent{background:#fff1f2;color:#be123c}.signal.mastery{background:#fff7ed;color:#9a3412}.signal.complete{background:#ecfdf5;color:#047857}
     .priority-reasons{margin:12px 0;padding:10px 12px;border-radius:8px;background:#fffbeb;color:#854d0e;font-size:12px;line-height:1.5}
+    .materials{display:grid;gap:8px;margin:12px 0;padding:12px;border:1px solid #e2e8f0;border-radius:9px;background:#f8fafc}
+    .materials h4{margin:0;color:#334155;font-size:12px}.material-row{display:flex;justify-content:space-between;align-items:center;gap:10px}
+    .material-title{min-width:0;color:#334155;font-size:12px;overflow-wrap:anywhere}.material-state{display:inline-block;margin-left:6px;color:#64748b;font-size:11px}
     .questions{margin-top:12px;border-top:1px solid #edf2f7}
     .question{padding:12px 0;border-bottom:1px solid #edf2f7}
     .question:last-child{border-bottom:0}.question p{margin:6px 0 0;line-height:1.55;font-size:14px}
     .year{color:var(--muted);font-size:11px;font-weight:700}
     .empty{padding:18px;border:1px dashed #cbd5e1;border-radius:10px;color:var(--muted);background:#fff;font-size:13px}
-    @media(max-width:580px){nav{padding:12px 16px}.topic{padding:14px}.topic-head{flex-direction:column}.frequency{white-space:normal}}
+    @media(max-width:580px){nav{padding:12px 16px}.filters{grid-template-columns:1fr}.filter-help{grid-column:auto}.topic{padding:14px}.topic-head,.course-heading,.material-row{align-items:flex-start;flex-direction:column}.frequency{white-space:normal}}
   </style>
 </head>
 <body>
@@ -37,6 +49,22 @@
     <p class="intro">Explore questions from previous exams and focus your revision on topics that appear more often.</p>
     <p class="guide-note">These rankings use questions uploaded by your lecturers and administrators, alongside your reading and quiz history. They are revision guidance only—not a prediction or guarantee of future exam questions.</p>
     <div id="notice" class="notice" role="alert" aria-live="polite"></div>
+    <section class="filters" aria-label="Filter revision topics">
+      <div class="filter-field">
+        <label for="courseFilter">Course</label>
+        <select id="courseFilter"><option value="">All enrolled courses</option></select>
+      </div>
+      <div class="filter-field">
+        <label for="yearFilter">Exam year</label>
+        <select id="yearFilter"><option value="">All exam years</option></select>
+      </div>
+      <div class="filter-field">
+        <label for="topicFilter">Find a topic</label>
+        <input id="topicFilter" type="search" placeholder="Search topic or course" autocomplete="off">
+      </div>
+      <p class="filter-help">Topic frequency counts questions across all uploaded years; choosing a year filters the examples shown, not that frequency.</p>
+    </section>
+    <p id="resultCount" class="result-count" aria-live="polite"></p>
     <section id="topicList" class="topic-list" aria-live="polite"><div class="empty">Loading your revision guide…</div></section>
   </main>
   <script src="/assets/js/api-config.js"></script>
@@ -44,7 +72,16 @@
   <script>
     var user = window.Auth.protect();
     var topicList = document.getElementById('topicList');
-    var requestedCourseId = new URLSearchParams(window.location.search).get('courseId');
+    var courseFilter = document.getElementById('courseFilter');
+    var yearFilter = document.getElementById('yearFilter');
+    var topicFilter = document.getElementById('topicFilter');
+    var resultCount = document.getElementById('resultCount');
+    var requestedCourseId = new URLSearchParams(window.location.search).get('courseId') || '';
+    var requestedExamYear = new URLSearchParams(window.location.search).get('examYear') || '';
+    var recommendations = [];
+    var availableYears = [];
+    var courseNames = new Map();
+    var requestSequence = 0;
 
     function element(tag, className, text) {
       var item = document.createElement(tag);
@@ -53,29 +90,137 @@
       return item;
     }
 
-    function renderRecommendations(recommendations) {
+    function setYearOptions(selectedYear) {
+      yearFilter.replaceChildren(element('option', '', 'All exam years'));
+      yearFilter.options[0].value = '';
+      availableYears.forEach(function(year) {
+        var option = element('option', '', String(year));
+        option.value = String(year);
+        yearFilter.appendChild(option);
+      });
+      yearFilter.value = availableYears.indexOf(Number(selectedYear)) !== -1 ? String(selectedYear) : '';
+    }
+
+    function topicOrder(a, b) {
+      function urgency(item) {
+        if (item.overdueReadingCount > 0) return 0;
+        if (item.latestScore !== null && item.latestScore !== undefined &&
+          item.passThreshold !== null && item.passThreshold !== undefined &&
+          item.latestScore < item.passThreshold) return 1;
+        if (item.nextTargetDate) return 2;
+        if ((item.materials || []).some(function(material) { return material.status !== 'completed'; })) return 3;
+        return 4;
+      }
+      return urgency(a) - urgency(b) ||
+        String(a.nextTargetDate || '9999-12-31').localeCompare(String(b.nextTargetDate || '9999-12-31')) ||
+        b.questionCount - a.questionCount ||
+        a.topicTag.localeCompare(b.topicTag);
+    }
+
+    function renderTopic(item) {
+      var card = element('article', 'topic' + (item.priority ? ' priority' : ''));
+      var head = element('div', 'topic-head');
+      var title = element('div', 'topic-title');
+      title.appendChild(element('h3', '', item.topicTag));
+      var signals = element('div', 'signals');
+      if (item.overdueReadingCount) signals.appendChild(element('span', 'signal urgent', item.overdueReadingCount + ' overdue reading target' + (item.overdueReadingCount === 1 ? '' : 's')));
+      if (item.latestScore !== null && item.latestScore !== undefined && item.passThreshold !== null &&
+        item.passThreshold !== undefined && item.latestScore < item.passThreshold) {
+        signals.appendChild(element('span', 'signal mastery', 'Quiz below mastery · ' + item.latestScore + '% / ' + item.passThreshold + '%'));
+      }
+      if (item.nextTargetDate && !item.overdueReadingCount) signals.appendChild(element('span', 'signal', 'Next reading target · ' + item.nextTargetDate));
+      if (!signals.childElementCount && (item.materials || []).length) signals.appendChild(element('span', 'signal complete', 'Tagged reading complete'));
+      title.appendChild(signals);
+      head.append(title, element('div', 'frequency', item.questionCount + ' question' + (item.questionCount === 1 ? '' : 's') + ' · ' + item.years.length + ' year' + (item.years.length === 1 ? '' : 's')));
+      card.appendChild(head);
+      if (item.priorityReasons.length) card.appendChild(element('p', 'priority-reasons', 'Why this may need attention: ' + item.priorityReasons.join(' ')));
+      if (item.materials && item.materials.length) {
+        var materials = element('section', 'materials');
+        materials.setAttribute('aria-label', 'Tagged course reading');
+        materials.appendChild(element('h4', '', 'Tagged course reading'));
+        item.materials.forEach(function(material) {
+          var row = element('div', 'material-row');
+          var copy = element('div', 'material-title');
+          copy.appendChild(element('strong', '', material.title));
+          copy.appendChild(element('span', 'material-state', material.status.replace(/_/g, ' ') +
+            (material.targetDate ? ' · target ' + material.targetDate : '')));
+          var link = element('a', 'material-link', 'Open material');
+          link.href = 'course.html?id=' + encodeURIComponent(item.courseId) + '#materialList';
+          row.append(copy, link);
+          materials.appendChild(row);
+        });
+        card.appendChild(materials);
+      }
+      var questions = element('div', 'questions');
+      item.questions.forEach(function(question) {
+        var row = element('article', 'question');
+        row.append(element('span', 'year', 'Past question · ' + question.examYear), element('p', '', question.questionText));
+        questions.appendChild(row);
+      });
+      card.appendChild(questions);
+      return card;
+    }
+
+    function renderRecommendations() {
       topicList.replaceChildren();
-      if (!recommendations.length) {
-        topicList.appendChild(element('div', 'empty', 'No past questions have been added for your enrolled courses yet. Check back after your lecturers upload revision questions.'));
+      var query = topicFilter.value.trim().toLowerCase();
+      var filtered = recommendations.filter(function(item) {
+        return !query || (item.topicTag + ' ' + item.courseCode + ' ' + item.courseTitle).toLowerCase().indexOf(query) !== -1;
+      });
+      resultCount.textContent = filtered.length + ' revision topic' + (filtered.length === 1 ? '' : 's') +
+        (courseFilter.value ? ' in this course' : ' across your enrolled courses');
+      if (!filtered.length) {
+        var hasRevisionFilter = courseFilter.value || yearFilter.value || query;
+        var emptyText = recommendations.length || hasRevisionFilter
+          ? 'No topics match these filters. Try another course, year, or search term.'
+          : 'No past questions have been added for your enrolled courses yet. You can still review your course materials.';
+        var empty = element('div', 'empty', emptyText);
+        if (!recommendations.length && courseFilter.value && !yearFilter.value && !query) {
+          var link = element('a', 'material-link', 'Open course');
+          link.href = 'course.html?id=' + encodeURIComponent(courseFilter.value);
+          empty.appendChild(document.createTextNode(' '));
+          empty.appendChild(link);
+        }
+        topicList.appendChild(empty);
         return;
       }
-      recommendations.forEach(function(item) {
-        var card = element('article', 'topic' + (item.priority ? ' priority' : ''));
-        var head = element('div', 'topic-head');
-        var heading = element('div');
-        heading.append(element('h2', '', item.topicTag), element('p', 'course', item.courseCode + ' · ' + item.courseTitle));
-        head.append(heading, element('div', 'frequency', item.questionCount + ' question' + (item.questionCount === 1 ? '' : 's') + ' · ' + item.years.length + ' exam year' + (item.years.length === 1 ? '' : 's')));
-        card.appendChild(head);
-        if (item.priorityReasons.length) card.appendChild(element('p', 'priority-reasons', 'Suggested focus: ' + item.priorityReasons.join(' ')));
-        var questions = element('div', 'questions');
-        item.questions.forEach(function(question) {
-          var row = element('article', 'question');
-          row.append(element('span', 'year', 'Past question · ' + question.examYear), element('p', '', question.questionText));
-          questions.appendChild(row);
-        });
-        card.appendChild(questions);
-        topicList.appendChild(card);
+      var grouped = new Map();
+      filtered.forEach(function(item) {
+        if (!grouped.has(item.courseId)) grouped.set(item.courseId, []);
+        grouped.get(item.courseId).push(item);
       });
+      Array.from(grouped.entries()).sort(function(a, b) {
+        return String(courseNames.get(a[0]) || a[1][0].courseCode).localeCompare(
+          String(courseNames.get(b[0]) || b[1][0].courseCode)
+        );
+      }).forEach(function(entry) {
+        var topics = entry[1].sort(topicOrder);
+        var group = element('section', 'course-group');
+        var heading = element('div', 'course-heading');
+        heading.appendChild(element('h2', '', topics[0].courseCode + ' · ' + topics[0].courseTitle));
+        var courseLink = element('a', '', 'Open course');
+        courseLink.href = 'course.html?id=' + encodeURIComponent(entry[0]);
+        heading.appendChild(courseLink);
+        group.appendChild(heading);
+        topics.forEach(function(item) { group.appendChild(renderTopic(item)); });
+        topicList.appendChild(group);
+      });
+    }
+
+    async function loadCourses() {
+      var result = await window.Auth.request('/courses');
+      var courses = (result.courses || []).filter(function(course) { return course.enrolled; });
+      courseFilter.replaceChildren(element('option', '', 'All enrolled courses'));
+      courseFilter.options[0].value = '';
+      courses.forEach(function(course) {
+        courseNames.set(course.id, course.courseCode + ' · ' + course.courseTitle);
+        var option = element('option', '', course.courseCode + ' · ' + course.courseTitle);
+        option.value = course.id;
+        courseFilter.appendChild(option);
+      });
+      courseFilter.value = courses.some(function(course) { return course.id === requestedCourseId; })
+        ? requestedCourseId
+        : '';
     }
 
     async function loadGuide() {
@@ -83,17 +228,55 @@
         if (user) window.location.href = user.role === 'lecturer' ? 'lecturer-dashboard.html' : 'admin.html';
         return;
       }
+      var sequence = ++requestSequence;
       topicList.replaceChildren(element('div', 'empty', 'Loading your revision guide…'));
+      document.getElementById('notice').textContent = '';
       try {
-        var path = '/student/exam-predictions' + (requestedCourseId ? '?courseId=' + encodeURIComponent(requestedCourseId) : '');
+        var params = new URLSearchParams();
+        if (courseFilter.value) params.set('courseId', courseFilter.value);
+        if (yearFilter.value) params.set('examYear', yearFilter.value);
+        var queryString = params.toString();
+        var path = '/student/exam-predictions' + (queryString ? '?' + queryString : '');
         var result = await window.Auth.request(path);
-        renderRecommendations(result.recommendations || []);
+        if (sequence !== requestSequence) return;
+        recommendations = result.recommendations || [];
+        availableYears = result.availableYears || [];
+        if (requestedExamYear && !yearFilter.value) {
+          setYearOptions(requestedExamYear);
+          if (yearFilter.value) {
+            requestedExamYear = '';
+            loadGuide();
+            return;
+          }
+          requestedExamYear = '';
+        } else {
+          setYearOptions(yearFilter.value);
+        }
+        renderRecommendations();
       } catch (error) {
+        if (sequence !== requestSequence) return;
         document.getElementById('notice').textContent = 'The revision guide could not be loaded: ' + error.message;
         topicList.replaceChildren();
       }
     }
-    loadGuide();
+
+    courseFilter.addEventListener('change', function() {
+      yearFilter.value = '';
+      loadGuide();
+    });
+    yearFilter.addEventListener('change', loadGuide);
+    topicFilter.addEventListener('input', renderRecommendations);
+    loadCourses().then(function() {
+      if (requestedCourseId && !courseFilter.value) {
+        document.getElementById('notice').textContent = 'This course is not in your enrolled courses.';
+        topicList.replaceChildren();
+        return;
+      }
+      loadGuide();
+    }).catch(function(error) {
+      document.getElementById('notice').textContent = 'Your courses could not be loaded: ' + error.message;
+      topicList.replaceChildren(element('div', 'empty', 'The course filter could not be loaded. Refresh the page to try again.'));
+    });
   </script>
 </body>
 </html>

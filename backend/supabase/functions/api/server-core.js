@@ -1701,43 +1701,62 @@ async function handleRequest(request, response) {
     const user = authenticatedUser(request, database);
     if (!user || user.role !== 'student') return sendJson(response, 401, { error: 'Student authentication required.' });
     const requestedCourseId = new URL(request.url, `http://${request.headers.host || 'localhost'}`).searchParams.get('courseId');
+    const requestedExamYear = new URL(request.url, `http://${request.headers.host || 'localhost'}`).searchParams.get('examYear');
     if (requestedCourseId && !studentEnrolled(database, user.id, requestedCourseId)) {
       return sendJson(response, 403, { error: 'Enroll in this course to view its exam revision guide.' });
     }
-    const topics = new Map();
-    database.pastQuestions
+    const currentYear = new Date().getFullYear();
+    if (requestedExamYear &&
+      (!/^\d{4}$/.test(requestedExamYear) || Number(requestedExamYear) < 1950 || Number(requestedExamYear) > currentYear)) {
+      return sendJson(response, 400, { error: 'Choose a valid past exam year.' });
+    }
+    const enrolledQuestions = database.pastQuestions
       .filter(item => studentEnrolled(database, user.id, item.courseId) &&
-        (!requestedCourseId || item.courseId === requestedCourseId))
-      .forEach(item => {
-        const key = item.courseId + '|' + item.topicTag.trim().toLowerCase();
-        let topic = topics.get(key);
-        if (!topic) {
-          topic = {
-            courseId: item.courseId,
-            courseCode: item.courseCode,
-            courseTitle: item.courseTitle,
-            topicTag: item.topicTag,
-            questions: [],
-            years: new Set()
-          };
-          topics.set(key, topic);
-        }
-        topic.questions.push({
-          id: item.id,
-          questionText: item.questionText,
-          examYear: item.examYear
-        });
-        topic.years.add(item.examYear);
+        (!requestedCourseId || item.courseId === requestedCourseId));
+    const availableYears = Array.from(new Set(enrolledQuestions.map(item => item.examYear)))
+      .sort((a, b) => b - a);
+    const topics = new Map();
+    enrolledQuestions.forEach(item => {
+      const key = item.courseId + '|' + item.topicTag.trim().toLowerCase();
+      let topic = topics.get(key);
+      if (!topic) {
+        topic = {
+          courseId: item.courseId,
+          courseCode: item.courseCode,
+          courseTitle: item.courseTitle,
+          topicTag: item.topicTag,
+          questions: [],
+          years: new Set()
+        };
+        topics.set(key, topic);
+      }
+      topic.questions.push({
+        id: item.id,
+        questionText: item.questionText,
+        examYear: item.examYear
       });
+      topic.years.add(item.examYear);
+    });
     const readings = database.readingProgress.filter(item => item.userId === user.id);
     const recommendations = Array.from(topics.values()).map(topic => {
       const matchingMaterials = database.courseMaterials.filter(material =>
         material.courseId === topic.courseId &&
         String(material.topicTag || '').trim().toLowerCase() === topic.topicTag.trim().toLowerCase()
       );
-      const topicRead = matchingMaterials.length > 0 && matchingMaterials.every(material =>
-        readings.some(reading => reading.materialId === material.id && reading.status === 'completed')
-      );
+      const topicMaterials = matchingMaterials.map(material => {
+        const reading = readings.find(item => item.materialId === material.id);
+        return {
+          id: material.id,
+          title: material.title,
+          resourceType: material.resourceType || 'file',
+          status: reading ? reading.status : 'not_started',
+          targetDate: reading ? reading.targetDate || null : null
+        };
+      });
+      const today = new Date().toISOString().slice(0, 10);
+      const outstandingMaterials = topicMaterials.filter(material => material.status !== 'completed');
+      const overdueMaterials = outstandingMaterials.filter(material => material.targetDate && material.targetDate < today);
+      const upcomingMaterials = outstandingMaterials.filter(material => material.targetDate && material.targetDate >= today);
       const progress = database.progressLogs.find(item =>
         item.userId === user.id &&
         item.courseId === topic.courseId &&
@@ -1745,29 +1764,39 @@ async function handleRequest(request, response) {
       );
       const belowMastery = Boolean(progress && progress.masteryLevel === 'below_threshold');
       const reasons = [];
-      if (!topicRead) reasons.push('Reading for this topic is not marked complete.');
+      if (overdueMaterials.length) reasons.push(overdueMaterials.length + ' reading target' + (overdueMaterials.length === 1 ? ' is' : 's are') + ' overdue.');
       if (belowMastery) reasons.push('Your latest recorded quiz score is below the mastery target.');
+      if (upcomingMaterials.length) reasons.push('Reading target coming up ' + upcomingMaterials
+        .map(material => material.targetDate)
+        .sort()[0] + '.');
+      if (matchingMaterials.length && outstandingMaterials.length && !overdueMaterials.length && !upcomingMaterials.length) {
+        reasons.push('Tagged reading is not marked complete.');
+      }
+      const allQuestions = topic.questions;
+      const filteredQuestions = requestedExamYear
+        ? allQuestions.filter(question => String(question.examYear) === requestedExamYear)
+        : allQuestions;
+      const years = Array.from(topic.years).sort((a, b) => b - a);
       return {
         courseId: topic.courseId,
         courseCode: topic.courseCode,
         courseTitle: topic.courseTitle,
         topicTag: topic.topicTag,
-        questionCount: topic.questions.length,
-        years: Array.from(topic.years).sort((a, b) => b - a),
-        questions: topic.questions.sort((a, b) => b.examYear - a.examYear),
+        questionCount: allQuestions.length,
+        years,
+        questions: filteredQuestions.sort((a, b) => b.examYear - a.examYear),
+        materials: topicMaterials,
+        overdueReadingCount: overdueMaterials.length,
+        nextTargetDate: upcomingMaterials.map(material => material.targetDate).filter(Boolean).sort()[0] || null,
         priority: reasons.length > 0,
         priorityReasons: reasons,
         latestScore: progress ? progress.lastScore : null,
         passThreshold: progress ? progress.passThreshold : null
       };
-    }).sort((a, b) =>
-      Number(b.priority) - Number(a.priority) ||
-      b.questionCount - a.questionCount ||
-      a.courseCode.localeCompare(b.courseCode) ||
-      a.topicTag.localeCompare(b.topicTag)
-    );
+    }).filter(topic => !requestedExamYear || topic.questions.length > 0);
     return sendJson(response, 200, {
       guidance: 'Topics are ranked by recorded past-question frequency and your reading and quiz history. This is revision guidance, not a guaranteed exam forecast.',
+      availableYears,
       recommendations
     });
   }
