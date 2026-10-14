@@ -15,6 +15,7 @@
     .panel{margin-top:22px;padding:22px;background:#fff;border:1px solid var(--line);border-radius:14px;box-shadow:0 8px 24px #10213b0a}
     .panel h2{margin:0 0 8px;font-size:20px}.form-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
     label{display:block;margin-bottom:6px;font-size:12px;font-weight:700}.field{width:100%;padding:10px 11px;border:1px solid #cbd5e1;border-radius:8px;background:white;font:inherit}
+    select.field[multiple]{min-height:148px;padding:7px}
     .field-wrap[hidden]{display:none}.primary,.small{border:0;border-radius:8px;background:var(--teal);color:white;font:inherit;font-weight:700;cursor:pointer}
     .primary{margin-top:16px;padding:11px 16px}.small{padding:7px 9px}.small.secondary{background:#475569}.small:disabled{opacity:.5;cursor:not-allowed}
     .status{min-height:20px;margin-top:10px;font-size:13px;color:#166534}.status.error{color:#b42318}
@@ -62,8 +63,9 @@
           <div><label for="newEmail">Email</label><input class="field" id="newEmail" type="email" required></div>
           <div><label for="newIdentifier">Username</label><input class="field" id="newIdentifier" required minlength="3" maxlength="80" placeholder="Choose a username" autocomplete="username"></div>
           <div><label for="newPassword">Temporary password</label><input class="field" id="newPassword" type="password" required minlength="12" autocomplete="new-password"></div>
+          <div><label for="lecturerCourses">Assign course(s)</label><select class="field" id="lecturerCourses" multiple required disabled aria-describedby="lecturerCoursesHelp"></select><div class="notice" id="lecturerCoursesHelp">Choose one or more unassigned courses. Hold Ctrl (Windows) or Command (Mac) to select multiple courses. The lecturer can set meeting times and room later.</div></div>
         </div>
-        <button class="primary" id="createButton" type="submit">Create lecturer account</button>
+        <button class="primary" id="createButton" type="submit" disabled>Create lecturer account</button>
         <div id="createStatus" class="status" role="status" aria-live="polite"></div>
       </form>
     </section>
@@ -169,6 +171,35 @@
         usersBody.replaceChildren();
         usersBody.appendChild(node('tr')).appendChild(node('td', 'Staff accounts could not be loaded.'));
         setStatus('listStatus', error.message, true);
+      }
+    }
+    async function loadLecturerCourses() {
+      var select = document.getElementById('lecturerCourses');
+      var createButton = document.getElementById('createButton');
+      try {
+        var result = await window.Auth.request('/admin/courses');
+        select.replaceChildren();
+        var availableCount = 0;
+        result.courses.forEach(function(course) {
+          var label = course.courseCode + ' · ' + course.courseTitle + ' (' + course.level + ' Level, ' + course.semester + ')';
+          if (course.lecturerId) label += ' — assigned to ' + (course.lecturerName || 'another lecturer');
+          var option = node('option', label);
+          option.value = course.id;
+          option.disabled = Boolean(course.lecturerId);
+          if (!option.disabled) availableCount += 1;
+          select.appendChild(option);
+        });
+        var hasAvailableCourses = availableCount > 0;
+        select.disabled = !hasAvailableCourses;
+        createButton.disabled = !hasAvailableCourses;
+        if (!hasAvailableCourses) {
+          setStatus('createStatus', 'There are no unassigned catalog courses available. Assign or free a course before creating a lecturer account.', true);
+        }
+      } catch (error) {
+        select.replaceChildren(node('option', 'Courses could not be loaded'));
+        select.disabled = true;
+        createButton.disabled = true;
+        setStatus('createStatus', error.message, true);
       }
     }
     async function updateUser(id, action, payload) {
@@ -354,23 +385,31 @@
       button.disabled = true;
       setStatus('createStatus', '', false);
       try {
-        await window.Auth.request('/admin/users', {
+        var result = await window.Auth.request('/admin/users', {
           method: 'POST',
           body: JSON.stringify({
             name: document.getElementById('newName').value.trim(),
             email: document.getElementById('newEmail').value.trim(),
             role: 'lecturer',
             identifier: document.getElementById('newIdentifier').value.trim(),
-            password: document.getElementById('newPassword').value
+            password: document.getElementById('newPassword').value,
+            courseIds: Array.from(document.getElementById('lecturerCourses').selectedOptions).map(function(option) {
+              return option.value;
+            })
           })
         });
+        var assignedCourses = Array.isArray(result.assignedCourses) ? result.assignedCourses : [];
         this.reset();
-        setStatus('createStatus', 'Lecturer account created. Share its temporary password securely; it will not be shown again.', false);
+        document.getElementById('lecturerCourses').selectedIndex = -1;
+        setStatus('createStatus', 'Lecturer account created and assigned to ' +
+          assignedCourses.map(function(course) { return course.courseCode; }).join(', ') +
+          '. Share its temporary password securely; it will not be shown again.', false);
         await loadUsers();
+        await loadLecturerCourses();
       } catch (error) {
         setStatus('createStatus', error.message, true);
       } finally {
-        button.disabled = false;
+        button.disabled = document.getElementById('lecturerCourses').disabled;
       }
     });
     document.getElementById('intentCancel').addEventListener('click', resetIntentForm);
@@ -402,6 +441,7 @@
       loadUsers();
       loadIntents();
       loadMaterialCourses();
+      loadLecturerCourses();
     }
   </script>
 </body>

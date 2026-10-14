@@ -113,7 +113,12 @@
         if (!quiz) throw new Error('This quiz is unavailable.');
         document.getElementById('quizTitle').textContent = quiz.title;
         document.getElementById('quizMeta').textContent = quiz.courseCode + ' · ' + quiz.courseTitle;
-        document.getElementById('startCopy').textContent = quiz.questionCount + ' questions · ' + quiz.durationMinutes + ' minutes. The timer starts when you begin.';
+        var bankSize = Number(quiz.questionBankSize || quiz.questionCount);
+        var questionCount = Number(quiz.questionCount);
+        var questionCopy = questionCount < bankSize
+          ? questionCount + ' questions will be randomly selected from a bank of ' + bankSize + '. Your next attempt will use a different set from your last completed attempt.'
+          : questionCount + ' questions';
+        document.getElementById('startCopy').textContent = questionCopy + ' · ' + quiz.durationMinutes + ' minutes. The timer starts when you begin.';
         document.getElementById('startPanel').hidden = false;
       } catch (error) {
         notify(error.message, 'error');

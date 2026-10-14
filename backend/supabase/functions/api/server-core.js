@@ -496,17 +496,48 @@ function studentEnrolled(database, studentId, courseId) {
   return database.courseEnrollments.some(enrollment => enrollment.studentId === studentId && enrollment.courseId === courseId);
 }
 
+const chatStopWords = new Set([
+  'a', 'about', 'after', 'again', 'all', 'also', 'am', 'an', 'and', 'any', 'are',
+  'as', 'at', 'be', 'because', 'been', 'before', 'being', 'between', 'both', 'but',
+  'by', 'can', 'could', 'did', 'do', 'does', 'doing', 'during', 'each', 'explain',
+  'few', 'find', 'for', 'from', 'further', 'had', 'has', 'have', 'having', 'he',
+  'her', 'here', 'hers', 'him', 'his', 'how', 'i', 'if', 'in', 'into', 'is', 'it',
+  'its', 'just', 'me', 'more', 'most', 'my', 'no', 'nor', 'not', 'of', 'off', 'on',
+  'once', 'only', 'or', 'other', 'our', 'ours', 'out', 'over', 'own', 'please',
+  'same', 'she', 'should', 'show', 'so', 'some', 'such', 'summarise', 'summarize',
+  'summary', 'tell', 'than', 'that', 'the', 'their', 'theirs', 'them', 'then',
+  'there', 'these', 'they', 'this', 'those', 'through', 'to', 'too', 'under',
+  'until', 'up', 'very', 'was', 'we', 'were', 'what', 'when', 'where', 'which',
+  'while', 'who', 'whom', 'why', 'will', 'with', 'would', 'you', 'your', 'yours'
+]);
+
+function normalizeTopicToken(token) {
+  let normalized = token.toLowerCase();
+  if (normalized.length > 5 && normalized.endsWith('ies')) {
+    normalized = normalized.slice(0, -3) + 'y';
+  } else if (normalized.length > 5 && normalized.endsWith('ing')) {
+    normalized = normalized.slice(0, -3);
+    if (/(.)\1$/.test(normalized)) normalized = normalized.slice(0, -1);
+  } else if (normalized.length > 4 && normalized.endsWith('ed')) {
+    normalized = normalized.slice(0, -2);
+  } else if (normalized.length > 4 && normalized.endsWith('s') && !normalized.endsWith('ss')) {
+    normalized = normalized.slice(0, -1);
+  }
+  return normalized;
+}
+
 function topicTokens(value) {
-  return String(value || '').toLowerCase().match(/[a-z0-9]+/g) || [];
+  return (String(value || '').toLowerCase().match(/[a-z0-9]+/g) || []).map(normalizeTopicToken);
+}
+
+function topicSearchTerms(query) {
+  const queryWithoutCourseCode = String(query || '').replace(/\b[a-z]{2,5}\s*\d{3}\b/gi, ' ');
+  return [...new Set(topicTokens(queryWithoutCourseCode)
+    .filter(token => token.length > 2 && !chatStopWords.has(token)))];
 }
 
 function topicMatchScore(query, material) {
-  const stopWords = new Set([
-    'about', 'after', 'again', 'also', 'and', 'are', 'can', 'could', 'does', 'explain',
-    'find', 'for', 'from', 'help', 'how', 'into', 'is', 'me', 'on', 'please', 'show',
-    'summarise', 'summarize', 'summary', 'tell', 'the', 'this', 'what', 'with'
-  ]);
-  const queryTerms = [...new Set(topicTokens(query).filter(token => token.length > 2 && !stopWords.has(token)))];
+  const queryTerms = topicSearchTerms(query);
   if (!queryTerms.length) return 0;
   const resourceTerms = new Set(topicTokens([
     material.courseCode, material.courseTitle, material.topicTag, material.title,
@@ -558,20 +589,31 @@ function pdfSentences(searchText) {
 }
 
 function rankPdfSentences(query, sentences) {
-  const stopWords = new Set([
-    'about', 'after', 'again', 'also', 'and', 'are', 'can', 'could', 'does', 'explain',
-    'find', 'for', 'from', 'help', 'how', 'into', 'is', 'me', 'on', 'please', 'show',
-    'summarise', 'summarize', 'summary', 'tell', 'the', 'this', 'what', 'with'
-  ]);
-  const queryTerms = [...new Set(topicTokens(query).filter(token => token.length > 2 && !stopWords.has(token)))];
+  const queryTerms = topicSearchTerms(query);
   if (!queryTerms.length) return [];
+  const documents = sentences.map(sentence => topicTokens(sentence.text));
+  const documentFrequency = new Map();
+  documents.forEach(terms => {
+    new Set(terms).forEach(term => documentFrequency.set(term, (documentFrequency.get(term) || 0) + 1));
+  });
+  const averageLength = documents.reduce((total, terms) => total + terms.length, 0) / documents.length || 1;
+  const idf = term => Math.log(1 + (documents.length - (documentFrequency.get(term) || 0) + 0.5) /
+    ((documentFrequency.get(term) || 0) + 0.5));
+  const maximumScore = queryTerms.reduce((total, term) => total + idf(term) * 2.2, 0);
   return sentences.map((sentence, index) => {
-    const sentenceTerms = new Set(topicTokens(sentence.text));
-    const matches = queryTerms.filter(term => sentenceTerms.has(term));
+    const terms = documents[index];
+    const termCounts = new Map();
+    terms.forEach(term => termCounts.set(term, (termCounts.get(term) || 0) + 1));
+    const lengthNormalization = 1.2 * (1 - 0.75 + 0.75 * terms.length / averageLength);
+    const score = queryTerms.reduce((total, term) => {
+      const frequency = termCounts.get(term) || 0;
+      if (!frequency) return total;
+      return total + idf(term) * (frequency * 2.2) / (frequency + lengthNormalization);
+    }, 0);
     return {
       ...sentence,
       index,
-      score: matches.length / queryTerms.length
+      score: maximumScore ? Math.min(1, score / maximumScore) : 0
     };
   }).filter(sentence => sentence.score > 0)
     .sort((a, b) => b.score - a.score || a.index - b.index);
@@ -725,6 +767,29 @@ async function handleRequest(request, response) {
     return sendJson(response, 200, { intent });
   }
 
+  if (pathname === '/api/admin/courses' && request.method === 'GET') {
+    const admin = authenticatedUser(request, database);
+    if (!admin || admin.role !== 'admin') return sendJson(response, 401, { error: 'Administrator authentication required.' });
+    const lecturersById = new Map(database.users.map(candidate => [candidate.id, candidate]));
+    const courses = database.taughtCourses
+      .filter(course => course.catalogManaged)
+      .map(course => ({
+        id: course.id,
+        courseCode: course.courseCode,
+        courseTitle: course.courseTitle,
+        level: course.level,
+        semester: course.semester,
+        lecturerId: course.lecturerId || null,
+        lecturerName: (lecturersById.get(course.lecturerId) || {}).name || null
+      }))
+      .sort((a, b) =>
+        Number(a.level) - Number(b.level) ||
+        a.semester.localeCompare(b.semester) ||
+        a.courseCode.localeCompare(b.courseCode)
+      );
+    return sendJson(response, 200, { courses });
+  }
+
   if (pathname === '/api/admin/users' && request.method === 'GET') {
     const user = authenticatedUser(request, database);
     if (!user || user.role !== 'admin') return sendJson(response, 401, { error: 'Administrator authentication required.' });
@@ -755,6 +820,24 @@ async function handleRequest(request, response) {
     if (database.users.some(candidate => candidate.identifier === identifier || candidate.email === email)) {
       return sendJson(response, 409, { error: 'That username, matric number, or email is already assigned.' });
     }
+    let coursesToAssign = [];
+    if (role === 'lecturer') {
+      if (!Array.isArray(payload.courseIds) || payload.courseIds.length === 0 ||
+          payload.courseIds.some(id => typeof id !== 'string') ||
+          new Set(payload.courseIds).size !== payload.courseIds.length) {
+        return sendJson(response, 400, { error: 'Select one or more valid courses for the lecturer.' });
+      }
+      coursesToAssign = payload.courseIds.map(id => database.taughtCourses.find(course =>
+        course.id === id && course.catalogManaged
+      ));
+      if (coursesToAssign.some(course => !course)) {
+        return sendJson(response, 400, { error: 'One or more selected courses are not in the course catalog.' });
+      }
+      const assignedCourse = coursesToAssign.find(course => course.lecturerId);
+      if (assignedCourse) {
+        return sendJson(response, 409, { error: `${assignedCourse.courseCode} is already assigned to another lecturer.` });
+      }
+    }
     const createdUser = {
       id: crypto.randomUUID(), identifier, email, name, role,
       ...(role === 'student' ? { dept: 'IFT', level } : {}),
@@ -762,8 +845,16 @@ async function handleRequest(request, response) {
       createdAt: new Date().toISOString()
     };
     database.users.push(createdUser);
+    coursesToAssign.forEach(course => {
+      course.lecturerId = createdUser.id;
+    });
     await writeDatabase(database);
-    return sendJson(response, 201, { user: { ...publicUser(createdUser), isActive: true } });
+    return sendJson(response, 201, {
+      user: { ...publicUser(createdUser), isActive: true },
+      assignedCourses: coursesToAssign.map(({ id, courseCode, courseTitle, level, semester }) =>
+        ({ id, courseCode, courseTitle, level, semester })
+      )
+    });
   }
 
   const adminUserPath = pathname.match(/^\/api\/admin\/users\/([^/]+)\/(role|status)$/);
@@ -1344,7 +1435,9 @@ async function handleRequest(request, response) {
       .map(quiz => ({
         id: quiz.id, courseId: quiz.courseId, title: quiz.title, courseCode: quiz.courseCode,
         topicTag: quiz.topicTag || '', passThreshold: Number.isInteger(quiz.passThreshold) ? quiz.passThreshold : 70,
-        durationMinutes: quiz.durationMinutes, questionCount: quiz.questions.length,
+        durationMinutes: quiz.durationMinutes,
+        questionCount: Number.isInteger(quiz.questionsPerAttempt) ? quiz.questionsPerAttempt : quiz.questions.length,
+        questionBankSize: quiz.questions.length,
         createdAt: quiz.createdAt,
         attemptCount: database.quizResults.filter(result => result.quizId === quiz.id).length
       }));
@@ -1362,6 +1455,9 @@ async function handleRequest(request, response) {
     const course = database.taughtCourses.find(item => item.id === courseId && item.lecturerId === user.id);
     const durationMinutes = Number(payload.durationMinutes);
     const questions = Array.isArray(payload.questions) ? payload.questions : [];
+    const questionsPerAttempt = payload.questionsPerAttempt === undefined || payload.questionsPerAttempt === null || payload.questionsPerAttempt === ''
+      ? questions.length
+      : Number(payload.questionsPerAttempt);
     const validQuestions = questions.length >= 2 && questions.length <= 40 && questions.every(question =>
       question && typeof question.q === 'string' && question.q.trim().length > 0 && question.q.length <= 1000 &&
       Array.isArray(question.opts) && question.opts.length >= 2 && question.opts.length <= 4 &&
@@ -1369,13 +1465,13 @@ async function handleRequest(request, response) {
       Number.isInteger(question.ans) && question.ans >= 0 && question.ans < question.opts.length &&
       (question.exp === undefined || (typeof question.exp === 'string' && question.exp.length <= 1500))
     );
-    if (title.length < 3 || title.length > 120 || topicTag.length < 2 || topicTag.length > 100 || !Number.isInteger(passThreshold) || passThreshold < 0 || passThreshold > 100 || !course || !Number.isInteger(durationMinutes) || durationMinutes < 1 || durationMinutes > 180 || !validQuestions) {
+    if (title.length < 3 || title.length > 120 || topicTag.length < 2 || topicTag.length > 100 || !Number.isInteger(passThreshold) || passThreshold < 0 || passThreshold > 100 || !course || !Number.isInteger(durationMinutes) || durationMinutes < 1 || durationMinutes > 180 || !validQuestions || !Number.isInteger(questionsPerAttempt) || questionsPerAttempt < 2 || questionsPerAttempt > questions.length) {
       return sendJson(response, 400, { error: 'Choose a course, provide a title and topic tag, set a mastery threshold from 0 to 100, a duration from 1 to 180 minutes, and 2 to 40 valid questions.' });
     }
     const quiz = {
       id: crypto.randomUUID(), lecturerId: user.id, lecturerName: user.name,
       title, courseId: course.id, courseCode: course.courseCode,
-      courseTitle: course.courseTitle, durationMinutes, topicTag, passThreshold,
+      courseTitle: course.courseTitle, durationMinutes, topicTag, passThreshold, questionsPerAttempt,
       questions: questions.map(question => ({
         q: question.q.trim(),
         opts: question.opts.map(option => option.trim()),
@@ -1392,7 +1488,65 @@ async function handleRequest(request, response) {
       referenceId: quiz.id
     });
     await writeDatabase(database);
-    return sendJson(response, 201, { quiz: { id: quiz.id, title: quiz.title, courseCode: quiz.courseCode, topicTag: quiz.topicTag, passThreshold: quiz.passThreshold, questionCount: quiz.questions.length } });
+    return sendJson(response, 201, { quiz: { id: quiz.id, title: quiz.title, courseCode: quiz.courseCode, topicTag: quiz.topicTag, passThreshold: quiz.passThreshold, questionCount: quiz.questionsPerAttempt, questionBankSize: quiz.questions.length } });
+  }
+
+  const lecturerQuizQuestionsPath = pathname.match(/^\/api\/lecturer\/quizzes\/([^/]+)\/questions$/);
+  if (request.method === 'PATCH' && lecturerQuizQuestionsPath) {
+    const user = authenticatedUser(request, database);
+    if (!user || user.role !== 'lecturer') return sendJson(response, 401, { error: 'Lecturer authentication required.' });
+    const quiz = database.quizzes.find(item => item.id === lecturerQuizQuestionsPath[1] && item.lecturerId === user.id);
+    if (!quiz) return sendJson(response, 404, { error: 'Quiz not found.' });
+    if (database.quizAttempts.some(attempt => attempt.quizId === quiz.id) || database.quizResults.some(result => result.quizId === quiz.id)) {
+      return sendJson(response, 409, { error: 'The question bank cannot be changed after a student has started an attempt.' });
+    }
+    const payload = await readBody(request);
+    const questions = Array.isArray(payload.questions) ? payload.questions : [];
+    const questionsPerAttempt = payload.questionsPerAttempt === undefined || payload.questionsPerAttempt === null || payload.questionsPerAttempt === ''
+      ? questions.length
+      : Number(payload.questionsPerAttempt);
+    const validQuestions = questions.length >= 2 && questions.length <= 40 && questions.every(question =>
+      question && typeof question.q === 'string' && question.q.trim().length > 0 && question.q.length <= 1000 &&
+      Array.isArray(question.opts) && question.opts.length >= 2 && question.opts.length <= 4 &&
+      question.opts.every(option => typeof option === 'string' && option.trim().length > 0 && option.length <= 500) &&
+      Number.isInteger(question.ans) && question.ans >= 0 && question.ans < question.opts.length &&
+      (question.exp === undefined || (typeof question.exp === 'string' && question.exp.length <= 1500))
+    );
+    if (!validQuestions || !Number.isInteger(questionsPerAttempt) || questionsPerAttempt < 2 || questionsPerAttempt > questions.length) {
+      return sendJson(response, 400, { error: 'Provide 2 to 40 valid questions and a per-attempt count between 2 and the bank size.' });
+    }
+    quiz.questions = questions.map(question => ({
+      q: question.q.trim(),
+      opts: question.opts.map(option => option.trim()),
+      ans: question.ans,
+      exp: typeof question.exp === 'string' ? question.exp.trim() : ''
+    }));
+    quiz.questionsPerAttempt = questionsPerAttempt;
+    await writeDatabase(database);
+    return sendJson(response, 200, {
+      quiz: {
+        id: quiz.id, title: quiz.title, courseCode: quiz.courseCode,
+        questionCount: quiz.questionsPerAttempt, questionBankSize: quiz.questions.length
+      }
+    });
+  }
+
+  const lecturerQuizPath = pathname.match(/^\/api\/lecturer\/quizzes\/([^/]+)$/);
+  if (request.method === 'GET' && lecturerQuizPath) {
+    const user = authenticatedUser(request, database);
+    if (!user || user.role !== 'lecturer') return sendJson(response, 401, { error: 'Lecturer authentication required.' });
+    const quiz = database.quizzes.find(item => item.id === lecturerQuizPath[1] && item.lecturerId === user.id);
+    if (!quiz) return sendJson(response, 404, { error: 'Quiz not found.' });
+    return sendJson(response, 200, {
+      quiz: {
+        id: quiz.id, courseId: quiz.courseId, courseCode: quiz.courseCode, courseTitle: quiz.courseTitle,
+        title: quiz.title, topicTag: quiz.topicTag || '',
+        passThreshold: Number.isInteger(quiz.passThreshold) ? quiz.passThreshold : 70,
+        durationMinutes: quiz.durationMinutes,
+        questionsPerAttempt: Number.isInteger(quiz.questionsPerAttempt) ? quiz.questionsPerAttempt : quiz.questions.length,
+        questions: quiz.questions
+      }
+    });
   }
 
   const quizResultsPath = pathname.match(/^\/api\/lecturer\/quizzes\/([^/]+)\/results$/);
@@ -1424,8 +1578,17 @@ async function handleRequest(request, response) {
       })
       .sort((a, b) => b.score - a.score || a.name.localeCompare(b.name));
     const questionStats = quiz.questions.map((question, questionIndex) => {
-      const answered = attempts.filter(result => Array.isArray(result.answers) && result.answers[questionIndex] !== null && result.answers[questionIndex] !== undefined);
-      const correct = answered.filter(result => result.answers[questionIndex] === question.ans).length;
+      const answered = attempts.flatMap(result => {
+        if (!Array.isArray(result.answers)) return [];
+        const questionIndexes = Array.isArray(result.questionIndexes)
+          ? result.questionIndexes
+          : quiz.questions.map((_, index) => index);
+        const answerIndex = questionIndexes.indexOf(questionIndex);
+        return answerIndex >= 0 && result.answers[answerIndex] !== null && result.answers[answerIndex] !== undefined
+          ? [{ answer: result.answers[answerIndex] }]
+          : [];
+      });
+      const correct = answered.filter(result => result.answer === question.ans).length;
       return {
         question: question.q,
         responseCount: answered.length,
@@ -1508,7 +1671,9 @@ async function handleRequest(request, response) {
       courseTitle: quiz.courseTitle, level: quiz.level || database.taughtCourses.find(course => course.id === quiz.courseId)?.level || '',
       lecturerName: quiz.lecturerName,
       topicTag: quiz.topicTag || '', passThreshold: Number.isInteger(quiz.passThreshold) ? quiz.passThreshold : 70,
-      durationMinutes: quiz.durationMinutes, questionCount: quiz.questions.length,
+      durationMinutes: quiz.durationMinutes,
+      questionCount: Number.isInteger(quiz.questionsPerAttempt) ? quiz.questionsPerAttempt : quiz.questions.length,
+      questionBankSize: quiz.questions.length,
       createdAt: quiz.createdAt
     }));
     return sendJson(response, 200, { quizzes });
@@ -1521,11 +1686,36 @@ async function handleRequest(request, response) {
     const quiz = database.quizzes.find(item => item.id === quizStartPath[1]);
     if (!quiz) return sendJson(response, 404, { error: 'Quiz not found.' });
     if (!studentEnrolled(database, user.id, quiz.courseId)) return sendJson(response, 403, { error: 'Enroll in this course before starting its quiz.' });
+    const questionCount = Number.isInteger(quiz.questionsPerAttempt) ? quiz.questionsPerAttempt : quiz.questions.length;
+    const questionIndexes = Array.from({ length: quiz.questions.length }, (_, index) => index);
+    for (let index = questionIndexes.length - 1; index > 0; index--) {
+      const swapIndex = Math.floor(Math.random() * (index + 1));
+      [questionIndexes[index], questionIndexes[swapIndex]] = [questionIndexes[swapIndex], questionIndexes[index]];
+    }
+    const selectedQuestionIndexes = questionIndexes.slice(0, questionCount);
+    const previousAttempt = database.quizAttempts
+      .filter(item => item.quizId === quiz.id && item.studentId === user.id && item.submittedAt && Array.isArray(item.questionIndexes))
+      .sort((a, b) => new Date(b.submittedAt) - new Date(a.submittedAt))[0];
+    if (previousAttempt && selectedQuestionIndexes.length < quiz.questions.length) {
+      const previousSet = previousAttempt.questionIndexes.slice().sort((a, b) => a - b);
+      const selectedSet = selectedQuestionIndexes.slice().sort((a, b) => a - b);
+      if (previousSet.length === selectedSet.length && previousSet.every((value, index) => value === selectedSet[index])) {
+        const unselectedIndexes = Array.from({ length: quiz.questions.length }, (_, index) => index)
+          .filter(index => !selectedQuestionIndexes.includes(index));
+        const replaceIndex = Math.floor(Math.random() * selectedQuestionIndexes.length);
+        selectedQuestionIndexes[replaceIndex] = unselectedIndexes[Math.floor(Math.random() * unselectedIndexes.length)];
+        for (let index = selectedQuestionIndexes.length - 1; index > 0; index--) {
+          const swapIndex = Math.floor(Math.random() * (index + 1));
+          [selectedQuestionIndexes[index], selectedQuestionIndexes[swapIndex]] = [selectedQuestionIndexes[swapIndex], selectedQuestionIndexes[index]];
+        }
+      }
+    }
     const startedAt = Date.now();
     const attempt = {
       id: crypto.randomUUID(), quizId: quiz.id, studentId: user.id,
       startedAt: new Date(startedAt).toISOString(),
-      expiresAt: new Date(startedAt + quiz.durationMinutes * 60 * 1000).toISOString()
+      expiresAt: new Date(startedAt + quiz.durationMinutes * 60 * 1000).toISOString(),
+      questionIndexes: selectedQuestionIndexes
     };
     database.quizAttempts.unshift(attempt);
     await writeDatabase(database);
@@ -1535,7 +1725,10 @@ async function handleRequest(request, response) {
         id: quiz.id, title: quiz.title, courseCode: quiz.courseCode,
         courseId: quiz.courseId, topicTag: quiz.topicTag || '', passThreshold: Number.isInteger(quiz.passThreshold) ? quiz.passThreshold : 70,
         durationMinutes: quiz.durationMinutes,
-        questions: quiz.questions.map(({ q, opts }) => ({ q, opts }))
+        questions: selectedQuestionIndexes.map(index => {
+          const { q, opts } = quiz.questions[index];
+          return { q, opts };
+        })
       }
     });
   }
@@ -1551,7 +1744,8 @@ async function handleRequest(request, response) {
       quiz: {
         id: quiz.id, title: quiz.title, courseCode: quiz.courseCode,
         durationMinutes: quiz.durationMinutes,
-        questions: quiz.questions.map(({ q, opts }) => ({ q, opts }))
+        questionCount: Number.isInteger(quiz.questionsPerAttempt) ? quiz.questionsPerAttempt : quiz.questions.length,
+        questionBankSize: quiz.questions.length
       }
     });
   }
@@ -1568,18 +1762,25 @@ async function handleRequest(request, response) {
     if (!attempt) return sendJson(response, 404, { error: 'Quiz attempt not found.' });
     if (attempt.submittedAt) return sendJson(response, 409, { error: 'This quiz attempt has already been submitted.' });
     if (Date.now() > new Date(attempt.expiresAt).getTime() + 60000) return sendJson(response, 409, { error: 'The time limit has expired.' });
-    if (!Array.isArray(payload.answers) || payload.answers.length !== quiz.questions.length || payload.answers.some((answer, index) => answer !== null && (!Number.isInteger(answer) || answer < 0 || answer >= quiz.questions[index].opts.length))) {
+    const questionIndexes = Array.isArray(attempt.questionIndexes)
+      ? attempt.questionIndexes
+      : quiz.questions.map((_, index) => index);
+    if (questionIndexes.some(index => !Number.isInteger(index) || index < 0 || index >= quiz.questions.length)) {
+      return sendJson(response, 500, { error: 'This quiz attempt has invalid question data.' });
+    }
+    const attemptQuestions = questionIndexes.map(index => quiz.questions[index]);
+    if (!Array.isArray(payload.answers) || payload.answers.length !== attemptQuestions.length || payload.answers.some((answer, index) => answer !== null && (!Number.isInteger(answer) || answer < 0 || answer >= attemptQuestions[index].opts.length))) {
       return sendJson(response, 400, { error: 'Answers must contain one valid option or no answer for each question.' });
     }
-    const correct = quiz.questions.reduce((total, question, index) => total + (payload.answers[index] === question.ans ? 1 : 0), 0);
-    const score = Math.round(correct / quiz.questions.length * 100);
+    const correct = attemptQuestions.reduce((total, question, index) => total + (payload.answers[index] === question.ans ? 1 : 0), 0);
+    const score = Math.round(correct / attemptQuestions.length * 100);
     const topicTag = quiz.topicTag || quiz.title;
     const passThreshold = Number.isInteger(quiz.passThreshold) ? quiz.passThreshold : 70;
     const result = {
       id: crypto.randomUUID(), userId: user.id, courseCode: quiz.courseCode,
       quizId: quiz.id, quizTitle: quiz.title, courseId: quiz.courseId,
-      topicTag, passThreshold, answers: payload.answers, score, correct,
-      total: quiz.questions.length, date: new Date().toISOString()
+      topicTag, passThreshold, answers: payload.answers, questionIndexes, score, correct,
+      total: attemptQuestions.length, date: new Date().toISOString()
     };
     attempt.submittedAt = result.date;
     attempt.score = score;
@@ -1607,7 +1808,7 @@ async function handleRequest(request, response) {
     await writeDatabase(database);
     return sendJson(response, 200, {
       result,
-      review: quiz.questions.map((question, index) => ({
+      review: attemptQuestions.map((question, index) => ({
         q: question.q, opts: question.opts, ans: question.ans,
         selected: payload.answers[index], exp: question.exp
       }))

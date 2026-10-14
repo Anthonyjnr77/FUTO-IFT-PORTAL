@@ -169,6 +169,27 @@ test('admin can create lecturer accounts without granting students lecturer acce
   assert.equal(adminLogin.status, 200);
   assert.equal(adminLogin.body.user.role, 'admin');
 
+  const adminCourseCatalog = await requestJson(baseUrl, '/api/admin/courses', {
+    token: adminLogin.body.token
+  });
+  assert.equal(adminCourseCatalog.status, 200);
+  const courseToAssign = adminCourseCatalog.body.courses.find(course => course.courseCode === 'IFT 512');
+  assert.ok(courseToAssign, 'admin course catalog should include IFT 512');
+  assert.equal(courseToAssign.lecturerId, null);
+
+  const lecturerWithoutCourse = await requestJson(baseUrl, '/api/admin/users', {
+    method: 'POST',
+    token: adminLogin.body.token,
+    body: {
+      name: 'Lecturer Without Course',
+      email: 'lecturer.without.course@example.test',
+      role: 'lecturer',
+      identifier: 'lecturerwithoutcourse',
+      password: 'AnotherSecurePassword123!'
+    }
+  });
+  assert.equal(lecturerWithoutCourse.status, 400);
+
   const createLecturer = await requestJson(baseUrl, '/api/admin/users', {
     method: 'POST',
     token: adminLogin.body.token,
@@ -177,11 +198,31 @@ test('admin can create lecturer accounts without granting students lecturer acce
       email: lecturerEmail,
       role: 'lecturer',
       identifier: lecturerUsername,
-      password: lecturerPassword
+      password: lecturerPassword,
+      courseIds: [courseToAssign.id]
     }
   });
   assert.equal(createLecturer.status, 201);
   assert.equal(createLecturer.body.user.role, 'lecturer');
+  assert.deepEqual(createLecturer.body.assignedCourses.map(course => course.id), [courseToAssign.id]);
+
+  const conflictingLecturer = await requestJson(baseUrl, '/api/admin/users', {
+    method: 'POST',
+    token: adminLogin.body.token,
+    body: {
+      name: 'Another Lecturer',
+      email: 'another.lecturer@example.test',
+      role: 'lecturer',
+      identifier: 'anotherlecturer',
+      password: 'AnotherSecurePassword123!',
+      courseIds: [courseToAssign.id]
+    }
+  });
+  assert.equal(conflictingLecturer.status, 409);
+  const usersAfterConflict = await requestJson(baseUrl, '/api/admin/users', {
+    token: adminLogin.body.token
+  });
+  assert.equal(usersAfterConflict.body.users.some(user => user.email === 'another.lecturer@example.test'), false);
 
   const lecturerLogin = await requestJson(baseUrl, '/api/auth/login', {
     method: 'POST',
@@ -194,6 +235,15 @@ test('admin can create lecturer accounts without granting students lecturer acce
   });
   assert.equal(lecturerLogin.status, 200);
   assert.equal(lecturerLogin.body.user.role, 'lecturer');
+  const deniedLecturerCourseCatalog = await requestJson(baseUrl, '/api/admin/courses', {
+    token: lecturerLogin.body.token
+  });
+  assert.equal(deniedLecturerCourseCatalog.status, 401);
+  const coursesAssignedAtCreation = await requestJson(baseUrl, '/api/lecturer/courses', {
+    token: lecturerLogin.body.token
+  });
+  assert.equal(coursesAssignedAtCreation.status, 200);
+  assert.equal(coursesAssignedAtCreation.body.courses.some(course => course.id === courseToAssign.id), true);
   const lecturerCurriculum = await requestJson(baseUrl, '/api/curriculum', {
     token: lecturerLogin.body.token
   });
@@ -530,6 +580,15 @@ test('admin can create lecturer accounts without granting students lecturer acce
   assert.equal(decimalPdfAnswer.status, 200);
   assert.match(decimalPdfAnswer.body.answer, /0\.5/);
 
+  const inflectedPdfQuestion = await requestJson(baseUrl, '/api/student/chat', {
+    method: 'POST',
+    token: studentRegistration.body.token,
+    body: { query: 'What do classifiers do in IFT 101?' }
+  });
+  assert.equal(inflectedPdfQuestion.status, 200);
+  assert.match(inflectedPdfQuestion.body.answer, /classifier ranks examples/i);
+  assert.match(inflectedPdfQuestion.body.answer, /\[p\. 1\]/i);
+
   const followUpPdfQuestion = await requestJson(baseUrl, '/api/student/chat', {
     method: 'POST',
     token: studentRegistration.body.token,
@@ -560,17 +619,99 @@ test('admin can create lecturer accounts without granting students lecturer acce
       topicTag: 'Computer fundamentals',
       passThreshold: 70,
       durationMinutes: 10,
+      questionsPerAttempt: 2,
       questions: [
         { q: 'Which device processes instructions?', opts: ['CPU', 'Monitor'], ans: 0 },
-        { q: 'Which component stores data temporarily?', opts: ['RAM', 'Printer'], ans: 0 }
+        { q: 'Which component stores data temporarily?', opts: ['RAM', 'Printer'], ans: 0 },
+        { q: 'Which device displays visual output?', opts: ['Monitor', 'Keyboard'], ans: 0 },
+        { q: 'Which component connects a computer to a network?', opts: ['Network interface card', 'Power supply'], ans: 0 }
       ]
     }
   });
   assert.equal(publishedQuiz.status, 201);
+  assert.equal(publishedQuiz.body.quiz.questionCount, 2);
+  assert.equal(publishedQuiz.body.quiz.questionBankSize, 4);
+  const lecturerQuizDetail = await requestJson(baseUrl, `/api/lecturer/quizzes/${publishedQuiz.body.quiz.id}`, {
+    token: lecturerLogin.body.token
+  });
+  assert.equal(lecturerQuizDetail.status, 200);
+  assert.equal(lecturerQuizDetail.body.quiz.questions.length, 4);
+  assert.equal(lecturerQuizDetail.body.quiz.questionsPerAttempt, 2);
+  const revisedQuestionBank = await requestJson(baseUrl, `/api/lecturer/quizzes/${publishedQuiz.body.quiz.id}/questions`, {
+    method: 'PATCH',
+    token: lecturerLogin.body.token,
+    body: {
+      questionsPerAttempt: 2,
+      questions: lecturerQuizDetail.body.quiz.questions
+    }
+  });
+  assert.equal(revisedQuestionBank.status, 200);
+  assert.equal(revisedQuestionBank.body.quiz.questionBankSize, 4);
+  const studentQuizDetail = await requestJson(baseUrl, `/api/quizzes/${publishedQuiz.body.quiz.id}`, {
+    token: studentRegistration.body.token
+  });
+  assert.equal(studentQuizDetail.status, 200);
+  assert.equal(studentQuizDetail.body.quiz.questionCount, 2);
+  assert.equal(studentQuizDetail.body.quiz.questionBankSize, 4);
+  assert.equal(Object.hasOwn(studentQuizDetail.body.quiz, 'questions'), false);
+  const firstAttempt = await requestJson(baseUrl, `/api/quizzes/${publishedQuiz.body.quiz.id}/start`, {
+    method: 'POST',
+    token: studentRegistration.body.token,
+    body: {}
+  });
+  assert.equal(firstAttempt.status, 201);
+  assert.equal(firstAttempt.body.quiz.questions.length, 2);
+  const firstQuestionSet = firstAttempt.body.quiz.questions.map(question => question.q).sort();
+  const firstSubmission = await requestJson(baseUrl, `/api/quizzes/${publishedQuiz.body.quiz.id}/submit`, {
+    method: 'POST',
+    token: studentRegistration.body.token,
+    body: { attemptId: firstAttempt.body.attemptId, answers: [0, 0] }
+  });
+  assert.equal(firstSubmission.status, 200);
+  assert.equal(firstSubmission.body.result.score, 100);
+  const secondAttempt = await requestJson(baseUrl, `/api/quizzes/${publishedQuiz.body.quiz.id}/start`, {
+    method: 'POST',
+    token: studentRegistration.body.token,
+    body: {}
+  });
+  assert.equal(secondAttempt.status, 201);
+  assert.equal(secondAttempt.body.quiz.questions.length, 2);
+  assert.notDeepEqual(
+    secondAttempt.body.quiz.questions.map(question => question.q).sort(),
+    firstQuestionSet,
+    'a student must not receive the exact same question set on consecutive completed attempts'
+  );
+  const secondSubmission = await requestJson(baseUrl, `/api/quizzes/${publishedQuiz.body.quiz.id}/submit`, {
+    method: 'POST',
+    token: studentRegistration.body.token,
+    body: { attemptId: secondAttempt.body.attemptId, answers: [0, 0] }
+  });
+  assert.equal(secondSubmission.status, 200);
+  assert.equal(secondSubmission.body.result.score, 100);
+  const quizResults = await requestJson(baseUrl, `/api/lecturer/quizzes/${publishedQuiz.body.quiz.id}/results`, {
+    token: lecturerLogin.body.token
+  });
+  assert.equal(quizResults.status, 200);
+  assert.equal(quizResults.body.attempts, 2);
+  assert.equal(quizResults.body.questionStats.reduce((sum, item) => sum + item.responseCount, 0), 4);
+  assert.ok(quizResults.body.questionStats
+    .filter(item => item.responseCount > 0)
+    .every(item => item.correctPercent === 100));
+  const questionBankLocked = await requestJson(baseUrl, `/api/lecturer/quizzes/${publishedQuiz.body.quiz.id}/questions`, {
+    method: 'PATCH',
+    token: lecturerLogin.body.token,
+    body: {
+      questionsPerAttempt: 2,
+      questions: lecturerQuizDetail.body.quiz.questions
+    }
+  });
+  assert.equal(questionBankLocked.status, 409);
   const studentQuizzes = await requestJson(baseUrl, '/api/quizzes', {
     token: studentRegistration.body.token
   });
   assert.equal(studentQuizzes.status, 200);
+  assert.equal(studentQuizzes.body.quizzes[0].questionCount, 2);
+  assert.equal(studentQuizzes.body.quizzes[0].questionBankSize, 4);
   assert.equal(studentQuizzes.body.quizzes[0].level, '100');
 
   const unregisteredChatAccess = await requestJson(baseUrl, '/api/student/chat', {

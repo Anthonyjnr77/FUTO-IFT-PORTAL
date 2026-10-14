@@ -30,7 +30,7 @@
     input:focus,select:focus,textarea:focus { outline:2px solid rgba(13,148,136,.2);border-color:var(--teal); }
     .primary,.secondary { border:0;border-radius:8px;padding:10px 14px;font-weight:700;cursor:pointer; }
     .primary { background:var(--teal);color:#fff; }.primary:disabled { opacity:.6;cursor:wait; }
-    .secondary { background:#e8f5f2;color:#0f6e56; }
+    .secondary { background:#e8f5f2;color:#0f6e56; }.secondary:disabled { opacity:.55;cursor:not-allowed; }
     .form-row { display:grid;grid-template-columns:1fr 180px;gap:12px; }
     .question-list { display:grid;gap:12px;margin:14px 0; }
     .question { border:1px solid var(--line);border-radius:8px;padding:14px;background:#fbfdff; }
@@ -93,7 +93,7 @@
     <div id="notice" class="notice" role="status" aria-live="polite"></div>
     <div class="layout">
       <section class="panel">
-        <div class="panel-head"><h2>Create a quiz</h2></div>
+        <div class="panel-head"><h2 id="formHeading">Create a quiz</h2></div>
         <div class="panel-body">
           <p class="course-note">Quizzes can only be published for courses you have added to your <a href="lecturer-timetable.html">teaching timetable</a>.</p>
           <form id="quizForm">
@@ -106,10 +106,15 @@
               <div class="field"><label for="topicTag">Topic tag</label><input id="topicTag" required minlength="2" maxlength="100" placeholder="e.g. Relational databases" /></div>
               <div class="field"><label for="passThreshold">Mastery threshold</label><select id="passThreshold"><option value="50">50%</option><option value="60">60%</option><option value="70" selected>70%</option><option value="80">80%</option><option value="90">90%</option></select></div>
             </div>
+            <div class="field">
+              <label for="questionsPerAttempt">Questions per attempt</label>
+              <input id="questionsPerAttempt" type="number" min="2" max="40" placeholder="Blank = use every question" />
+              <p class="course-note">Add up to 40 questions to the bank, then set a smaller number here for a random subset on each attempt.</p>
+            </div>
             <details id="pasteImporter" class="paste-import">
               <summary>Paste questions from a document</summary>
               <div class="paste-body">
-                <p class="paste-help">Separate questions with a blank line. Each block needs a question, options A-D, and the correct answer letter. Explanation is optional.</p>
+                <p class="paste-help">This accepts prepared question text, not a PDF file. Extract or copy the questions, separate each block with a blank line, and include a question, options A-D, and the correct answer letter. Explanation is optional.</p>
                 <textarea id="pasteQuestions" class="paste-input" spellcheck="false" placeholder="Question: What does CPU stand for?&#10;A) Central Processing Unit&#10;B) Computer Personal Utility&#10;C) Core Program Upload&#10;D) Control Processing User&#10;Answer: A&#10;Explanation: The CPU executes program instructions."></textarea>
                 <div class="paste-actions">
                   <button id="previewImport" class="secondary" type="button">Preview pasted questions</button>
@@ -123,6 +128,7 @@
             <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px">
               <button id="addQuestion" class="secondary" type="button"><i class="fas fa-plus"></i> Add question</button>
               <button id="publishQuiz" class="primary" type="submit">Publish quiz</button>
+              <button id="cancelEdit" class="secondary" type="button" hidden>Cancel edit</button>
             </div>
           </form>
         </div>
@@ -152,6 +158,7 @@
     var notice = document.getElementById('notice');
     var questionCount = 0;
     var pendingImportedQuestions = null;
+    var editingQuizId = null;
 
     if (lecturer) {
       addQuestion();
@@ -352,7 +359,16 @@
         result.quizzes.forEach(function(quiz) {
           var item = node('article', 'quiz-item');
           item.appendChild(node('strong', '', quiz.courseCode + ' · ' + quiz.title));
-          item.appendChild(node('span', 'quiz-meta', quiz.questionCount + ' questions · ' + quiz.durationMinutes + ' minutes · ' + quiz.attemptCount + ' attempts'));
+          var bankSummary = quiz.questionCount === quiz.questionBankSize
+            ? quiz.questionBankSize + ' questions'
+            : quiz.questionCount + ' random questions from a bank of ' + quiz.questionBankSize;
+          item.appendChild(node('span', 'quiz-meta', bankSummary + ' · ' + quiz.durationMinutes + ' minutes · ' + quiz.attemptCount + ' attempts'));
+          var editButton = node('button', 'results-button', 'Edit question bank');
+          editButton.type = 'button';
+          editButton.disabled = quiz.attemptCount > 0;
+          editButton.title = quiz.attemptCount > 0 ? 'Question banks are locked after a student starts an attempt.' : '';
+          editButton.addEventListener('click', function() { editQuiz(quiz); });
+          item.appendChild(editButton);
           var resultsButton = node('button', 'results-button', 'View results');
           resultsButton.type = 'button';
           resultsButton.addEventListener('click', function() { loadResults(quiz); });
@@ -363,6 +379,63 @@
         quizList.replaceChildren(node('div', 'empty', 'Quizzes could not be loaded.'));
         notify(error.message, 'error');
       }
+    }
+    async function editQuiz(quizSummary) {
+      try {
+        var result = await window.Auth.request('/lecturer/quizzes/' + encodeURIComponent(quizSummary.id));
+        var quiz = result.quiz;
+        editingQuizId = quiz.id;
+        courseSelect.value = quiz.courseId;
+        document.getElementById('quizTitle').value = quiz.title;
+        document.getElementById('topicTag').value = quiz.topicTag;
+        document.getElementById('duration').value = String(quiz.durationMinutes);
+        document.getElementById('passThreshold').value = String(quiz.passThreshold);
+        document.getElementById('questionsPerAttempt').value = quiz.questionsPerAttempt < quiz.questions.length
+          ? String(quiz.questionsPerAttempt)
+          : '';
+        questionList.replaceChildren();
+        questionCount = 0;
+        quiz.questions.forEach(function(question) {
+          addQuestion();
+          var card = questionList.lastElementChild;
+          var textareas = card.querySelectorAll('textarea');
+          var options = card.querySelectorAll('.option-grid input');
+          textareas[0].value = question.q;
+          textareas[1].value = question.exp || '';
+          question.opts.forEach(function(option, index) { options[index].value = option; });
+          card.querySelector('input[type="radio"][value="' + question.ans + '"]').checked = true;
+        });
+        editingQuizId = quiz.id;
+        document.getElementById('formHeading').textContent = 'Edit quiz question bank';
+        document.getElementById('publishQuiz').textContent = 'Save question bank';
+        document.getElementById('cancelEdit').hidden = false;
+        ['courseCode', 'quizTitle', 'topicTag', 'duration', 'passThreshold'].forEach(function(id) {
+          document.getElementById(id).disabled = true;
+        });
+        document.getElementById('quizForm').scrollIntoView({ behavior: 'smooth', block: 'start' });
+        notify('Editing the question bank for ' + quiz.courseCode + '. It can only be changed before students start an attempt.', 'success');
+      } catch (error) {
+        notify(error.message, 'error');
+      }
+    }
+    function resetQuizForm() {
+      editingQuizId = null;
+      document.getElementById('quizForm').reset();
+      document.getElementById('formHeading').textContent = 'Create a quiz';
+      document.getElementById('publishQuiz').textContent = 'Publish quiz';
+      document.getElementById('cancelEdit').hidden = true;
+      ['courseCode', 'quizTitle', 'topicTag', 'duration', 'passThreshold'].forEach(function(id) {
+        document.getElementById(id).disabled = false;
+      });
+      document.getElementById('pasteQuestions').value = '';
+      document.getElementById('importPreview').replaceChildren();
+      document.getElementById('importPreview').className = 'import-preview';
+      pendingImportedQuestions = null;
+      document.getElementById('applyImport').disabled = true;
+      questionList.replaceChildren();
+      questionCount = 0;
+      addQuestion();
+      addQuestion();
     }
     async function loadResults(quiz) {
       var panel = document.getElementById('resultsPanel');
@@ -400,6 +473,7 @@
     document.getElementById('previewImport').addEventListener('click', previewPastedQuestions);
     document.getElementById('applyImport').addEventListener('click', applyImportedQuestions);
     document.getElementById('addQuestion').addEventListener('click', addQuestion);
+    document.getElementById('cancelEdit').addEventListener('click', resetQuizForm);
     document.getElementById('quizForm').addEventListener('submit', async function(event) {
       event.preventDefault();
       var button = document.getElementById('publishQuiz');
@@ -416,24 +490,25 @@
             exp: textareas[1].value
           };
         });
-        await window.Auth.request('/lecturer/quizzes', {
-          method: 'POST',
-          body: JSON.stringify({
-            courseId: courseSelect.value,
-            title: document.getElementById('quizTitle').value,
-            topicTag: document.getElementById('topicTag').value,
-            passThreshold: Number(document.getElementById('passThreshold').value),
-            durationMinutes: Number(document.getElementById('duration').value),
-            questions: questions
-          })
+        var questionsPerAttempt = document.getElementById('questionsPerAttempt').value;
+        var quizData = {
+          courseId: courseSelect.value,
+          title: document.getElementById('quizTitle').value,
+          topicTag: document.getElementById('topicTag').value,
+          passThreshold: Number(document.getElementById('passThreshold').value),
+          durationMinutes: Number(document.getElementById('duration').value),
+          questionsPerAttempt: questionsPerAttempt ? Number(questionsPerAttempt) : undefined,
+          questions: questions
+        };
+        await window.Auth.request(editingQuizId
+          ? '/lecturer/quizzes/' + encodeURIComponent(editingQuizId) + '/questions'
+          : '/lecturer/quizzes', {
+          method: editingQuizId ? 'PATCH' : 'POST',
+          body: JSON.stringify(quizData)
         });
-        document.getElementById('quizTitle').value = '';
-        document.getElementById('topicTag').value = '';
-        questionList.replaceChildren();
-        questionCount = 0;
-        addQuestion();
-        addQuestion();
-        notify('Quiz published for students.', 'success');
+        var wasEditing = !!editingQuizId;
+        resetQuizForm();
+        notify(wasEditing ? 'Question bank updated.' : 'Quiz published for students.', 'success');
         await loadQuizzes();
       } catch (error) {
         notify(error.message, 'error');

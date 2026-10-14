@@ -207,10 +207,15 @@
         return weekdayOrder.indexOf(a.day) - weekdayOrder.indexOf(b.day) || a.startTime.localeCompare(b.startTime);
       }).forEach(function(course) {
         var item = node('article', 'schedule-item');
-        item.appendChild(node('span', 'day', course.day + ' · ' + formatTime(course.startTime)));
+        var hasSchedule = course.day && course.startTime && course.endTime;
+        item.appendChild(node('span', 'day', hasSchedule
+          ? course.day + ' · ' + formatTime(course.startTime)
+          : 'Schedule not set'));
         var detail = node('div');
         detail.appendChild(node('strong', '', course.courseCode + ' · ' + course.courseTitle));
-        detail.appendChild(node('span', 'meta', formatTime(course.endTime) + (course.room ? ' · ' + course.room : '')));
+        detail.appendChild(node('span', 'meta', hasSchedule
+          ? formatTime(course.endTime) + (course.room ? ' · ' + course.room : '')
+          : 'Add meeting time and room'));
         item.append(detail, node('span', 'level', course.level + ' Level'));
         courseList.appendChild(item);
       });
