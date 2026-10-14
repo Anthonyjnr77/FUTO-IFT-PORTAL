@@ -151,6 +151,7 @@ test('admin can create lecturer accounts without granting students lecturer acce
   });
   assert.equal(localFrontendPreflight.status, 204);
   assert.equal(localFrontendPreflight.headers.get('access-control-allow-origin'), 'http://localhost:4173');
+  assert.match(localFrontendPreflight.headers.get('access-control-allow-methods'), /\bPATCH\b/);
 
   const deniedAdminList = await requestJson(baseUrl, '/api/admin/users');
   assert.equal(deniedAdminList.status, 401);
@@ -225,6 +226,39 @@ test('admin can create lecturer accounts without granting students lecturer acce
     }
   });
   assert.equal(studentRegistration.status, 201);
+
+  const updatedProfile = await requestJson(baseUrl, '/api/auth/profile', {
+    method: 'PATCH',
+    token: studentRegistration.body.token,
+    body: { name: 'Updated Test Student', level: '200' }
+  });
+  assert.equal(updatedProfile.status, 200);
+  assert.equal(updatedProfile.body.user.name, 'Updated Test Student');
+  assert.equal(updatedProfile.body.user.level, '200');
+  const authenticatedAfterProfileUpdate = await requestJson(baseUrl, '/api/auth/me', {
+    token: studentRegistration.body.token
+  });
+  assert.equal(authenticatedAfterProfileUpdate.status, 200);
+  assert.equal(authenticatedAfterProfileUpdate.body.user.level, '200');
+
+  const rejectedInvalidProfile = await requestJson(baseUrl, '/api/auth/profile', {
+    method: 'PATCH',
+    token: studentRegistration.body.token,
+    body: { name: 'Updated Test Student', level: 'all' }
+  });
+  assert.equal(rejectedInvalidProfile.status, 400);
+  const unauthenticatedProfileUpdate = await requestJson(baseUrl, '/api/auth/profile', {
+    method: 'PATCH',
+    body: { name: 'Updated Test Student', level: '200' }
+  });
+  assert.equal(unauthenticatedProfileUpdate.status, 401);
+
+  const restoredProfile = await requestJson(baseUrl, '/api/auth/profile', {
+    method: 'PATCH',
+    token: studentRegistration.body.token,
+    body: { name: 'Test Student', level: '100' }
+  });
+  assert.equal(restoredProfile.status, 200);
 
   const availableCourses = await requestJson(baseUrl, '/api/courses', {
     token: studentRegistration.body.token

@@ -377,7 +377,7 @@ function sendJson(response, statusCode, body) {
     'Access-Control-Allow-Origin': allowedOrigin,
     'Vary': 'Origin',
     'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-    'Access-Control-Allow-Methods': 'GET, POST, DELETE, OPTIONS'
+    'Access-Control-Allow-Methods': 'GET, POST, PATCH, DELETE, OPTIONS'
   });
   response.end(JSON.stringify(body));
 }
@@ -2083,6 +2083,21 @@ async function handleRequest(request, response) {
   if (request.method === 'GET' && request.url === '/api/auth/me') {
     const user = authenticatedUser(request, database);
     return user ? sendJson(response, 200, { user: publicUser(user) }) : sendJson(response, 401, { error: 'Authentication required.' });
+  }
+
+  if (request.method === 'PATCH' && pathname === '/api/auth/profile') {
+    const user = authenticatedUser(request, database);
+    if (!user || user.role !== 'student') return sendJson(response, 401, { error: 'Student authentication required.' });
+    const payload = await readBody(request);
+    const name = typeof payload.name === 'string' ? payload.name.trim() : '';
+    const level = typeof payload.level === 'string' ? payload.level : '';
+    if (name.length < 3 || name.length > 100 || !['100', '200', '300', '400', '500'].includes(level)) {
+      return sendJson(response, 400, { error: 'Provide a name between 3 and 100 characters and choose a valid student level.' });
+    }
+    user.name = name;
+    user.level = level;
+    await writeDatabase(database);
+    return sendJson(response, 200, { user: publicUser(user) });
   }
 
   if (request.method === 'POST' && request.url === '/api/auth/forgot-password') {

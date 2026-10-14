@@ -37,8 +37,12 @@
     .info-box, .text-input, .history-list { border-radius:12px; border:1px solid var(--line); background:#f8fafc; }
     .info-box { padding:12px 14px; color:var(--primary); font-weight:600; }
     .text-input { width:100%; padding:12px 14px; font-size:14px; color: var(--text); outline:none; transition: border-color .2s ease, box-shadow .2s ease; }
+    select.text-input { cursor:pointer; }
     .text-input:focus { border-color: rgba(13,148,136,.5); box-shadow: 0 0 0 4px rgba(13,148,136,.08); }
     .save-btn { background: linear-gradient(135deg, var(--teal), var(--teal-light)); color:#fff; border:none; padding:11px 18px; border-radius:10px; font-weight:700; cursor:pointer; box-shadow: 0 10px 24px rgba(13,148,136,.25); }
+    .save-btn:disabled { cursor:wait; opacity:.7; }
+    .profile-status { min-height:20px; margin:10px 0 0; color:var(--teal); font-size:13px; }
+    .profile-status[data-error="true"] { color:#b91c1c; }
     .history-panel { background: #f8fafc; border:1px solid var(--line); border-radius:14px; padding:14px; }
     .history-panel h3 { margin:0 0 12px; color:var(--primary); }
     .history-list { max-height: 320px; overflow:auto; background:#fff; border:1px solid #edf2f7; padding:0 10px; }
@@ -96,8 +100,15 @@
             </div>
 
             <div class="field-group">
-              <label class="field-label">Level</label>
-              <div id="level" class="info-box"></div>
+              <label class="field-label" for="levelInput">Level</label>
+              <select id="levelInput" class="text-input" required>
+                <option value="" disabled>Select your level...</option>
+                <option value="100">100 Level</option>
+                <option value="200">200 Level</option>
+                <option value="300">300 Level</option>
+                <option value="400">400 Level</option>
+                <option value="500">500 Level</option>
+              </select>
             </div>
 
             <div class="field-group">
@@ -105,7 +116,8 @@
               <input id="nameInput" class="text-input" type="text" placeholder="Enter your full name" />
             </div>
 
-            <button class="save-btn" onclick="saveProfile()">Save Profile</button>
+            <button id="saveProfileButton" class="save-btn" type="button" onclick="saveProfile()">Save Profile</button>
+            <p id="profileStatus" class="profile-status" role="status" aria-live="polite"></p>
           </div>
 
           <div class="history-panel">
@@ -126,7 +138,7 @@
       var u = window.Auth && window.Auth.protect ? window.Auth.protect() : null;
       if (!u) return;
       document.getElementById('matric').textContent = u.matric || '---';
-      document.getElementById('level').textContent = u.level || '---';
+      document.getElementById('levelInput').value = u.level || '';
       document.getElementById('nameInput').value = u.name || '';
 
       function renderHistory(){
@@ -148,13 +160,32 @@
       window.addEventListener('storage', function(e){ if (e.key === 'futo_quiz_results') renderHistory(); });
     });
 
-    function saveProfile(){
+    async function saveProfile(){
       var name = document.getElementById('nameInput').value.trim();
+      var level = document.getElementById('levelInput').value;
       var s = window.Auth.get();
+      var button = document.getElementById('saveProfileButton');
+      var status = document.getElementById('profileStatus');
       if (!s) return;
-      s.name = name || s.name;
-      window.Auth.set(s);
-      alert('Profile updated');
+      button.disabled = true;
+      status.dataset.error = 'false';
+      status.textContent = '';
+      try {
+        var result = await window.Auth.request('/auth/profile', {
+          method: 'PATCH',
+          body: JSON.stringify({ name: name, level: level })
+        });
+        s.name = result.user.name;
+        s.level = result.user.level;
+        localStorage.setItem('futo_session', JSON.stringify(s));
+        window.Auth.updateNav();
+        status.textContent = 'Profile updated.';
+      } catch (error) {
+        status.dataset.error = 'true';
+        status.textContent = 'Could not save your profile: ' + error.message;
+      } finally {
+        button.disabled = false;
+      }
     }
   </script>
   <script src="/assets/js/student-chat-widget.js"></script>
